@@ -84,74 +84,113 @@ Token get_token() {
   return lex();
 }
 
-void additive_expression();
+struct node {
+  Token token;
+  struct node *left;
+  struct node *right;
+};
+typedef struct node Node;
 
-void primary_expression() {
+Node *node_new() {
+  Node *node = (Node *) malloc(sizeof(Node));
+  return node;
+}
+
+Node *additive_expression();
+
+Node *primary_expression() {
   Token token = get_token();
+  Node *node;
 
   if(token.type == tINT) {
-    printf("  sub $4, %%rsp\n  movl $%d, 0(%%rsp)\n", token.int_value);
+    node = node_new();
+    node->token = token;
   } else if(token.type == tLPAREN) {
-    additive_expression();
+    node = additive_expression();
     if(get_token().type != tRPAREN) {
       exit(1);
     }
   } else {
     exit(1);
   }
+
+  return node;
 }
 
-void multiplicative_expression() {
-  primary_expression();
+Node *multiplicative_expression() {
+  Node *node = primary_expression();
 
   while(1) {
     Token op = peek_token();
     if(op.type != tMUL) break;
     get_token();
 
-    primary_expression();
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = primary_expression();
 
-    printf("  movl 0(%%rsp), %%edx\n  add $4, %%rsp\n");
-    printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
-
-    if(op.type == tMUL) printf("  imull %%edx\n");
-
-    printf("  sub $4, %%rsp\n  movl %%eax, 0(%%rsp)\n");
+    node = parent;
   }
+
+  return node;
 }
 
-void additive_expression() {
-  multiplicative_expression();
+Node *additive_expression() {
+  Node *node = multiplicative_expression();
 
   while(1) {
     Token op = peek_token();
     if(op.type != tADD && op.type != tSUB) break;
     get_token();
 
-    multiplicative_expression();
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = multiplicative_expression();
 
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *parse() {
+  return additive_expression();
+}
+
+void generate_expression(Node *node) {
+  if(node->token.type == tINT) {
+    printf("  sub $4, %%rsp\n  movl $%d, 0(%%rsp)\n", node->token.int_value);
+  } else {
+    generate_expression(node->left);
+    generate_expression(node->right);
     printf("  movl 0(%%rsp), %%edx\n  add $4, %%rsp\n");
     printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
-
-    if(op.type == tADD) printf("  addl %%edx, %%eax\n");
-    if(op.type == tSUB) printf("  subl %%edx, %%eax\n");
-
+    if(node->token.type == tADD) printf("  addl %%edx, %%eax\n");
+    if(node->token.type == tSUB) printf("  subl %%edx, %%eax\n");
+    if(node->token.type == tMUL) printf("  imull %%edx\n");
     printf("  sub $4, %%rsp\n  movl %%eax, 0(%%rsp)\n");
   }
 }
 
-int main(void) {
+void generate(Node *node) {
   printf("  .global main\n");
   printf("main:\n");
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
 
-  additive_expression();
+  generate_expression(node);
 
   printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
 
   printf("  pop %%rbp\n");
   printf("  ret\n");
+}
+
+int main(void) {
+  Node *node = parse();
+  generate(node);
 
   return 0;
 }
