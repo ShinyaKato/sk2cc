@@ -17,3 +17,16 @@ gcc test3.s -o test3
 ./test3
 [ ! $? -eq 234 ] && echo test3 failed
 rm test3.s test3
+
+
+echo 2+3 | ./cc > test4.s
+gcc test4.s -o test4
+./test4
+[ ! $? -eq 5 ] && echo test4 failed
+rm test4.s test4
+
+echo 123+43+1+21 | ./cc > test5.s
+gcc test5.s -o test5
+./test5
+[ ! $? -eq 188 ] && echo test5 failed
+rm test5.s test5
