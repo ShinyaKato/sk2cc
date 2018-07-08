@@ -75,3 +75,28 @@ gcc test12.s -o test12
 ./test12
 [ ! $? -eq 123 ] && echo test12 failed
 rm test12.s test12
+
+
+echo 6/2 | ./cc > test13.s
+gcc test13.s -o test13
+./test13
+[ ! $? -eq 3 ] && echo test13 failed
+rm test13.s test13
+
+echo 6/\(2-3\)+7 | ./cc > test14.s
+gcc test14.s -o test14
+./test14
+[ ! $? -eq 1 ] && echo test14 failed
+rm test14.s test14
+
+echo 123%31 | ./cc > test15.s
+gcc test15.s -o test15
+./test15
+[ ! $? -eq 30 ] && echo test15 failed
+rm test15.s test15
+
+echo 32/4+5*\(8-5\)+5%2 | ./cc > test16.s
+gcc test16.s -o test16
+./test16
+[ ! $? -eq 24 ] && echo test16 failed
+rm test16.s test16

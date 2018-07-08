@@ -18,6 +18,8 @@ enum token_type {
   tADD,
   tSUB,
   tMUL,
+  tDIV,
+  tMOD,
   tLPAREN,
   tRPAREN,
   tEND
@@ -54,6 +56,10 @@ Token lex() {
     token.type = tSUB;
   } else if(c == '*') {
     token.type = tMUL;
+  } else if(c == '/') {
+    token.type = tDIV;
+  } else if(c == '%') {
+    token.type = tMOD;
   } else if(c == '(') {
     token.type = tLPAREN;
   } else if(c == ')') {
@@ -122,7 +128,7 @@ Node *multiplicative_expression() {
 
   while(1) {
     Token op = peek_token();
-    if(op.type != tMUL) break;
+    if(op.type != tMUL && op.type != tDIV && op.type != tMOD) break;
     get_token();
 
     Node *parent = node_new();
@@ -159,18 +165,47 @@ Node *parse() {
   return additive_expression();
 }
 
+void generate_immediate(int value) {
+  printf("  sub $4, %%rsp\n");
+  printf("  movl $%d, 0(%%rsp)\n", value);
+}
+
+void generate_push(char *reg) {
+  printf("  sub $4, %%rsp\n");
+  printf("  movl %%%s, 0(%%rsp)\n", reg);
+}
+
+void generate_pop(char *reg) {
+  printf("  movl 0(%%rsp), %%%s\n", reg);
+  printf("  add $4, %%rsp\n");
+}
+
 void generate_expression(Node *node) {
   if(node->token.type == tINT) {
-    printf("  sub $4, %%rsp\n  movl $%d, 0(%%rsp)\n", node->token.int_value);
+    generate_immediate(node->token.int_value);
   } else {
     generate_expression(node->left);
     generate_expression(node->right);
-    printf("  movl 0(%%rsp), %%edx\n  add $4, %%rsp\n");
-    printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
-    if(node->token.type == tADD) printf("  addl %%edx, %%eax\n");
-    if(node->token.type == tSUB) printf("  subl %%edx, %%eax\n");
-    if(node->token.type == tMUL) printf("  imull %%edx\n");
-    printf("  sub $4, %%rsp\n  movl %%eax, 0(%%rsp)\n");
+    generate_pop("ecx");
+    generate_pop("eax");
+    if(node->token.type == tADD) {
+      printf("  addl %%ecx, %%eax\n");
+      generate_push("eax");
+    } else if(node->token.type == tSUB) {
+      printf("  subl %%ecx, %%eax\n");
+      generate_push("eax");
+    } else if(node->token.type == tMUL) {
+      printf("  imull %%ecx\n");
+      generate_push("eax");
+    } else if(node->token.type == tDIV) {
+      printf("  movl $0, %%edx\n");
+      printf("  idivl %%ecx\n");
+      generate_push("eax");
+    } else if(node->token.type == tMOD) {
+      printf("  movl $0, %%edx\n");
+      printf("  idivl %%ecx\n");
+      generate_push("edx");
+    }
   }
 }
 
@@ -182,7 +217,7 @@ void generate(Node *node) {
 
   generate_expression(node);
 
-  printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
+  generate_pop("eax");
 
   printf("  pop %%rbp\n");
   printf("  ret\n");
