@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int get_int() {
+void get_int() {
   int n = 0;
   while(!feof(stdin)) {
     char c = fgetc(stdin);
@@ -11,7 +11,57 @@ int get_int() {
     }
     n = n * 10 + (c - '0');
   }
-  return n;
+
+  printf("  sub $4, %%rsp\n");
+  printf("  movl $%d, 0(%%rsp)\n", n);
+}
+
+void term() {
+  get_int();
+
+  while(!feof(stdin)) {
+    char op = fgetc(stdin);
+    if(op != '*') {
+      ungetc(op, stdin);
+      break;
+    }
+
+    get_int();
+
+    printf("  movl 0(%%rsp), %%edx\n  add $4, %%rsp\n");
+    printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
+
+    if(op == '*') {
+      printf("  mull %%edx\n");
+    }
+
+    printf("  sub $4, %%rsp\n  movl %%eax, 0(%%rsp)\n");
+  }
+}
+
+void expression() {
+  term();
+
+  while(!feof(stdin)) {
+    char op = fgetc(stdin);
+    if(op != '+' && op != '-') {
+      ungetc(op, stdin);
+      break;
+    }
+
+    term();
+
+    printf("  movl 0(%%rsp), %%edx\n  add $4, %%rsp\n");
+    printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
+
+    if(op == '+') {
+      printf("  addl %%edx, %%eax\n");
+    } else if(op == '-') {
+      printf("  subl %%edx, %%eax\n");
+    }
+
+    printf("  sub $4, %%rsp\n  movl %%eax, 0(%%rsp)\n");
+  }
 }
 
 int main(void) {
@@ -20,34 +70,9 @@ int main(void) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
 
-  int n = get_int();
-  printf("  sub $4, %%rsp\n");
-  printf("  movl $%d, 0(%%rsp)\n", n);
+  expression();
 
-  while(!feof(stdin)) {
-    char op = fgetc(stdin);
-    if(op == '\n') break;
-
-    int m = get_int();
-    printf("  movl $%d, %%edx\n", m);
-
-    printf("  movl 0(%%rsp), %%eax\n");
-    printf("  add $4, %%rsp\n");
-
-    if(op == '+') {
-      printf("  addl %%edx, %%eax\n");
-    } else if(op == '-') {
-      printf("  subl %%edx, %%eax\n");
-    } else {
-      exit(1);
-    }
-
-    printf("  sub $4, %%rsp\n");
-    printf("  movl %%eax, 0(%%rsp)\n");
-  }
-
-  printf("  movl 0(%%rsp), %%eax\n");
-  printf("  add $4, %%rsp\n");
+  printf("  movl 0(%%rsp), %%eax\n  add $4, %%rsp\n");
 
   printf("  pop %%rbp\n");
   printf("  ret\n");

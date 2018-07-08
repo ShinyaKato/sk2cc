@@ -49,3 +49,16 @@ gcc test8.s -o test8
 ./test8
 [ ! $? -eq 109 ] && echo test8 failed
 rm test8.s test8
+
+
+echo 3*5 | ./cc > test9.s
+gcc test9.s -o test9
+./test9
+[ ! $? -eq 15 ] && echo test9 failed
+rm test9.s test9
+
+echo 3*5+7*8-3*4 | ./cc > test10.s
+gcc test10.s -o test10
+./test10
+[ ! $? -eq 59 ] && echo test10 failed
+rm test10.s test10
