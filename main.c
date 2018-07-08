@@ -21,28 +21,33 @@ int main(void) {
   printf("  mov %%rsp, %%rbp\n");
 
   int n = get_int();
-  printf("  push $%d\n", n);
+  printf("  sub $4, %%rsp\n");
+  printf("  movl $%d, 0(%%rsp)\n", n);
 
   while(!feof(stdin)) {
     char op = fgetc(stdin);
     if(op == '\n') break;
 
     int m = get_int();
-    printf("  mov $%d, %%edx\n", m);
-    printf("  pop %%rax\n");
+    printf("  movl $%d, %%edx\n", m);
+
+    printf("  movl 0(%%rsp), %%eax\n");
+    printf("  add $4, %%rsp\n");
 
     if(op == '+') {
-      printf("  add %%edx, %%eax\n");
+      printf("  addl %%edx, %%eax\n");
     } else if(op == '-') {
-      printf("  sub %%edx, %%eax\n");
+      printf("  subl %%edx, %%eax\n");
     } else {
       exit(1);
     }
 
-    printf("  push %%rax\n");
+    printf("  sub $4, %%rsp\n");
+    printf("  movl %%eax, 0(%%rsp)\n");
   }
 
-  printf("  pop %%rax\n");
+  printf("  movl 0(%%rsp), %%eax\n");
+  printf("  add $4, %%rsp\n");
 
   printf("  pop %%rbp\n");
   printf("  ret\n");
