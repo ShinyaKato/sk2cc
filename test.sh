@@ -62,3 +62,16 @@ gcc test10.s -o test10
 ./test10
 [ ! $? -eq 59 ] && echo test10 failed
 rm test10.s test10
+
+
+echo \(3-5\)*3+7 | ./cc > test11.s
+gcc test11.s -o test11
+./test11
+[ ! $? -eq 1 ] && echo test11 failed
+rm test11.s test11
+
+echo \(\(\(123\)\)\) | ./cc > test12.s
+gcc test12.s -o test12
+./test12
+[ ! $? -eq 123 ] && echo test12 failed
+rm test12.s test12
