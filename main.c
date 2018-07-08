@@ -26,12 +26,19 @@ int main(void) {
   while(!feof(stdin)) {
     char op = fgetc(stdin);
     if(op == '\n') break;
-    if(op != '+') exit(1);
 
     int m = get_int();
-    printf("  mov $%d, %%eax\n", m);
-    printf("  pop %%rdx\n");
-    printf("  add %%edx, %%eax\n");
+    printf("  mov $%d, %%edx\n", m);
+    printf("  pop %%rax\n");
+
+    if(op == '+') {
+      printf("  add %%edx, %%eax\n");
+    } else if(op == '-') {
+      printf("  sub %%edx, %%eax\n");
+    } else {
+      exit(1);
+    }
+
     printf("  push %%rax\n");
   }
 
