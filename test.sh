@@ -127,6 +127,12 @@ test_expression "1 ? 0 ? 6 : 7 : 1 ? 8 : 9" 7
 test_expression "0 ? 1 ? 6 : 7 : 1 ? 8 : 9" 8
 test_expression "0 ? 1 ? 6 : 7 : 0 ? 8 : 9" 9
 
+test_expression "1 << 6" 64
+test_expression "64 >> 6" 1
+test_expression "64 >> 8" 0
+test_expression "41 << 2" 164
+test_expression "41 >> 3" 5
+
 test_error "abc" "error: unexpected character."
 test_error "2 * (3 + 4" "error: tRPAREN is expected."
 test_error "5 + *" "error: unexpected primary expression."

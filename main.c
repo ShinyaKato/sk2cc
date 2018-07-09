@@ -26,6 +26,8 @@ enum token_type {
   tMUL,
   tDIV,
   tMOD,
+  tLSHIFT,
+  tRSHIFT,
   tLT,
   tGT,
   tLTE,
@@ -83,15 +85,23 @@ Token lex() {
   } else if (c == '%') {
     token.type = tMOD;
   } else if (c == '<') {
-    if (peek_char() == '=') {
+    char d = peek_char();
+    if (d == '=') {
       token.type = tLTE;
+      get_char();
+    } else if (d == '<') {
+      token.type = tLSHIFT;
       get_char();
     } else {
       token.type = tLT;
     }
   } else if (c == '>') {
-    if (peek_char() == '=') {
+    char d = peek_char();
+    if (d == '=') {
       token.type = tGTE;
+      get_char();
+    } else if (d == '>') {
+      token.type = tRSHIFT;
       get_char();
     } else {
       token.type = tGT;
@@ -162,6 +172,8 @@ enum node_type {
   MUL,
   DIV,
   MOD,
+  LSHIFT,
+  RSHIFT,
   LT,
   GT,
   LTE,
@@ -280,8 +292,30 @@ Node *additive_expression() {
   return node;
 }
 
-Node *relational_expression() {
+Node *shift_expression() {
   Node *node = additive_expression();
+
+  while (1) {
+    Token op = peek_token();
+    enum node_type type;
+    if (op.type == tLSHIFT) type = LSHIFT;
+    else if (op.type == tRSHIFT) type = RSHIFT;
+    else break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->type = type;
+    parent->left = node;
+    parent->right = additive_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *relational_expression() {
+  Node *node = shift_expression();
 
   while (1) {
     Token op = peek_token();
@@ -296,7 +330,7 @@ Node *relational_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = additive_expression();
+    parent->right = shift_expression();
 
     node = parent;
   }
@@ -505,6 +539,12 @@ void generate_expression(Node *node) {
       printf("  movl $0, %%edx\n");
       printf("  idivl %%ecx\n");
       generate_push("edx");
+    } else if (node->type == LSHIFT) {
+      printf("  sall %%cl, %%eax\n");
+      generate_push("eax");
+    } else if (node->type == RSHIFT) {
+      printf("  sarl %%cl, %%eax\n");
+      generate_push("eax");
     } else if (node->type == LT) {
       printf("  cmpl %%ecx, %%eax\n");
       printf("  setl %%al\n");
