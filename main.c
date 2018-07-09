@@ -25,6 +25,8 @@ enum token_type {
   tMUL,
   tDIV,
   tMOD,
+  tEQ,
+  tNEQ,
   tLPAREN,
   tRPAREN,
   tEND
@@ -65,6 +67,16 @@ Token lex() {
     token.type = tDIV;
   } else if (c == '%') {
     token.type = tMOD;
+  } else if (c == '=') {
+    if (peek_char() == '=') {
+      token.type = tEQ;
+      get_char();
+    }
+  } else if (c == '!') {
+    if (peek_char() == '=') {
+      token.type = tNEQ;
+      get_char();
+    }
   } else if (c == '(') {
     token.type = tLPAREN;
   } else if (c == ')') {
@@ -107,7 +119,7 @@ Node *node_new() {
   return node;
 }
 
-Node *additive_expression();
+Node *expression();
 
 Node *primary_expression() {
   Token token = get_token();
@@ -117,7 +129,7 @@ Node *primary_expression() {
     node = node_new();
     node->token = token;
   } else if (token.type == tLPAREN) {
-    node = additive_expression();
+    node = expression();
     if (get_token().type != tRPAREN) {
       error("tRPAREN is expected.");
     }
@@ -166,8 +178,31 @@ Node *additive_expression() {
   return node;
 }
 
-Node *parse() {
+Node *equality_expression() {
   Node *node = additive_expression();
+
+  while (1) {
+    Token op = peek_token();
+    if (op.type != tEQ && op.type != tNEQ) break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = additive_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *expression() {
+  return equality_expression();
+}
+
+Node *parse() {
+  Node *node = expression();
 
   if (peek_char() != '\n') {
     error("invalid expression.");
@@ -216,6 +251,16 @@ void generate_expression(Node *node) {
       printf("  movl $0, %%edx\n");
       printf("  idivl %%ecx\n");
       generate_push("edx");
+    } else if (node->token.type == tEQ) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  sete %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
+    } else if (node->token.type == tNEQ) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setne %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
     }
   }
 }

@@ -24,6 +24,7 @@ test_expression() {
 
   if [ $ret -ne $val ]; then
     echo $exp should be $val, but got $ret.
+    cat out.s
     rm out.s out
     exit 1
   fi
@@ -75,6 +76,11 @@ test_expression "6/2" 3
 test_expression "6/(2-3)+7" 1
 test_expression "123%31" 30
 test_expression "32/4+5*(8-5)+5%2" 24
+
+test_expression "3*5==7+8" 1
+test_expression "3*5==123" 0
+test_expression "3*5!=7+8" 0
+test_expression "3*5!=123" 1
 
 test_error "abc" "error: unexpected character."
 test_error "2*(3+4" "error: tRPAREN is expected."
