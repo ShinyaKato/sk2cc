@@ -115,6 +115,11 @@ test_expression "+5" 5
 test_expression "5 + (-5)" 0
 test_expression "3 - + - + - + - 2" 5
 
+test_expression "!0" 1
+test_expression "!1" 0
+test_expression "!!0" 0
+test_expression "!(2 * 3 <= 2 + 3)" 1
+
 test_error "abc" "error: unexpected character."
 test_error "2 * (3 + 4" "error: tRPAREN is expected."
 test_error "5 + *" "error: unexpected primary expression."

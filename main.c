@@ -20,6 +20,7 @@ char get_char() {
 
 enum token_type {
   tINT,
+  tLNOT,
   tADD,
   tSUB,
   tMUL,
@@ -102,6 +103,8 @@ Token lex() {
     if (peek_char() == '=') {
       token.type = tNEQ;
       get_char();
+    } else {
+      token.type = tLNOT;
     }
   } else if (c == '&') {
     if (peek_char() == '&') {
@@ -147,6 +150,7 @@ enum node_type {
   CONST,
   UPLUS,
   UMINUS,
+  LNOT,
   ADD,
   SUB,
   MUL,
@@ -210,6 +214,11 @@ Node *unary_expression() {
     get_token();
     node = node_new();
     node->type = UMINUS;
+    node->left = unary_expression();
+  } else if (token.type == tLNOT) {
+    get_token();
+    node = node_new();
+    node->type = LNOT;
     node->left = unary_expression();
   } else {
     node = primary_expression();
@@ -425,6 +434,13 @@ void generate_expression(Node *node) {
     generate_expression(node->left);
     generate_pop("eax");
     printf("  neg %%eax\n");
+    generate_push("eax");
+  } else if (node->type == LNOT) {
+    generate_expression(node->left);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  sete %%al\n");
+    printf("  movzbl %%al, %%eax\n");
     generate_push("eax");
   } else {
     generate_expression(node->left);
