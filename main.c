@@ -402,13 +402,13 @@ Node *and_expression() {
   return node;
 }
 
-Node *or_expression() {
+Node *exclusive_or_expression() {
   Node *node = and_expression();
 
   while (1) {
     Token op = peek_token();
     enum node_type type;
-    if (op.type == tOR) type = OR;
+    if (op.type == tXOR) type = XOR;
     else break;
     get_token();
 
@@ -423,20 +423,20 @@ Node *or_expression() {
   return node;
 }
 
-Node *xor_expression() {
-  Node *node = or_expression();
+Node *inclusive_or_expression() {
+  Node *node = exclusive_or_expression();
 
   while (1) {
     Token op = peek_token();
     enum node_type type;
-    if (op.type == tXOR) type = XOR;
+    if (op.type == tOR) type = OR;
     else break;
     get_token();
 
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = or_expression();
+    parent->right = exclusive_or_expression();
 
     node = parent;
   }
@@ -445,7 +445,7 @@ Node *xor_expression() {
 }
 
 Node *logical_and_expression() {
-  Node *node = xor_expression();
+  Node *node = inclusive_or_expression();
 
   while (1) {
     Token op = peek_token();
@@ -457,7 +457,7 @@ Node *logical_and_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = xor_expression();
+    parent->right = inclusive_or_expression();
 
     node = parent;
   }
