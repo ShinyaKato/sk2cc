@@ -31,6 +31,7 @@ enum token_type {
   tGTE,
   tEQ,
   tNEQ,
+  tLAND,
   tLPAREN,
   tRPAREN,
   tEND
@@ -93,6 +94,11 @@ Token lex() {
   } else if (c == '!') {
     if (peek_char() == '=') {
       token.type = tNEQ;
+      get_char();
+    }
+  } else if (c == '&') {
+    if (peek_char() == '&') {
+      token.type = tLAND;
       get_char();
     }
   } else if (c == '(') {
@@ -234,8 +240,27 @@ Node *equality_expression() {
   return node;
 }
 
+Node *logical_and_expression() {
+  Node *node = equality_expression();
+
+  while (1) {
+    Token op = peek_token();
+    if (op.type != tLAND) break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = equality_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
 Node *expression() {
-  return equality_expression();
+  return logical_and_expression();
 }
 
 Node *parse() {
@@ -263,9 +288,28 @@ void generate_pop(char *reg) {
   printf("  add $4, %%rsp\n");
 }
 
+int label_no = 0;
+
 void generate_expression(Node *node) {
   if (node->token.type == tINT) {
     generate_immediate(node->token.int_value);
+  } else if (node->token.type == tLAND) {
+    int label_false = label_no++;
+    int label_end = label_no++;
+    generate_expression(node->left);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_false);
+    generate_expression(node->right);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_false);
+    printf("  movl $1, %%eax\n");
+    printf("  jmp .L%d\n", label_end);
+    printf(".L%d:\n", label_false);
+    printf("  movl $0, %%eax\n");
+    printf(".L%d:\n", label_end);
+    generate_push("eax");
   } else {
     generate_expression(node->left);
     generate_expression(node->right);

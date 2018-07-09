@@ -92,6 +92,13 @@ test_expression "5*7<=34" 0
 test_expression "5*7>=36" 0
 test_expression "5*7>=35" 1
 
+test_expression "1&&1" 1
+test_expression "0&&1" 0
+test_expression "1&&0" 0
+test_expression "0&&0" 0
+test_expression "3*7>20&&5<10&&6+2<=3*3&&5*2%3==1" 1
+test_expression "3*7>20&&5<10&&6+2>=3*3&&5*2%3==1" 0
+
 test_error "abc" "error: unexpected character."
 test_error "2*(3+4" "error: tRPAREN is expected."
 test_error "5+*" "error: unexpected primary expression."
