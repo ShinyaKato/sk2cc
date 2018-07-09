@@ -145,6 +145,8 @@ Token get_token() {
 
 enum node_type {
   CONST,
+  UPLUS,
+  UMINUS,
   ADD,
   SUB,
   MUL,
@@ -195,8 +197,29 @@ Node *primary_expression() {
   return node;
 }
 
+Node *unary_expression() {
+  Token token = peek_token();
+  Node *node;
+
+  if (token.type == tADD) {
+    get_token();
+    node = node_new();
+    node->type = UPLUS;
+    node->left = unary_expression();
+  } else if (token.type == tSUB) {
+    get_token();
+    node = node_new();
+    node->type = UMINUS;
+    node->left = unary_expression();
+  } else {
+    node = primary_expression();
+  }
+
+  return node;
+}
+
 Node *multiplicative_expression() {
-  Node *node = primary_expression();
+  Node *node = unary_expression();
 
   while (1) {
     Token op = peek_token();
@@ -210,7 +233,7 @@ Node *multiplicative_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = primary_expression();
+    parent->right = unary_expression();
 
     node = parent;
   }
@@ -395,6 +418,13 @@ void generate_expression(Node *node) {
     printf(".L%d:\n", label_true);
     printf("  movl $1, %%eax\n");
     printf(".L%d:\n", label_end);
+    generate_push("eax");
+  } else if (node->type == UPLUS) {
+    generate_expression(node->left);
+  } else if (node->type == UMINUS) {
+    generate_expression(node->left);
+    generate_pop("eax");
+    printf("  neg %%eax\n");
     generate_push("eax");
   } else {
     generate_expression(node->left);
