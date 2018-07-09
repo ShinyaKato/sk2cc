@@ -20,6 +20,7 @@ char get_char() {
 
 enum token_type {
   tINT,
+  tNOT,
   tLNOT,
   tADD,
   tSUB,
@@ -77,6 +78,8 @@ Token lex() {
     }
     token.type = tINT;
     token.int_value = n;
+  } else if (c == '~') {
+    token.type = tNOT;
   } else if (c == '+') {
     token.type = tADD;
   } else if (c == '-') {
@@ -175,6 +178,7 @@ enum node_type {
   CONST,
   UPLUS,
   UMINUS,
+  NOT,
   LNOT,
   ADD,
   SUB,
@@ -246,6 +250,11 @@ Node *unary_expression() {
     get_token();
     node = node_new();
     node->type = UMINUS;
+    node->left = unary_expression();
+  } else if (token.type == tNOT) {
+    get_token();
+    node = node_new();
+    node->type = NOT;
     node->left = unary_expression();
   } else if (token.type == tLNOT) {
     get_token();
@@ -584,6 +593,11 @@ void generate_expression(Node *node) {
     generate_expression(node->left);
     generate_pop("eax");
     printf("  neg %%eax\n");
+    generate_push("eax");
+  } else if (node->type == NOT) {
+    generate_expression(node->left);
+    generate_pop("eax");
+    printf("  not %%eax\n");
     generate_push("eax");
   } else if (node->type == LNOT) {
     generate_expression(node->left);

@@ -137,6 +137,8 @@ test_expression "183 & 109" 37
 test_expression "183 | 109" 255
 test_expression "183 ^ 109" 218
 
+test_expression "~183 & 255" 72
+
 test_error "abc" "error: unexpected character."
 test_error "2 * (3 + 4" "error: tRPAREN is expected."
 test_error "5 + *" "error: unexpected primary expression."
