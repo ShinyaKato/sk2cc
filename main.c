@@ -592,12 +592,12 @@ void generate_expression(Node *node) {
   } else if (node->type == UMINUS) {
     generate_expression(node->left);
     generate_pop("eax");
-    printf("  neg %%eax\n");
+    printf("  negl %%eax\n");
     generate_push("eax");
   } else if (node->type == NOT) {
     generate_expression(node->left);
     generate_pop("eax");
-    printf("  not %%eax\n");
+    printf("  notl %%eax\n");
     generate_push("eax");
   } else if (node->type == LNOT) {
     generate_expression(node->left);
