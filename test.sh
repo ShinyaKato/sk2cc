@@ -98,6 +98,14 @@ test_expression "1&&0" 0
 test_expression "0&&0" 0
 test_expression "3*7>20&&5<10&&6+2<=3*3&&5*2%3==1" 1
 test_expression "3*7>20&&5<10&&6+2>=3*3&&5*2%3==1" 0
+test_expression "3*7>20&&2*4<=7||8%2==0&&5/2>=2" 1
+
+test_expression "1||1" 1
+test_expression "0||1" 1
+test_expression "1||0" 1
+test_expression "0||0" 0
+test_expression "8*7<50||10>2*5||3%2==1||5*7<32" 1
+test_expression "8*7<50||10>2*5||3%2!=1||5*7<32" 0
 
 test_error "abc" "error: unexpected character."
 test_error "2*(3+4" "error: tRPAREN is expected."

@@ -32,6 +32,7 @@ enum token_type {
   tEQ,
   tNEQ,
   tLAND,
+  tLOR,
   tLPAREN,
   tRPAREN,
   tEND
@@ -99,6 +100,11 @@ Token lex() {
   } else if (c == '&') {
     if (peek_char() == '&') {
       token.type = tLAND;
+      get_char();
+    }
+  } else if (c == '|') {
+    if (peek_char() == '|') {
+      token.type = tLOR;
       get_char();
     }
   } else if (c == '(') {
@@ -259,8 +265,27 @@ Node *logical_and_expression() {
   return node;
 }
 
+Node *logical_or_expression() {
+  Node *node = logical_and_expression();
+
+  while (1) {
+    Token op = peek_token();
+    if (op.type != tLOR) break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = logical_and_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
 Node *expression() {
-  return logical_and_expression();
+  return logical_or_expression();
 }
 
 Node *parse() {
@@ -308,6 +333,23 @@ void generate_expression(Node *node) {
     printf("  jmp .L%d\n", label_end);
     printf(".L%d:\n", label_false);
     printf("  movl $0, %%eax\n");
+    printf(".L%d:\n", label_end);
+    generate_push("eax");
+  } else if (node->token.type == tLOR) {
+    int label_true = label_no++;
+    int label_end = label_no++;
+    generate_expression(node->left);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  jne .L%d\n", label_true);
+    generate_expression(node->right);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  jne .L%d\n", label_true);
+    printf("  movl $0, %%eax\n");
+    printf("  jmp .L%d\n", label_end);
+    printf(".L%d:\n", label_true);
+    printf("  movl $1, %%eax\n");
     printf(".L%d:\n", label_end);
     generate_push("eax");
   } else {
