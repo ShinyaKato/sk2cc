@@ -47,7 +47,13 @@ typedef struct token Token;
 Token lex() {
   Token token;
 
-  if (peek_char() == '\n') {
+  while (1) {
+    char c = peek_char();
+    if (c != ' ' && c != '\n') break;
+    get_char();
+  }
+
+  if (peek_char() == EOF) {
     token.type = tEND;
     return token;
   }
@@ -291,7 +297,7 @@ Node *expression() {
 Node *parse() {
   Node *node = expression();
 
-  if (peek_char() != '\n') {
+  if (peek_token().type != tEND) {
     error("invalid expression.");
   }
 
