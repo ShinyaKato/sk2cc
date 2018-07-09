@@ -3,6 +3,11 @@
 #include <ctype.h>
 #include <stdbool.h>
 
+void error(char *message) {
+  fprintf(stderr, "error: %s\n", message);
+  exit(1);
+}
+
 char peek_char() {
   char c = fgetc(stdin);
   ungetc(c, stdin);
@@ -65,7 +70,7 @@ Token lex() {
   } else if (c == ')') {
     token.type = tRPAREN;
   } else {
-    exit(1);
+    error("unexpected character.");
   }
 
   return token;
@@ -114,10 +119,10 @@ Node *primary_expression() {
   } else if (token.type == tLPAREN) {
     node = additive_expression();
     if (get_token().type != tRPAREN) {
-      exit(1);
+      error("tRPAREN is expected.");
     }
   } else {
-    exit(1);
+    error("unexpected primary expression.");
   }
 
   return node;
@@ -162,7 +167,13 @@ Node *additive_expression() {
 }
 
 Node *parse() {
-  return additive_expression();
+  Node *node = additive_expression();
+
+  if (peek_char() != '\n') {
+    error("invalid expression.");
+  }
+
+  return node;
 }
 
 void generate_immediate(int value) {

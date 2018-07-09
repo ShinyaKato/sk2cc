@@ -100,3 +100,24 @@ gcc test16.s -o test16
 ./test16
 [ ! $? -eq 24 ] && echo test16 failed
 rm test16.s test16
+
+
+echo abc | ./cc 2> test17.txt
+echo error: unexpected character. | diff - test17.txt
+[ $? -ne 0 ] && echo test17 failed
+rm test17.txt
+
+echo 2*\(3+4 | ./cc 2> test18.txt
+echo error: tRPAREN is expected. | diff - test18.txt
+[ $? -ne 0 ] && echo test18 failed
+rm test18.txt
+
+echo 5+* | ./cc 2> test19.txt
+echo error: unexpected primary expression. | diff - test19.txt
+[ $? -ne 0 ] && echo test19 failed
+rm test19.txt
+
+echo 5\(4\) | ./cc 2> test20.txt
+echo error: invalid expression. | diff - test20.txt
+[ $? -ne 0 ] && echo test20 failed
+rm test20.txt
