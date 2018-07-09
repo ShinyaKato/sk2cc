@@ -34,35 +34,35 @@ typedef struct token Token;
 Token lex() {
   Token token;
 
-  if(peek_char() == '\n') {
+  if (peek_char() == '\n') {
     token.type = tEND;
     return token;
   }
 
   char c = get_char();
-  if(isdigit(c)) {
+  if (isdigit(c)) {
     int n = c - '0';
-    while(1) {
+    while (1) {
       char d = peek_char();
-      if(!isdigit(d)) break;
+      if (!isdigit(d)) break;
       get_char();
       n = n * 10 + (d - '0');
     }
     token.type = tINT;
     token.int_value = n;
-  } else if(c == '+') {
+  } else if (c == '+') {
     token.type = tADD;
-  } else if(c == '-') {
+  } else if (c == '-') {
     token.type = tSUB;
-  } else if(c == '*') {
+  } else if (c == '*') {
     token.type = tMUL;
-  } else if(c == '/') {
+  } else if (c == '/') {
     token.type = tDIV;
-  } else if(c == '%') {
+  } else if (c == '%') {
     token.type = tMOD;
-  } else if(c == '(') {
+  } else if (c == '(') {
     token.type = tLPAREN;
-  } else if(c == ')') {
+  } else if (c == ')') {
     token.type = tRPAREN;
   } else {
     exit(1);
@@ -75,7 +75,7 @@ bool has_next_token = false;
 Token next_token;
 
 Token peek_token() {
-  if(has_next_token) {
+  if (has_next_token) {
     return next_token;
   }
   has_next_token = true;
@@ -83,7 +83,7 @@ Token peek_token() {
 }
 
 Token get_token() {
-  if(has_next_token) {
+  if (has_next_token) {
     has_next_token = false;
     return next_token;
   }
@@ -108,12 +108,12 @@ Node *primary_expression() {
   Token token = get_token();
   Node *node;
 
-  if(token.type == tINT) {
+  if (token.type == tINT) {
     node = node_new();
     node->token = token;
-  } else if(token.type == tLPAREN) {
+  } else if (token.type == tLPAREN) {
     node = additive_expression();
-    if(get_token().type != tRPAREN) {
+    if (get_token().type != tRPAREN) {
       exit(1);
     }
   } else {
@@ -126,9 +126,9 @@ Node *primary_expression() {
 Node *multiplicative_expression() {
   Node *node = primary_expression();
 
-  while(1) {
+  while (1) {
     Token op = peek_token();
-    if(op.type != tMUL && op.type != tDIV && op.type != tMOD) break;
+    if (op.type != tMUL && op.type != tDIV && op.type != tMOD) break;
     get_token();
 
     Node *parent = node_new();
@@ -145,9 +145,9 @@ Node *multiplicative_expression() {
 Node *additive_expression() {
   Node *node = multiplicative_expression();
 
-  while(1) {
+  while (1) {
     Token op = peek_token();
-    if(op.type != tADD && op.type != tSUB) break;
+    if (op.type != tADD && op.type != tSUB) break;
     get_token();
 
     Node *parent = node_new();
@@ -181,27 +181,27 @@ void generate_pop(char *reg) {
 }
 
 void generate_expression(Node *node) {
-  if(node->token.type == tINT) {
+  if (node->token.type == tINT) {
     generate_immediate(node->token.int_value);
   } else {
     generate_expression(node->left);
     generate_expression(node->right);
     generate_pop("ecx");
     generate_pop("eax");
-    if(node->token.type == tADD) {
+    if (node->token.type == tADD) {
       printf("  addl %%ecx, %%eax\n");
       generate_push("eax");
-    } else if(node->token.type == tSUB) {
+    } else if (node->token.type == tSUB) {
       printf("  subl %%ecx, %%eax\n");
       generate_push("eax");
-    } else if(node->token.type == tMUL) {
+    } else if (node->token.type == tMUL) {
       printf("  imull %%ecx\n");
       generate_push("eax");
-    } else if(node->token.type == tDIV) {
+    } else if (node->token.type == tDIV) {
       printf("  movl $0, %%edx\n");
       printf("  idivl %%ecx\n");
       generate_push("eax");
-    } else if(node->token.type == tMOD) {
+    } else if (node->token.type == tMOD) {
       printf("  movl $0, %%edx\n");
       printf("  idivl %%ecx\n");
       generate_push("edx");
