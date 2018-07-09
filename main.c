@@ -34,6 +34,8 @@ enum token_type {
   tNEQ,
   tLAND,
   tLOR,
+  tQUESTION,
+  tCOLON,
   tLPAREN,
   tRPAREN,
   tEND
@@ -116,6 +118,10 @@ Token lex() {
       token.type = tLOR;
       get_char();
     }
+  } else if (c == '?') {
+    token.type = tQUESTION;
+  } else if (c == ':') {
+    token.type = tCOLON;
   } else if (c == '(') {
     token.type = tLPAREN;
   } else if (c == ')') {
@@ -163,12 +169,14 @@ enum node_type {
   EQ,
   NEQ,
   LAND,
-  LOR
+  LOR,
+  CONDITION
 };
 
 struct node {
   enum node_type type;
   int int_value;
+  struct node *condition;
   struct node *left;
   struct node *right;
 };
@@ -360,8 +368,29 @@ Node *logical_or_expression() {
   return node;
 }
 
+Node *conditional_expression() {
+  Node *node = logical_or_expression();
+
+  if (peek_token().type == tQUESTION) {
+    get_token();
+
+    Node *parent = node_new();
+    parent->type = CONDITION;
+    parent->condition = node;
+    parent->left = expression();
+    if (get_token().type != tCOLON) {
+      error("tCOLON is expected.");
+    }
+    parent->right = conditional_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
 Node *expression() {
-  return logical_or_expression();
+  return conditional_expression();
 }
 
 Node *parse() {
@@ -428,6 +457,18 @@ void generate_expression(Node *node) {
     printf("  movl $1, %%eax\n");
     printf(".L%d:\n", label_end);
     generate_push("eax");
+  } else if (node->type == CONDITION) {
+    int label_false = label_no++;
+    int label_end = label_no++;
+    generate_expression(node->condition);
+    generate_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_false);
+    generate_expression(node->left);
+    printf("  jmp .L%d\n", label_end);
+    printf(".L%d:\n", label_false);
+    generate_expression(node->right);
+    printf(".L%d:\n", label_end);
   } else if (node->type == UPLUS) {
     generate_expression(node->left);
   } else if (node->type == UMINUS) {

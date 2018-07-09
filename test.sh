@@ -120,6 +120,13 @@ test_expression "!1" 0
 test_expression "!!0" 0
 test_expression "!(2 * 3 <= 2 + 3)" 1
 
+test_expression "3 > 2 ? 13 : 31" 13
+test_expression "3 < 2 ? 13 : 31" 31
+test_expression "1 ? 1 ? 6 : 7 : 1 ? 8 : 9" 6
+test_expression "1 ? 0 ? 6 : 7 : 1 ? 8 : 9" 7
+test_expression "0 ? 1 ? 6 : 7 : 1 ? 8 : 9" 8
+test_expression "0 ? 1 ? 6 : 7 : 0 ? 8 : 9" 9
+
 test_error "abc" "error: unexpected character."
 test_error "2 * (3 + 4" "error: tRPAREN is expected."
 test_error "5 + *" "error: unexpected primary expression."
