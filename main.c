@@ -25,6 +25,10 @@ enum token_type {
   tMUL,
   tDIV,
   tMOD,
+  tLT,
+  tGT,
+  tLTE,
+  tGTE,
   tEQ,
   tNEQ,
   tLPAREN,
@@ -67,6 +71,20 @@ Token lex() {
     token.type = tDIV;
   } else if (c == '%') {
     token.type = tMOD;
+  } else if (c == '<') {
+    if (peek_char() == '=') {
+      token.type = tLTE;
+      get_char();
+    } else {
+      token.type = tLT;
+    }
+  } else if (c == '>') {
+    if (peek_char() == '=') {
+      token.type = tGTE;
+      get_char();
+    } else {
+      token.type = tGT;
+    }
   } else if (c == '=') {
     if (peek_char() == '=') {
       token.type = tEQ;
@@ -178,8 +196,27 @@ Node *additive_expression() {
   return node;
 }
 
-Node *equality_expression() {
+Node *relational_expression() {
   Node *node = additive_expression();
+
+  while (1) {
+    Token op = peek_token();
+    if (op.type != tLT && op.type != tGT && op.type != tLTE && op.type != tGTE) break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->token = op;
+    parent->left = node;
+    parent->right = additive_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *equality_expression() {
+  Node *node = relational_expression();
 
   while (1) {
     Token op = peek_token();
@@ -189,7 +226,7 @@ Node *equality_expression() {
     Node *parent = node_new();
     parent->token = op;
     parent->left = node;
-    parent->right = additive_expression();
+    parent->right = relational_expression();
 
     node = parent;
   }
@@ -251,6 +288,26 @@ void generate_expression(Node *node) {
       printf("  movl $0, %%edx\n");
       printf("  idivl %%ecx\n");
       generate_push("edx");
+    } else if (node->token.type == tLT) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setl %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
+    } else if (node->token.type == tGT) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setg %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
+    } else if (node->token.type == tLTE) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setle %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
+    } else if (node->token.type == tGTE) {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setge %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
     } else if (node->token.type == tEQ) {
       printf("  cmpl %%ecx, %%eax\n");
       printf("  sete %%al\n");

@@ -82,6 +82,16 @@ test_expression "3*5==123" 0
 test_expression "3*5!=7+8" 0
 test_expression "3*5!=123" 1
 
+test_expression "5*7<36" 1
+test_expression "5*7<35" 0
+test_expression "5*7>35" 0
+test_expression "5*7>34" 1
+
+test_expression "5*7<=35" 1
+test_expression "5*7<=34" 0
+test_expression "5*7>=36" 0
+test_expression "5*7>=35" 1
+
 test_error "abc" "error: unexpected character."
 test_error "2*(3+4" "error: tRPAREN is expected."
 test_error "5+*" "error: unexpected primary expression."
