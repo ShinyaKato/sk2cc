@@ -34,6 +34,9 @@ enum token_type {
   tGTE,
   tEQ,
   tNEQ,
+  tAND,
+  tOR,
+  tXOR,
   tLAND,
   tLOR,
   tQUESTION,
@@ -122,12 +125,18 @@ Token lex() {
     if (peek_char() == '&') {
       token.type = tLAND;
       get_char();
+    } else {
+      token.type = tAND;
     }
   } else if (c == '|') {
     if (peek_char() == '|') {
       token.type = tLOR;
       get_char();
+    } else {
+      token.type = tOR;
     }
+  } else if (c == '^') {
+    token.type = tXOR;
   } else if (c == '?') {
     token.type = tQUESTION;
   } else if (c == ':') {
@@ -180,6 +189,9 @@ enum node_type {
   GTE,
   EQ,
   NEQ,
+  AND,
+  OR,
+  XOR,
   LAND,
   LOR,
   CONDITION
@@ -360,8 +372,71 @@ Node *equality_expression() {
   return node;
 }
 
-Node *logical_and_expression() {
+Node *and_expression() {
   Node *node = equality_expression();
+
+  while (1) {
+    Token op = peek_token();
+    enum node_type type;
+    if (op.type == tAND) type = AND;
+    else break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->type = type;
+    parent->left = node;
+    parent->right = equality_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *or_expression() {
+  Node *node = and_expression();
+
+  while (1) {
+    Token op = peek_token();
+    enum node_type type;
+    if (op.type == tOR) type = OR;
+    else break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->type = type;
+    parent->left = node;
+    parent->right = and_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *xor_expression() {
+  Node *node = or_expression();
+
+  while (1) {
+    Token op = peek_token();
+    enum node_type type;
+    if (op.type == tXOR) type = XOR;
+    else break;
+    get_token();
+
+    Node *parent = node_new();
+    parent->type = type;
+    parent->left = node;
+    parent->right = or_expression();
+
+    node = parent;
+  }
+
+  return node;
+}
+
+Node *logical_and_expression() {
+  Node *node = xor_expression();
 
   while (1) {
     Token op = peek_token();
@@ -373,7 +448,7 @@ Node *logical_and_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = equality_expression();
+    parent->right = xor_expression();
 
     node = parent;
   }
@@ -574,6 +649,15 @@ void generate_expression(Node *node) {
       printf("  cmpl %%ecx, %%eax\n");
       printf("  setne %%al\n");
       printf("  movzbl %%al, %%eax\n");
+      generate_push("eax");
+    } else if (node->type == AND) {
+      printf("  andl %%ecx, %%eax\n");
+      generate_push("eax");
+    } else if (node->type == OR) {
+      printf("  orl %%ecx, %%eax\n");
+      generate_push("eax");
+    } else if (node->type == XOR) {
+      printf("  xorl %%ecx, %%eax\n");
       generate_push("eax");
     }
   }

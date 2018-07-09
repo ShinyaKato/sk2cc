@@ -133,6 +133,10 @@ test_expression "64 >> 8" 0
 test_expression "41 << 2" 164
 test_expression "41 >> 3" 5
 
+test_expression "183 & 109" 37
+test_expression "183 | 109" 255
+test_expression "183 ^ 109" 218
+
 test_error "abc" "error: unexpected character."
 test_error "2 * (3 + 4" "error: tRPAREN is expected."
 test_error "5 + *" "error: unexpected primary expression."
