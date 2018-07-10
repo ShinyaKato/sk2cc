@@ -1,5 +1,13 @@
 #!/bin/bash
 
+test_string() {
+  ./string_test
+  if [ $? -ne 0 ]; then
+    echo assertion of string.c was failed.
+    exit 1
+  fi
+}
+
 test_expression() {
   exp=$1
   val=$2
@@ -54,6 +62,8 @@ test_error() {
 
   rm stderr.txt
 }
+
+test_string
 
 test_expression "2;" 2
 test_expression "71;" 71

@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <stdbool.h>
+#include "cc.h"
 
 void error(char *message) {
   fprintf(stderr, "error: %s\n", message);
