@@ -1,5 +1,5 @@
 cc: main.c
-	gcc main.c -o cc
+	gcc -std=c11 -Wall main.c -o cc
 
 .PHONY: test
 test: cc
