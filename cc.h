@@ -75,4 +75,52 @@ extern Token *peek_token();
 extern Token *get_token();
 extern void lex_init();
 
+typedef struct symbol {
+  int position;
+} Symbol;
+
+typedef enum node_type {
+  CONST,
+  IDENTIFIER,
+  UPLUS,
+  UMINUS,
+  NOT,
+  LNOT,
+  ADD,
+  SUB,
+  MUL,
+  DIV,
+  MOD,
+  LSHIFT,
+  RSHIFT,
+  LT,
+  GT,
+  LTE,
+  GTE,
+  EQ,
+  NEQ,
+  AND,
+  OR,
+  XOR,
+  LAND,
+  LOR,
+  CONDITION,
+  ASSIGN,
+  BLOCK_ITEM
+} NodeType;
+
+typedef struct node {
+  enum node_type type;
+  int int_value;
+  char *identifier;
+  struct node *condition;
+  struct node *left;
+  struct node *right;
+} Node;
+
+extern int symbols_count();
+extern Symbol *symbols_lookup(char *key);
+extern Node *parse();
+extern void parse_init();
+
 #endif
