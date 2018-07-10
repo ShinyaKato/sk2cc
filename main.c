@@ -42,6 +42,7 @@ enum token_type {
   tLOR,
   tQUESTION,
   tCOLON,
+  tSEMICOLON,
   tLPAREN,
   tRPAREN,
   tEND
@@ -144,6 +145,8 @@ Token lex() {
     token.type = tQUESTION;
   } else if (c == ':') {
     token.type = tCOLON;
+  } else if (c == ';') {
+    token.type = tSEMICOLON;
   } else if (c == '(') {
     token.type = tLPAREN;
   } else if (c == ')') {
@@ -511,12 +514,18 @@ Node *expression() {
   return conditional_expression();
 }
 
-Node *parse() {
+Node *expression_statement() {
   Node *node = expression();
 
-  if (peek_token().type != tEND) {
-    error("invalid expression.");
+  if (get_token().type != tSEMICOLON) {
+    error("tSEMICOLON is expected.");
   }
+
+  return node;
+}
+
+Node *parse() {
+  Node *node = expression_statement();
 
   return node;
 }
