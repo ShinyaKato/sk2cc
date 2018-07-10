@@ -20,6 +20,7 @@ char get_char() {
 
 enum token_type {
   tINT,
+  tIDENTIFIER,
   tNOT,
   tLNOT,
   tADD,
@@ -42,6 +43,7 @@ enum token_type {
   tLOR,
   tQUESTION,
   tCOLON,
+  tASSIGN,
   tSEMICOLON,
   tLPAREN,
   tRPAREN,
@@ -79,6 +81,13 @@ Token lex() {
     }
     token.type = tINT;
     token.int_value = n;
+  }  else if (isalpha(c)) {
+    while (1) {
+      char d = peek_char();
+      if (!isalnum(d)) break;
+      get_char();
+    }
+    token.type = tIDENTIFIER;
   } else if (c == '~') {
     token.type = tNOT;
   } else if (c == '+') {
@@ -117,6 +126,8 @@ Token lex() {
     if (peek_char() == '=') {
       token.type = tEQ;
       get_char();
+    } else {
+      token.type = tASSIGN;
     }
   } else if (c == '!') {
     if (peek_char() == '=') {
@@ -179,6 +190,7 @@ Token get_token() {
 
 enum node_type {
   CONST,
+  IDENTIFIER,
   UPLUS,
   UMINUS,
   NOT,
@@ -202,6 +214,7 @@ enum node_type {
   LAND,
   LOR,
   CONDITION,
+  ASSIGN,
   BLOCK_ITEM
 };
 
@@ -213,6 +226,8 @@ struct node {
   struct node *right;
 };
 typedef struct node Node;
+
+int var_count = 0;
 
 Node *node_new() {
   Node *node = (Node *) malloc(sizeof(Node));
@@ -229,6 +244,10 @@ Node *primary_expression() {
     node = node_new();
     node->type = CONST;
     node->int_value = token.int_value;
+  } else if (token.type == tIDENTIFIER) {
+    node = node_new();
+    node->type = IDENTIFIER;
+    if (var_count == 0) var_count = 1;
   } else if (token.type == tLPAREN) {
     node = expression();
     if (get_token().type != tRPAREN) {
@@ -272,8 +291,8 @@ Node *unary_expression() {
   return node;
 }
 
-Node *multiplicative_expression() {
-  Node *node = unary_expression();
+Node *multiplicative_expression(Node *unary_exp) {
+  Node *node = unary_exp;
 
   while (1) {
     Token op = peek_token();
@@ -295,8 +314,8 @@ Node *multiplicative_expression() {
   return node;
 }
 
-Node *additive_expression() {
-  Node *node = multiplicative_expression();
+Node *additive_expression(Node *unary_exp) {
+  Node *node = multiplicative_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -309,7 +328,7 @@ Node *additive_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = multiplicative_expression();
+    parent->right = multiplicative_expression(unary_expression());
 
     node = parent;
   }
@@ -317,8 +336,8 @@ Node *additive_expression() {
   return node;
 }
 
-Node *shift_expression() {
-  Node *node = additive_expression();
+Node *shift_expression(Node *unary_exp) {
+  Node *node = additive_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -331,7 +350,7 @@ Node *shift_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = additive_expression();
+    parent->right = additive_expression(unary_expression());
 
     node = parent;
   }
@@ -339,8 +358,8 @@ Node *shift_expression() {
   return node;
 }
 
-Node *relational_expression() {
-  Node *node = shift_expression();
+Node *relational_expression(Node *unary_exp) {
+  Node *node = shift_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -355,7 +374,7 @@ Node *relational_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = shift_expression();
+    parent->right = shift_expression(unary_expression());
 
     node = parent;
   }
@@ -363,8 +382,8 @@ Node *relational_expression() {
   return node;
 }
 
-Node *equality_expression() {
-  Node *node = relational_expression();
+Node *equality_expression(Node *unary_exp) {
+  Node *node = relational_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -377,7 +396,7 @@ Node *equality_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = relational_expression();
+    parent->right = relational_expression(unary_expression());
 
     node = parent;
   }
@@ -385,8 +404,8 @@ Node *equality_expression() {
   return node;
 }
 
-Node *and_expression() {
-  Node *node = equality_expression();
+Node *and_expression(Node *unary_exp) {
+  Node *node = equality_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -398,7 +417,7 @@ Node *and_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = equality_expression();
+    parent->right = equality_expression(unary_expression());
 
     node = parent;
   }
@@ -406,8 +425,8 @@ Node *and_expression() {
   return node;
 }
 
-Node *exclusive_or_expression() {
-  Node *node = and_expression();
+Node *exclusive_or_expression(Node *unary_exp) {
+  Node *node = and_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -419,7 +438,7 @@ Node *exclusive_or_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = and_expression();
+    parent->right = and_expression(unary_expression());
 
     node = parent;
   }
@@ -427,8 +446,8 @@ Node *exclusive_or_expression() {
   return node;
 }
 
-Node *inclusive_or_expression() {
-  Node *node = exclusive_or_expression();
+Node *inclusive_or_expression(Node *unary_exp) {
+  Node *node = exclusive_or_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -440,7 +459,7 @@ Node *inclusive_or_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = exclusive_or_expression();
+    parent->right = exclusive_or_expression(unary_expression());
 
     node = parent;
   }
@@ -448,8 +467,8 @@ Node *inclusive_or_expression() {
   return node;
 }
 
-Node *logical_and_expression() {
-  Node *node = inclusive_or_expression();
+Node *logical_and_expression(Node *unary_exp) {
+  Node *node = inclusive_or_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -461,7 +480,7 @@ Node *logical_and_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = inclusive_or_expression();
+    parent->right = inclusive_or_expression(unary_expression());
 
     node = parent;
   }
@@ -469,8 +488,8 @@ Node *logical_and_expression() {
   return node;
 }
 
-Node *logical_or_expression() {
-  Node *node = logical_and_expression();
+Node *logical_or_expression(Node *unary_exp) {
+  Node *node = logical_and_expression(unary_exp);
 
   while (1) {
     Token op = peek_token();
@@ -482,7 +501,7 @@ Node *logical_or_expression() {
     Node *parent = node_new();
     parent->type = type;
     parent->left = node;
-    parent->right = logical_and_expression();
+    parent->right = logical_and_expression(unary_expression());
 
     node = parent;
   }
@@ -490,8 +509,8 @@ Node *logical_or_expression() {
   return node;
 }
 
-Node *conditional_expression() {
-  Node *node = logical_or_expression();
+Node *conditional_expression(Node *unary_exp) {
+  Node *node = logical_or_expression(unary_exp);
 
   if (peek_token().type == tQUESTION) {
     get_token();
@@ -503,7 +522,7 @@ Node *conditional_expression() {
     if (get_token().type != tCOLON) {
       error("tCOLON is expected.");
     }
-    parent->right = conditional_expression();
+    parent->right = conditional_expression(unary_expression());
 
     node = parent;
   }
@@ -511,8 +530,30 @@ Node *conditional_expression() {
   return node;
 }
 
+Node *assignment_expression() {
+  Node *node;
+
+  Node *unary_exp = unary_expression();
+  if (peek_token().type == tASSIGN) {
+    get_token();
+
+    if (unary_exp->type != IDENTIFIER) {
+      error("left side of assignment operator should be identifier.");
+    }
+
+    node = node_new();
+    node->type = ASSIGN;
+    node->left = unary_exp;
+    node->right = assignment_expression();
+  } else {
+    node = conditional_expression(unary_exp);
+  }
+
+  return node;
+}
+
 Node *expression() {
-  return conditional_expression();
+  return assignment_expression();
 }
 
 Node *expression_statement() {
@@ -560,6 +601,9 @@ int label_no = 0;
 void generate_expression(Node *node) {
   if (node->type == CONST) {
     generate_immediate(node->int_value);
+  } else if (node->type == IDENTIFIER) {
+    printf("  movl -4(%%rbp), %%eax\n");
+    generate_push("eax");
   } else if (node->type == LAND) {
     int label_false = label_no++;
     int label_end = label_no++;
@@ -624,6 +668,11 @@ void generate_expression(Node *node) {
     printf("  cmpl $0, %%eax\n");
     printf("  sete %%al\n");
     printf("  movzbl %%al, %%eax\n");
+    generate_push("eax");
+  } else if (node->type == ASSIGN) {
+    generate_expression(node->right);
+    generate_pop("eax");
+    printf("  movl %%eax, -4(%%rbp)\n");
     generate_push("eax");
   } else {
     generate_expression(node->left);
@@ -712,9 +761,13 @@ void generate(Node *node) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
 
+  printf("  sub $%d, %%rsp\n", 4 * var_count);
+
   generate_block_items(node);
 
   generate_pop("eax");
+
+  printf("  add $%d, %%rsp\n", 4 * var_count);
 
   printf("  pop %%rbp\n");
   printf("  ret\n");

@@ -142,8 +142,13 @@ test_expression "~183 & 255;" 72
 test_expression "789; 456; 123;" 123
 test_expression "5 + 7 - 9; 3 >= 2 && 4 <= 5; 1 << 2; (6 -4) * 32;" 64
 
-test_error "abc;" "error: unexpected character."
+test_expression "x = 123; 100 <= x && x < 200;" 1
+test_expression "x = 3; x = x * x + 1; x + 3;" 13
+test_expression "x = 2 * 3 * 4;" 24
+test_expression "x = x = x = 3;" 3
+
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."
 test_error "5 (4);" "error: tSEMICOLON is expected."
 test_error "1 ? 2;" "error: tCOLON is expected."
+test_error "1 = 2 + 3;" "error: left side of assignment operator should be identifier."
