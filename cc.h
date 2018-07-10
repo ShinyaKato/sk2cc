@@ -30,4 +30,7 @@ extern void *map_lookup(Map *map, char *key);
 
 extern void error(char *message);
 
+extern char peek_char();
+extern char get_char();
+
 #endif
