@@ -33,4 +33,46 @@ extern void error(char *message);
 extern char peek_char();
 extern char get_char();
 
+typedef enum token_type {
+  tINT,
+  tIDENTIFIER,
+  tNOT,
+  tLNOT,
+  tADD,
+  tSUB,
+  tMUL,
+  tDIV,
+  tMOD,
+  tLSHIFT,
+  tRSHIFT,
+  tLT,
+  tGT,
+  tLTE,
+  tGTE,
+  tEQ,
+  tNEQ,
+  tAND,
+  tOR,
+  tXOR,
+  tLAND,
+  tLOR,
+  tQUESTION,
+  tCOLON,
+  tASSIGN,
+  tSEMICOLON,
+  tLPAREN,
+  tRPAREN,
+  tEND
+} TokenType;
+
+typedef struct token {
+  TokenType type;
+  int int_value;
+  char *identifier;
+} Token;
+
+extern Token *peek_token();
+extern Token *get_token();
+extern void lex_init();
+
 #endif

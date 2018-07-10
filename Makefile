@@ -1,5 +1,5 @@
-cc: cc.h string.c map.c error.c sc.c main.c
-	gcc -std=c11 -Wall string.c map.c error.c sc.c main.c -o cc
+cc: cc.h string.c map.c error.c sc.c lex.c main.c
+	gcc -std=c11 -Wall string.c map.c error.c sc.c lex.c main.c -o cc
 
 string_test: cc.h string.c tests/string_driver.c
 	gcc -std=c11 -Wall string.c tests/string_driver.c -o string_test
