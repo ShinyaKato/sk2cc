@@ -166,6 +166,11 @@ test_expression "x = 123; 100 <= x && x < 200;" 1
 test_expression "x = 3; x = x * x + 1; x + 3;" 13
 test_expression "x = 2 * 3 * 4;" 24
 test_expression "x = x = x = 3;" 3
+test_expression "x = 2; y = x + 5; y;" 7
+test_expression "x = y = z = 3;" 3
+test_expression "x = (y = (z = 1) + 2) + 3; x;" 6
+test_expression "x = (y = (z = 1) + 2) + 3; y;" 3
+test_expression "x = (y = (z = 1) + 2) + 3; z;" 1
 
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."

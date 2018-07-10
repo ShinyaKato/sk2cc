@@ -50,6 +50,7 @@ enum token_type {
 struct token {
   enum token_type type;
   int int_value;
+  char *identifier;
 };
 typedef struct token Token;
 
@@ -79,12 +80,16 @@ Token lex() {
     token.type = tINT;
     token.int_value = n;
   }  else if (isalpha(c)) {
+    String *identifier = string_new();
+    string_push(identifier, c);
     while (1) {
       char d = peek_char();
       if (!isalnum(d)) break;
       get_char();
+      string_push(identifier, d);
     }
     token.type = tIDENTIFIER;
+    token.identifier = identifier->buffer;
   } else if (c == '~') {
     token.type = tNOT;
   } else if (c == '+') {
@@ -185,6 +190,35 @@ Token get_token() {
   return lex();
 }
 
+struct symbol {
+  int position;
+};
+typedef struct symbol Symbol;
+
+Symbol *symbol_new() {
+  Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
+
+  return symbol;
+}
+
+Map *symbols;
+
+int symbols_count() {
+  return map_count(symbols);
+}
+
+bool symbols_put(char *key, Symbol *symbol) {
+  return map_put(symbols, key, (void *) symbol);
+}
+
+Symbol *symbols_lookup(char *key) {
+  return (Symbol *) map_lookup(symbols, key);
+}
+
+void symbols_init() {
+  symbols = map_new();
+}
+
 enum node_type {
   CONST,
   IDENTIFIER,
@@ -218,13 +252,12 @@ enum node_type {
 struct node {
   enum node_type type;
   int int_value;
+  char *identifier;
   struct node *condition;
   struct node *left;
   struct node *right;
 };
 typedef struct node Node;
-
-int var_count = 0;
 
 Node *node_new() {
   Node *node = (Node *) malloc(sizeof(Node));
@@ -244,7 +277,7 @@ Node *primary_expression() {
   } else if (token.type == tIDENTIFIER) {
     node = node_new();
     node->type = IDENTIFIER;
-    if (var_count == 0) var_count = 1;
+    node->identifier = token.identifier;
   } else if (token.type == tLPAREN) {
     node = expression();
     if (get_token().type != tRPAREN) {
@@ -538,6 +571,12 @@ Node *assignment_expression() {
       error("left side of assignment operator should be identifier.");
     }
 
+    if (!symbols_lookup(unary_exp->identifier)) {
+      Symbol *symbol = symbol_new();
+      symbol->position = -(symbols_count() * 4 + 4);
+      symbols_put(unary_exp->identifier, symbol);
+    }
+
     node = node_new();
     node->type = ASSIGN;
     node->left = unary_exp;
@@ -599,7 +638,8 @@ void generate_expression(Node *node) {
   if (node->type == CONST) {
     generate_immediate(node->int_value);
   } else if (node->type == IDENTIFIER) {
-    printf("  movl -4(%%rbp), %%eax\n");
+    int pos = symbols_lookup(node->identifier)->position;
+    printf("  movl %d(%%rbp), %%eax\n", pos);
     generate_push("eax");
   } else if (node->type == LAND) {
     int label_false = label_no++;
@@ -667,9 +707,10 @@ void generate_expression(Node *node) {
     printf("  movzbl %%al, %%eax\n");
     generate_push("eax");
   } else if (node->type == ASSIGN) {
+    int pos = symbols_lookup(node->left->identifier)->position;
     generate_expression(node->right);
     generate_pop("eax");
-    printf("  movl %%eax, -4(%%rbp)\n");
+    printf("  movl %%eax, %d(%%rbp)\n", pos);
     generate_push("eax");
   } else {
     generate_expression(node->left);
@@ -758,19 +799,21 @@ void generate(Node *node) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
 
-  printf("  sub $%d, %%rsp\n", 4 * var_count);
+  printf("  sub $%d, %%rsp\n", 4 * symbols_count());
 
   generate_block_items(node);
 
   generate_pop("eax");
 
-  printf("  add $%d, %%rsp\n", 4 * var_count);
+  printf("  add $%d, %%rsp\n", 4 * symbols_count());
 
   printf("  pop %%rbp\n");
   printf("  ret\n");
 }
 
 int main(void) {
+  symbols_init();
+
   Node *node = parse();
   generate(node);
 
