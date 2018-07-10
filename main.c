@@ -201,7 +201,8 @@ enum node_type {
   XOR,
   LAND,
   LOR,
-  CONDITION
+  CONDITION,
+  BLOCK_ITEM
 };
 
 struct node {
@@ -527,6 +528,15 @@ Node *expression_statement() {
 Node *parse() {
   Node *node = expression_statement();
 
+  while (peek_token().type != tEND) {
+    Node *parent = node_new();
+    parent->type = BLOCK_ITEM;
+    parent->left = node;
+    parent->right = expression_statement();
+
+    node = parent;
+  }
+
   return node;
 }
 
@@ -686,13 +696,23 @@ void generate_expression(Node *node) {
   }
 }
 
+void generate_block_items(Node *node) {
+  if (node->type == BLOCK_ITEM) {
+    generate_block_items(node->left);
+    generate_pop("eax");
+    generate_expression(node->right);
+  } else {
+    generate_expression(node);
+  }
+}
+
 void generate(Node *node) {
   printf("  .global main\n");
   printf("main:\n");
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
 
-  generate_expression(node);
+  generate_block_items(node);
 
   generate_pop("eax");
 

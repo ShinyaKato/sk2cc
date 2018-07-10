@@ -139,6 +139,9 @@ test_expression "183 ^ 109;" 218
 
 test_expression "~183 & 255;" 72
 
+test_expression "789; 456; 123;" 123
+test_expression "5 + 7 - 9; 3 >= 2 && 4 <= 5; 1 << 2; (6 -4) * 32;" 64
+
 test_error "abc;" "error: unexpected character."
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."
