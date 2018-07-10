@@ -54,9 +54,14 @@ struct token {
 };
 typedef struct token Token;
 
-Token lex() {
-  Token token;
+Token *token_new() {
+  Token *token = (Token *) malloc(sizeof(Token));
+  return token;
+}
 
+Token *token_end;
+
+Token *lex() {
   while (1) {
     char c = peek_char();
     if (c != ' ' && c != '\n') break;
@@ -64,9 +69,10 @@ Token lex() {
   }
 
   if (peek_char() == EOF) {
-    token.type = tEND;
-    return token;
+    return token_end;
   }
+
+  Token *token = token_new();
 
   char c = get_char();
   if (isdigit(c)) {
@@ -77,8 +83,8 @@ Token lex() {
       get_char();
       n = n * 10 + (d - '0');
     }
-    token.type = tINT;
-    token.int_value = n;
+    token->type = tINT;
+    token->int_value = n;
   }  else if (isalpha(c)) {
     String *identifier = string_new();
     string_push(identifier, c);
@@ -88,82 +94,82 @@ Token lex() {
       get_char();
       string_push(identifier, d);
     }
-    token.type = tIDENTIFIER;
-    token.identifier = identifier->buffer;
+    token->type = tIDENTIFIER;
+    token->identifier = identifier->buffer;
   } else if (c == '~') {
-    token.type = tNOT;
+    token->type = tNOT;
   } else if (c == '+') {
-    token.type = tADD;
+    token->type = tADD;
   } else if (c == '-') {
-    token.type = tSUB;
+    token->type = tSUB;
   } else if (c == '*') {
-    token.type = tMUL;
+    token->type = tMUL;
   } else if (c == '/') {
-    token.type = tDIV;
+    token->type = tDIV;
   } else if (c == '%') {
-    token.type = tMOD;
+    token->type = tMOD;
   } else if (c == '<') {
     char d = peek_char();
     if (d == '=') {
-      token.type = tLTE;
+      token->type = tLTE;
       get_char();
     } else if (d == '<') {
-      token.type = tLSHIFT;
+      token->type = tLSHIFT;
       get_char();
     } else {
-      token.type = tLT;
+      token->type = tLT;
     }
   } else if (c == '>') {
     char d = peek_char();
     if (d == '=') {
-      token.type = tGTE;
+      token->type = tGTE;
       get_char();
     } else if (d == '>') {
-      token.type = tRSHIFT;
+      token->type = tRSHIFT;
       get_char();
     } else {
-      token.type = tGT;
+      token->type = tGT;
     }
   } else if (c == '=') {
     if (peek_char() == '=') {
-      token.type = tEQ;
+      token->type = tEQ;
       get_char();
     } else {
-      token.type = tASSIGN;
+      token->type = tASSIGN;
     }
   } else if (c == '!') {
     if (peek_char() == '=') {
-      token.type = tNEQ;
+      token->type = tNEQ;
       get_char();
     } else {
-      token.type = tLNOT;
+      token->type = tLNOT;
     }
   } else if (c == '&') {
     if (peek_char() == '&') {
-      token.type = tLAND;
+      token->type = tLAND;
       get_char();
     } else {
-      token.type = tAND;
+      token->type = tAND;
     }
   } else if (c == '|') {
     if (peek_char() == '|') {
-      token.type = tLOR;
+      token->type = tLOR;
       get_char();
     } else {
-      token.type = tOR;
+      token->type = tOR;
     }
   } else if (c == '^') {
-    token.type = tXOR;
+    token->type = tXOR;
   } else if (c == '?') {
-    token.type = tQUESTION;
+    token->type = tQUESTION;
   } else if (c == ':') {
-    token.type = tCOLON;
+    token->type = tCOLON;
   } else if (c == ';') {
-    token.type = tSEMICOLON;
+    token->type = tSEMICOLON;
   } else if (c == '(') {
-    token.type = tLPAREN;
+    token->type = tLPAREN;
   } else if (c == ')') {
-    token.type = tRPAREN;
+    token->type = tRPAREN;
   } else {
     error("unexpected character.");
   }
@@ -172,9 +178,9 @@ Token lex() {
 }
 
 bool has_next_token = false;
-Token next_token;
+Token *next_token;
 
-Token peek_token() {
+Token *peek_token() {
   if (has_next_token) {
     return next_token;
   }
@@ -182,12 +188,17 @@ Token peek_token() {
   return next_token = lex();
 }
 
-Token get_token() {
+Token *get_token() {
   if (has_next_token) {
     has_next_token = false;
     return next_token;
   }
   return lex();
+}
+
+void lex_init() {
+  token_end = token_new();
+  token_end->type = tEND;
 }
 
 struct symbol {
@@ -267,20 +278,20 @@ Node *node_new() {
 Node *expression();
 
 Node *primary_expression() {
-  Token token = get_token();
+  Token *token = get_token();
   Node *node;
 
-  if (token.type == tINT) {
+  if (token->type == tINT) {
     node = node_new();
     node->type = CONST;
-    node->int_value = token.int_value;
-  } else if (token.type == tIDENTIFIER) {
+    node->int_value = token->int_value;
+  } else if (token->type == tIDENTIFIER) {
     node = node_new();
     node->type = IDENTIFIER;
-    node->identifier = token.identifier;
-  } else if (token.type == tLPAREN) {
+    node->identifier = token->identifier;
+  } else if (token->type == tLPAREN) {
     node = expression();
-    if (get_token().type != tRPAREN) {
+    if (get_token()->type != tRPAREN) {
       error("tRPAREN is expected.");
     }
   } else {
@@ -291,25 +302,25 @@ Node *primary_expression() {
 }
 
 Node *unary_expression() {
-  Token token = peek_token();
+  Token *token = peek_token();
   Node *node;
 
-  if (token.type == tADD) {
+  if (token->type == tADD) {
     get_token();
     node = node_new();
     node->type = UPLUS;
     node->left = unary_expression();
-  } else if (token.type == tSUB) {
+  } else if (token->type == tSUB) {
     get_token();
     node = node_new();
     node->type = UMINUS;
     node->left = unary_expression();
-  } else if (token.type == tNOT) {
+  } else if (token->type == tNOT) {
     get_token();
     node = node_new();
     node->type = NOT;
     node->left = unary_expression();
-  } else if (token.type == tLNOT) {
+  } else if (token->type == tLNOT) {
     get_token();
     node = node_new();
     node->type = LNOT;
@@ -325,11 +336,11 @@ Node *multiplicative_expression(Node *unary_exp) {
   Node *node = unary_exp;
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tMUL) type = MUL;
-    else if (op.type == tDIV) type = DIV;
-    else if (op.type == tMOD) type = MOD;
+    if (op->type == tMUL) type = MUL;
+    else if (op->type == tDIV) type = DIV;
+    else if (op->type == tMOD) type = MOD;
     else break;
     get_token();
 
@@ -348,10 +359,10 @@ Node *additive_expression(Node *unary_exp) {
   Node *node = multiplicative_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tADD) type = ADD;
-    else if (op.type == tSUB) type = SUB;
+    if (op->type == tADD) type = ADD;
+    else if (op->type == tSUB) type = SUB;
     else break;
     get_token();
 
@@ -370,10 +381,10 @@ Node *shift_expression(Node *unary_exp) {
   Node *node = additive_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tLSHIFT) type = LSHIFT;
-    else if (op.type == tRSHIFT) type = RSHIFT;
+    if (op->type == tLSHIFT) type = LSHIFT;
+    else if (op->type == tRSHIFT) type = RSHIFT;
     else break;
     get_token();
 
@@ -392,12 +403,12 @@ Node *relational_expression(Node *unary_exp) {
   Node *node = shift_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tLT) type = LT;
-    else if (op.type == tGT) type = GT;
-    else if (op.type == tLTE) type = LTE;
-    else if (op.type == tGTE) type = GTE;
+    if (op->type == tLT) type = LT;
+    else if (op->type == tGT) type = GT;
+    else if (op->type == tLTE) type = LTE;
+    else if (op->type == tGTE) type = GTE;
     else break;
     get_token();
 
@@ -416,10 +427,10 @@ Node *equality_expression(Node *unary_exp) {
   Node *node = relational_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tEQ) type = EQ;
-    else if (op.type == tNEQ) type = NEQ;
+    if (op->type == tEQ) type = EQ;
+    else if (op->type == tNEQ) type = NEQ;
     else break;
     get_token();
 
@@ -438,9 +449,9 @@ Node *and_expression(Node *unary_exp) {
   Node *node = equality_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tAND) type = AND;
+    if (op->type == tAND) type = AND;
     else break;
     get_token();
 
@@ -459,9 +470,9 @@ Node *exclusive_or_expression(Node *unary_exp) {
   Node *node = and_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tXOR) type = XOR;
+    if (op->type == tXOR) type = XOR;
     else break;
     get_token();
 
@@ -480,9 +491,9 @@ Node *inclusive_or_expression(Node *unary_exp) {
   Node *node = exclusive_or_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tOR) type = OR;
+    if (op->type == tOR) type = OR;
     else break;
     get_token();
 
@@ -501,9 +512,9 @@ Node *logical_and_expression(Node *unary_exp) {
   Node *node = inclusive_or_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tLAND) type = LAND;
+    if (op->type == tLAND) type = LAND;
     else break;
     get_token();
 
@@ -522,9 +533,9 @@ Node *logical_or_expression(Node *unary_exp) {
   Node *node = logical_and_expression(unary_exp);
 
   while (1) {
-    Token op = peek_token();
+    Token *op = peek_token();
     enum node_type type;
-    if (op.type == tLOR) type = LOR;
+    if (op->type == tLOR) type = LOR;
     else break;
     get_token();
 
@@ -542,14 +553,14 @@ Node *logical_or_expression(Node *unary_exp) {
 Node *conditional_expression(Node *unary_exp) {
   Node *node = logical_or_expression(unary_exp);
 
-  if (peek_token().type == tQUESTION) {
+  if (peek_token()->type == tQUESTION) {
     get_token();
 
     Node *parent = node_new();
     parent->type = CONDITION;
     parent->condition = node;
     parent->left = expression();
-    if (get_token().type != tCOLON) {
+    if (get_token()->type != tCOLON) {
       error("tCOLON is expected.");
     }
     parent->right = conditional_expression(unary_expression());
@@ -564,7 +575,7 @@ Node *assignment_expression() {
   Node *node;
 
   Node *unary_exp = unary_expression();
-  if (peek_token().type == tASSIGN) {
+  if (peek_token()->type == tASSIGN) {
     get_token();
 
     if (unary_exp->type != IDENTIFIER) {
@@ -595,7 +606,7 @@ Node *expression() {
 Node *expression_statement() {
   Node *node = expression();
 
-  if (get_token().type != tSEMICOLON) {
+  if (get_token()->type != tSEMICOLON) {
     error("tSEMICOLON is expected.");
   }
 
@@ -605,7 +616,7 @@ Node *expression_statement() {
 Node *parse() {
   Node *node = expression_statement();
 
-  while (peek_token().type != tEND) {
+  while (peek_token()->type != tEND) {
     Node *parent = node_new();
     parent->type = BLOCK_ITEM;
     parent->left = node;
@@ -812,6 +823,7 @@ void generate(Node *node) {
 }
 
 int main(void) {
+  lex_init();
   symbols_init();
 
   Node *node = parse();
