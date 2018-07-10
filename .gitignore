@@ -1,5 +1,6 @@
 cc
 string_test
+map_test
 
 # Prerequisites
 *.d

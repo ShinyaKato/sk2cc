@@ -8,6 +8,14 @@ test_string() {
   fi
 }
 
+test_map() {
+  ./map_test
+  if [ $? -ne 0 ]; then
+    echo assertion of map.c was failed.
+    exit 1
+  fi
+}
+
 test_expression() {
   exp=$1
   val=$2
@@ -64,6 +72,8 @@ test_error() {
 }
 
 test_string
+
+test_map
 
 test_expression "2;" 2
 test_expression "71;" 71
