@@ -1,10 +1,5 @@
 #include "cc.h"
 
-void error(char *message) {
-  fprintf(stderr, "error: %s\n", message);
-  exit(1);
-}
-
 char peek_char() {
   char c = fgetc(stdin);
   ungetc(c, stdin);
