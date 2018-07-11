@@ -123,6 +123,6 @@ extern Symbol *symbols_lookup(char *key);
 extern Node *parse();
 extern void parse_init();
 
-extern void generate(Node *node);
+extern void gen(Node *node);
 
 #endif

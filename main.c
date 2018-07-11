@@ -5,7 +5,7 @@ int main(void) {
   parse_init();
 
   Node *node = parse();
-  generate(node);
+  gen(node);
 
   return 0;
 }
