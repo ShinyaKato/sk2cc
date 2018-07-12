@@ -15,10 +15,10 @@ test_expression() {
 }
 
 test_function_call() {
-  exp=$1; stub=$2; output=$3;
+  exp=$1; output=$2;
   echo "$exp" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
-  gcc -c "$stub" -o tmp/stub.o || failed "failed to compile $stub."
-  gcc tmp/out.o tmp/stub.o -o tmp/out || failed "failed to link \"$exp\" and $stub."
+  gcc -c tests/func_call_stub.c -o tmp/stub.o || failed "failed to compile stub."
+  gcc tmp/out.o tmp/stub.o -o tmp/out || failed "failed to link \"$exp\" and stub."
   ./tmp/out > tmp/stdout.txt && echo "$output" | diff - tmp/stdout.txt || failed "standard output should be \"$output\"."
 }
 
@@ -131,7 +131,15 @@ test_expression "x = (y = (z = 1) + 2) + 3; x;" 6
 test_expression "x = (y = (z = 1) + 2) + 3; y;" 3
 test_expression "x = (y = (z = 1) + 2) + 3; z;" 1
 
-test_function_call "func_call();" "tests/func_call_stub.c" "in func_call function."
+test_function_call "func_call();" "in func_call function."
+test_function_call "func_arg_1(1);" "1"
+test_function_call "func_arg_2(1, 2);" "1 2"
+test_function_call "func_arg_3(1, 2, 3);" "1 2 3"
+test_function_call "func_arg_4(1, 2, 3, 4);" "1 2 3 4"
+test_function_call "func_arg_5(1, 2, 3, 4, 5);" "1 2 3 4 5"
+test_function_call "func_arg_6(1, 2, 3, 4, 5, 6);" "1 2 3 4 5 6"
+test_function_call "func_arg_2(2 * 3 < 6 ? 7 : 8, 13 / 2);" "8 6"
+test_function_call "func_arg_1(func_retval(3) + func_retval(4));" "25"
 
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."
@@ -139,3 +147,5 @@ test_error "5" "error: tSEMICOLON is expected."
 test_error "5 (4);" "error: unexpected function call."
 test_error "1 ? 2;" "error: tCOLON is expected."
 test_error "1 = 2 + 3;" "error: left side of assignment operator should be identifier."
+test_error "func_call(1, 2, 3, 4, 5, 6, 7);" "error: too many arguments."
+test_error "func_call(1, 2, 3;" "error: tRPAREN is expected."

@@ -62,6 +62,7 @@ typedef enum token_type {
   tSEMICOLON,
   tLPAREN,
   tRPAREN,
+  tCOMMA,
   tEND
 } TokenType;
 
@@ -117,6 +118,8 @@ typedef struct node {
   struct node *condition;
   struct node *left;
   struct node *right;
+  struct node *args[6];
+  int args_count;
 } Node;
 
 extern int symbols_count();

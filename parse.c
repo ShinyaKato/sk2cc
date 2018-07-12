@@ -25,6 +25,7 @@ Node *node_new() {
   return node;
 }
 
+Node *assignment_expression();
 Node *expression();
 
 Node *primary_expression() {
@@ -63,16 +64,31 @@ Node *postfix_expression() {
         error("unexpected function call.");
       }
 
+      Node *parent = node_new();
+      parent->type = FUNC_CALL;
+      parent->left = node;
+      parent->args_count = 0;
+
+      if (peek_token()->type != tRPAREN) {
+        parent->args[0] = assignment_expression();
+        parent->args_count++;
+
+        while (peek_token()->type == tCOMMA) {
+          get_token();
+
+          if (parent->args_count >= 6) {
+            error("too many arguments.");
+          }
+
+          parent->args[parent->args_count++] = assignment_expression();
+        }
+      }
+
       if (get_token()->type != tRPAREN) {
         error("tRPAREN is expected.");
       }
 
-      Node *parent = node_new();
-      parent->type = FUNC_CALL;
-      parent->left = node;
-
       node = parent;
-
     } else {
       break;
     }

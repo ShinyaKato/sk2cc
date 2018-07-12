@@ -44,6 +44,18 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == FUNC_CALL) {
+    for (int i = 0; i < node->args_count; i++) {
+      gen_expr(node->args[i]);
+    }
+
+    char reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+    for (int i = 5; i >= 0; i--) {
+      if (i < node->args_count) {
+        gen_pop("eax");
+        printf("  mov %%rax, %%%s\n", reg[i]);
+      }
+    }
+
     printf("  call %s\n", node->left->identifier);
     gen_push("eax");
   }
@@ -253,8 +265,6 @@ void gen_block(Node *node) {
 }
 
 void gen(Node *node) {
-  printf("  .global func_call\n"); /* mock function */
-
   printf("  .global main\n");
   printf("main:\n");
   printf("  push %%rbp\n");
