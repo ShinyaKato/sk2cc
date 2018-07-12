@@ -106,6 +106,7 @@ typedef enum node_type {
   LOR,
   CONDITION,
   ASSIGN,
+  FUNC_CALL,
   BLOCK_ITEM
 } NodeType;
 

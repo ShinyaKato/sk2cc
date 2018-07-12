@@ -48,6 +48,62 @@ test_expression() {
   rm out.s out
 }
 
+test_function_call() {
+  exp=$1
+  stub=$2
+  output=$3
+
+  echo "$exp" | ./cc > out.s
+  if [ $? -ne 0 ]; then
+    echo failed to generate assembly from "$exp"
+    rm out.s
+    exit 1
+  fi
+
+  gcc -c out.s -o out.o
+  if [ $? -ne 0 ]; then
+    echo failed to generate .o file from "$exp"
+    cat out.s
+    rm out.s
+    exit 1
+  fi
+
+  gcc -c "$stub" -o stub.o
+  if [ $? -ne 0 ]; then
+    echo failed to compile "$stub"
+    rm out.s out.o
+    exit 1
+  fi
+
+  gcc out.o stub.o -o out
+  if [ $? -ne 0 ]; then
+    echo failed to link test stub and obj file generated from "$exp"
+    cat out.s
+    rm out.s out.o stub.o
+    exit 1
+  fi
+
+  ./out > stdout.txt
+  ret=$?
+
+  if [ $ret -ne 0 ]; then
+    echo "$exp" should be 0, but got $ret.
+    cat out.s
+    rm out.s out.o stub.o out
+    exit 1
+  fi
+
+  echo "$output" | diff - stdout.txt > /dev/null
+  if [ $? -ne 0 ]; then
+    echo expect stdout to be \""$output"\", but got \""$(cat stdout.txt)"\".
+    cat out.s
+    rm out.s out.o stub.o out stdout.txt
+    exit 1
+  fi
+
+  rm out.s out.o stub.o out stdout.txt
+}
+
 test_error() {
   exp=$1
   msg=$2
@@ -172,8 +228,11 @@ test_expression "x = (y = (z = 1) + 2) + 3; x;" 6
 test_expression "x = (y = (z = 1) + 2) + 3; y;" 3
 test_expression "x = (y = (z = 1) + 2) + 3; z;" 1
 
+test_function_call "test();" "tests/func_call_stub.c" "in test function."
+
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."
-test_error "5 (4);" "error: tSEMICOLON is expected."
+test_error "5" "error: tSEMICOLON is expected."
+test_error "5 (4);" "error: unexpected function call."
 test_error "1 ? 2;" "error: tCOLON is expected."
 test_error "1 = 2 + 3;" "error: left side of assignment operator should be identifier."

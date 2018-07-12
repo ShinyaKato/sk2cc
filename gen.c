@@ -43,6 +43,11 @@ void gen_expr(Node *node) {
     gen_push("eax");
   }
 
+  if (node->type == FUNC_CALL) {
+    printf("  call %s\n", node->left->identifier);
+    gen_push("eax");
+  }
+
   if (node->type == UPLUS) {
     gen_operand(node->left, "eax");
     gen_push("eax");
@@ -248,6 +253,8 @@ void gen_block(Node *node) {
 }
 
 void gen(Node *node) {
+  printf("  .global test\n"); /* mock function */
+
   printf("  .global main\n");
   printf("main:\n");
   printf("  push %%rbp\n");

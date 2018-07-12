@@ -51,6 +51,36 @@ Node *primary_expression() {
   return node;
 }
 
+Node *postfix_expression() {
+  Node *node = primary_expression();
+
+  while (1) {
+    Token *token = peek_token();
+    if (token->type == tLPAREN) {
+      get_token();
+
+      if (node->type != IDENTIFIER) {
+        error("unexpected function call.");
+      }
+
+      if (get_token()->type != tRPAREN) {
+        error("tRPAREN is expected.");
+      }
+
+      Node *parent = node_new();
+      parent->type = FUNC_CALL;
+      parent->left = node;
+
+      node = parent;
+
+    } else {
+      break;
+    }
+  }
+
+  return node;
+}
+
 Node *unary_expression() {
   Token *token = peek_token();
   Node *node;
@@ -76,7 +106,7 @@ Node *unary_expression() {
     node->type = LNOT;
     node->left = unary_expression();
   } else {
-    node = primary_expression();
+    node = postfix_expression();
   }
 
   return node;
