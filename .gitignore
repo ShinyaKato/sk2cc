@@ -1,6 +1,5 @@
 cc
-string_test
-map_test
+tmp
 
 # Prerequisites
 *.d

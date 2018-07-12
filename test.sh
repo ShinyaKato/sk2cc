@@ -1,135 +1,38 @@
 #!/bin/bash
 
-test_string() {
-  ./string_test
-  if [ $? -ne 0 ]; then
-    echo assertion of string.c was failed.
-    exit 1
-  fi
-}
+[ -d tmp ] || mkdir tmp
 
-test_map() {
-  ./map_test
-  if [ $? -ne 0 ]; then
-    echo assertion of map.c was failed.
-    exit 1
-  fi
+failed() {
+  echo "$1"
+  exit 1
 }
 
 test_expression() {
-  exp=$1
-  val=$2
-
-  echo "$exp" | ./cc > out.s
-  if [ $? -ne 0 ]; then
-    echo failed to generate assembly from "$exp"
-    rm out.s
-    exit 1
-  fi
-
-  gcc out.s -o out
-  if [ $? -ne 0 ]; then
-    echo failed to compile "$exp"
-    cat out.s
-    rm out.s
-    exit 1
-  fi
-
-  ./out
-  ret=$?
-
-  if [ $ret -ne $val ]; then
-    echo "$exp" should be $val, but got $ret.
-    cat out.s
-    rm out.s out
-    exit 1
-  fi
-
-  rm out.s out
+  exp=$1; val=$2;
+  echo "$exp" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
+  ./tmp/out
+  [ $? -ne $val ] && failed "\"$exp\" should be $val."
 }
 
 test_function_call() {
-  exp=$1
-  stub=$2
-  output=$3
-
-  echo "$exp" | ./cc > out.s
-  if [ $? -ne 0 ]; then
-    echo failed to generate assembly from "$exp"
-    rm out.s
-    exit 1
-  fi
-
-  gcc -c out.s -o out.o
-  if [ $? -ne 0 ]; then
-    echo failed to generate .o file from "$exp"
-    cat out.s
-    rm out.s
-    exit 1
-  fi
-
-  gcc -c "$stub" -o stub.o
-  if [ $? -ne 0 ]; then
-    echo failed to compile "$stub"
-    rm out.s out.o
-    exit 1
-  fi
-
-  gcc out.o stub.o -o out
-  if [ $? -ne 0 ]; then
-    echo failed to link test stub and obj file generated from "$exp"
-    cat out.s
-    rm out.s out.o stub.o
-    exit 1
-  fi
-
-  ./out > stdout.txt
-  ret=$?
-
-  if [ $ret -ne 0 ]; then
-    echo "$exp" should be 0, but got $ret.
-    cat out.s
-    rm out.s out.o stub.o out
-    exit 1
-  fi
-
-  echo "$output" | diff - stdout.txt > /dev/null
-  if [ $? -ne 0 ]; then
-    echo expect stdout to be \""$output"\", but got \""$(cat stdout.txt)"\".
-    cat out.s
-    rm out.s out.o stub.o out stdout.txt
-    exit 1
-  fi
-
-  rm out.s out.o stub.o out stdout.txt
+  exp=$1; stub=$2; output=$3;
+  echo "$exp" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
+  gcc -c "$stub" -o tmp/stub.o || failed "failed to compile $stub."
+  gcc tmp/out.o tmp/stub.o -o tmp/out || failed "failed to link \"$exp\" and $stub."
+  ./tmp/out > tmp/stdout.txt && echo "$output" | diff - tmp/stdout.txt || failed "standard output should be \"$output\"."
 }
 
 test_error() {
-  exp=$1
-  msg=$2
-
-  echo "$exp" | ./cc > /dev/null 2> stderr.txt
-  if [ $? -ne 1 ]; then
-    echo "$exp" should cause exit status 1, but got 0.
-    rm stderr.txt
-    exit 1
-  fi
-
-  echo "$msg" | diff - stderr.txt > /dev/null
-  ret=$?
-
-  if [ $ret -ne 0 ]; then
-    echo "$exp" should raise \""$msg"\", but got \""$(cat stderr.txt)"\".
-    rm stderr.txt
-    exit 1
-  fi
-
-  rm stderr.txt
+  exp=$1; msg=$2;
+  echo "$exp" | ./cc > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$exp\" was unexpectedly succeeded."
+  echo "$msg" | diff - tmp/stderr.txt || failed "error message of \"$exp\" should be \"$msg\"."
 }
 
-test_string
+gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
+./tmp/string_test || failed "assertion of string.c was failed."
 
-test_map
+gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
+./tmp/map_test || failed "assertion of map.c was failed."
 
 test_expression "2;" 2
 test_expression "71;" 71
