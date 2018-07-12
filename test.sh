@@ -131,7 +131,7 @@ test_expression "x = (y = (z = 1) + 2) + 3; x;" 6
 test_expression "x = (y = (z = 1) + 2) + 3; y;" 3
 test_expression "x = (y = (z = 1) + 2) + 3; z;" 1
 
-test_function_call "test();" "tests/func_call_stub.c" "in test function."
+test_function_call "func_call();" "tests/func_call_stub.c" "in func_call function."
 
 test_error "2 * (3 + 4;" "error: tRPAREN is expected."
 test_error "5 + *;" "error: unexpected primary expression."

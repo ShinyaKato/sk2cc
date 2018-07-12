@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int test(void) {
-  printf("in test function.\n");
+int func_call(void) {
+  printf("in func_call function.\n");
   return 0;
 }

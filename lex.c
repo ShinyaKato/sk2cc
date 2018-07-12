@@ -34,12 +34,12 @@ Token *lex() {
     }
     token->type = tINT;
     token->int_value = n;
-  }  else if (isalpha(c)) {
+  }  else if (isalpha(c) || c == '_') {
     String *identifier = string_new();
     string_push(identifier, c);
     while (1) {
       char d = peek_char();
-      if (!isalnum(d)) break;
+      if (!isalnum(d) && d != '_') break;
       get_char();
       string_push(identifier, d);
     }

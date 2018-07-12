@@ -253,7 +253,7 @@ void gen_block(Node *node) {
 }
 
 void gen(Node *node) {
-  printf("  .global test\n"); /* mock function */
+  printf("  .global func_call\n"); /* mock function */
 
   printf("  .global main\n");
   printf("main:\n");
