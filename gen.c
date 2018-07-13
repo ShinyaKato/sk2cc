@@ -1,5 +1,7 @@
 #include "cc.h"
 
+char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+
 int label_no = 0;
 
 void gen_immediate(int value) {
@@ -48,11 +50,10 @@ void gen_expr(Node *node) {
       gen_expr(node->args[i]);
     }
 
-    char reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
     for (int i = 5; i >= 0; i--) {
       if (i < node->args_count) {
         gen_pop("eax");
-        printf("  mov %%rax, %%%s\n", reg[i]);
+        printf("  mov %%rax, %%%s\n", arg_reg[i]);
       }
     }
 
@@ -270,6 +271,10 @@ void gen_func_def(Node *node) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", 4 * node->vars_count);
+  for (int i = 0; i < node->params_count; i++) {
+    printf("  mov %%%s, %%rax\n", arg_reg[i]);
+    printf("  movl %%eax, %d(%%rbp)\n", -(i * 4 + 4));
+  }
   gen_comp_stmt(node->left);
   printf("  add $%d, %%rsp\n", 4 * node->vars_count);
   printf("  pop %%rbp\n");

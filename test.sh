@@ -155,6 +155,9 @@ test_program "f() { 2; } g() { 3; } main() { f() * g(); }" 6
 test_program "f() { x = 2; y = 3; x + 2 * y; } main() { t = f(); t * 3; }" 24
 test_program "f() { x = 2; x * x; } main() { t = f(); t * f(); }" 16
 
+test_program "f(x) { x * x; } main() { f(1) + f(2) + f(3); }" 14
+test_program "f(x, y, z) { x = x * y; y = x + z; x + y + z; } main() { f(1, 2, 3); }" 10
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."
@@ -168,4 +171,7 @@ test_error "main() { 2;" "error: tRBRACE is expected."
 test_error "123" "error: function definition should begin with tIDENTIFIER."
 test_error "f() { 1; } f() { 2; } main() { 1; }" "error: duplicated function definition."
 test_error "main" "error: tLPAREN is expected."
-test_error "main(" "error: tRPAREN is expected."
+test_error "main(abc" "error: tRPAREN is expected."
+test_error "main(123) { 0; }" "error: tIDENTIFIER is expected."
+test_error "main(x, x) { 0; }" "error: duplicated parameter definition."
+test_error "main(a, b, c, d, e, f, g) { 0; }" "error: too many parameters."

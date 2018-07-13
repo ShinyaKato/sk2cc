@@ -444,17 +444,39 @@ Node *function_definition() {
   if (get_token()->type != tLPAREN) {
     error("tLPAREN is expected.");
   }
+
+  int params_count = 0;
+  map_clear(symbols);
+  if (peek_token()->type != tRPAREN) {
+    do {
+      if (params_count >= 6) {
+        error("too many parameters.");
+      }
+      Token *token = get_token();
+      if (token->type != tIDENTIFIER) {
+        error("tIDENTIFIER is expected.");
+      }
+      if (map_lookup(symbols, token->identifier)) {
+        error("duplicated parameter definition.");
+      }
+      Symbol *param = symbol_new();
+      param->position = -(map_count(symbols) * 4 + 4);
+      map_put(symbols, token->identifier, param);
+      params_count++;
+    } while (peek_token()->type == tCOMMA && get_token());
+  }
+
   if (get_token()->type != tRPAREN) {
     error("tRPAREN is expected.");
   }
 
-  map_clear(symbols);
   Node *comp_stmt = compound_statement();
 
   Node *node = node_new();
   node->type = FUNC_DEF;
   node->identifier = id->identifier;
   node->left = comp_stmt;
+  node->params_count = params_count;
   node->vars_count = map_count(symbols);
 
   return node;

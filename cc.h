@@ -134,6 +134,7 @@ typedef struct node {
   int args_count;
   Vector *statements;
   Vector *definitions;
+  int params_count;
   int vars_count;
 } Node;
 
