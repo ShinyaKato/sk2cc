@@ -37,7 +37,7 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == IDENTIFIER) {
-    int pos = symbols_lookup(node->identifier)->position;
+    int pos = node->symbol->position;
 
     printf("  movl %d(%%rbp), %%eax\n", pos);
     gen_push("eax");
@@ -246,7 +246,7 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ASSIGN) {
-    int pos = symbols_lookup(node->left->identifier)->position;
+    int pos = node->left->symbol->position;
 
     gen_operand(node->right, "eax");
     printf("  movl %%eax, %d(%%rbp)\n", pos);
@@ -261,18 +261,27 @@ void gen_comp_stmt(Node *node) {
   }
 }
 
-void gen(Node *node) {
-  printf("  .global main\n");
-  printf("main:\n");
+void gen_func_def(Node *node) {
+  if (strcmp(node->identifier, "main") == 0) {
+    printf("  .global main\n");
+  }
+
+  printf("%s:\n", node->identifier);
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
-
-  printf("  sub $%d, %%rsp\n", 4 * symbols_count());
-
-  gen_comp_stmt(node);
-
-  printf("  add $%d, %%rsp\n", 4 * symbols_count());
-
+  printf("  sub $%d, %%rsp\n", 4 * node->vars_count);
+  gen_comp_stmt(node->left);
+  printf("  add $%d, %%rsp\n", 4 * node->vars_count);
   printf("  pop %%rbp\n");
   printf("  ret\n");
+}
+
+void gen(Node *node) {
+  for (int i = 0; i < node->definitions->length; i++) {
+    gen_func_def((Node *) node->definitions->array[i]);
+
+    if (i + 1 < node->definitions->length) {
+      printf("\n");
+    }
+  }
 }

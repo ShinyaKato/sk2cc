@@ -40,3 +40,7 @@ void *map_lookup(Map *map, char *key) {
 
   return NULL;
 }
+
+void map_clear(Map *map) {
+  map->count = 0;
+}

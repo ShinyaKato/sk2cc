@@ -9,23 +9,30 @@ failed() {
 
 test_expression() {
   exp=$1; val=$2;
-  echo "$exp" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
+  echo "main() { $exp }" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
   ./tmp/out
   [ $? -ne $val ] && failed "\"$exp\" should be $val."
 }
 
+test_program() {
+  prog=$1; val=$2;
+  echo "$prog" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$prog\"."
+  ./tmp/out
+  [ $? -ne $val ] && failed "\"$prog\" should be $val."
+}
+
 test_function_call() {
   exp=$1; output=$2;
-  echo "$exp" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
+  echo "main() { $exp }" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
   gcc -c tests/func_call_stub.c -o tmp/stub.o || failed "failed to compile stub."
   gcc tmp/out.o tmp/stub.o -o tmp/out || failed "failed to link \"$exp\" and stub."
   ./tmp/out > tmp/stdout.txt && echo "$output" | diff - tmp/stdout.txt || failed "standard output should be \"$output\"."
 }
 
 test_error() {
-  exp=$1; msg=$2;
-  echo "$exp" | ./cc > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$exp\" was unexpectedly succeeded."
-  echo "$msg" | diff - tmp/stderr.txt || failed "error message of \"$exp\" should be \"$msg\"."
+  prog=$1; msg=$2;
+  echo "$prog" | ./cc > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$prog\" was unexpectedly succeeded."
+  echo "$msg" | diff - tmp/stderr.txt || failed "error message of \"$prog\" should be \"$msg\"."
 }
 
 gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
@@ -144,11 +151,21 @@ test_function_call "func_arg_6(1, 2, 3, 4, 5, 6);" "1 2 3 4 5 6"
 test_function_call "func_arg_2(2 * 3 < 6 ? 7 : 8, 13 / 2);" "8 6"
 test_function_call "func_arg_1(func_retval(3) + func_retval(4));" "25"
 
-test_error "2 * (3 + 4;" "error: tRPAREN is expected."
-test_error "5 + *;" "error: unexpected primary expression."
-test_error "5" "error: tSEMICOLON is expected."
-test_error "5 (4);" "error: unexpected function call."
-test_error "1 ? 2;" "error: tCOLON is expected."
-test_error "1 = 2 + 3;" "error: left side of assignment operator should be identifier."
-test_error "func_call(1, 2, 3, 4, 5, 6, 7);" "error: too many arguments."
-test_error "func_call(1, 2, 3;" "error: tRPAREN is expected."
+test_program "f() { 2; } g() { 3; } main() { f() * g(); }" 6
+test_program "f() { x = 2; y = 3; x + 2 * y; } main() { t = f(); t * 3; }" 24
+test_program "f() { x = 2; x * x; } main() { t = f(); t * f(); }" 16
+
+test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
+test_error "main() { 5 + *; }" "error: unexpected primary expression."
+test_error "main() { 5 }" "error: tSEMICOLON is expected."
+test_error "main() { 5 (4); }" "error: unexpected function call."
+test_error "main() { 1 ? 2; }" "error: tCOLON is expected."
+test_error "main() { 1 = 2 + 3; }" "error: left side of assignment operator should be identifier."
+test_error "main() { func_call(1, 2, 3, 4, 5, 6, 7); }" "error: too many arguments."
+test_error "main() { func_call(1, 2, 3; }" "error: tRPAREN is expected."
+test_error "main()" "error: tLBRACE is expected."
+test_error "main() { 2;" "error: tRBRACE is expected."
+test_error "123" "error: function definition should begin with tIDENTIFIER."
+test_error "f() { 1; } f() { 2; } main() { 1; }" "error: duplicated function definition."
+test_error "main" "error: tLPAREN is expected."
+test_error "main(" "error: tRPAREN is expected."

@@ -33,6 +33,7 @@ extern Map *map_new();
 extern int map_count(Map *map);
 extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
+extern void map_clear();
 
 extern void error(char *message);
 
@@ -68,6 +69,8 @@ typedef enum token_type {
   tSEMICOLON,
   tLPAREN,
   tRPAREN,
+  tRBRACE,
+  tLBRACE,
   tCOMMA,
   tEND
 } TokenType;
@@ -115,22 +118,25 @@ typedef enum node_type {
   ASSIGN,
   FUNC_CALL,
   COMP_STMT,
+  FUNC_DEF,
+  TLANS_UNIT
 } NodeType;
 
 typedef struct node {
   enum node_type type;
   int int_value;
   char *identifier;
+  Symbol *symbol;
   struct node *condition;
   struct node *left;
   struct node *right;
   struct node *args[6];
   int args_count;
   Vector *statements;
+  Vector *definitions;
+  int vars_count;
 } Node;
 
-extern int symbols_count();
-extern Symbol *symbols_lookup(char *key);
 extern Node *parse();
 extern void parse_init();
 

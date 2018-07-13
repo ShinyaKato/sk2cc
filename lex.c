@@ -119,6 +119,10 @@ Token *lex() {
     token->type = tLPAREN;
   } else if (c == ')') {
     token->type = tRPAREN;
+  } else if (c == '{') {
+    token->type = tLBRACE;
+  } else if (c == '}') {
+    token->type = tRBRACE;
   } else if (c == ',') {
     token->type = tCOMMA;
   } else {

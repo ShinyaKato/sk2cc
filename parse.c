@@ -1,23 +1,11 @@
 #include "cc.h"
 
-Map *symbols;
+Map *func_symbols, *symbols;
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
 
   return symbol;
-}
-
-int symbols_count() {
-  return map_count(symbols);
-}
-
-bool symbols_put(char *key, Symbol *symbol) {
-  return map_put(symbols, key, (void *) symbol);
-}
-
-Symbol *symbols_lookup(char *key) {
-  return (Symbol *) map_lookup(symbols, key);
 }
 
 Node *node_new() {
@@ -40,6 +28,16 @@ Node *primary_expression() {
     node = node_new();
     node->type = IDENTIFIER;
     node->identifier = token->identifier;
+    if (map_lookup(func_symbols, token->identifier)) {
+      node->symbol = (Symbol *) map_lookup(func_symbols, token->identifier);
+    } else {
+      if (!map_lookup(symbols, token->identifier)) {
+        Symbol *symbol = symbol_new();
+        symbol->position = -(map_count(symbols) * 4 + 4);
+        map_put(symbols, token->identifier, symbol);
+      }
+      node->symbol = (Symbol *) map_lookup(symbols, token->identifier);
+    }
   } else if (token->type == tLPAREN) {
     node = expression();
     if (get_token()->type != tRPAREN) {
@@ -378,12 +376,6 @@ Node *assignment_expression() {
       error("left side of assignment operator should be identifier.");
     }
 
-    if (!symbols_lookup(unary_exp->identifier)) {
-      Symbol *symbol = symbol_new();
-      symbol->position = -(symbols_count() * 4 + 4);
-      symbols_put(unary_exp->identifier, symbol);
-    }
-
     node = node_new();
     node->type = ASSIGN;
     node->left = unary_exp;
@@ -418,18 +410,74 @@ Node *compound_statement() {
   node->type = COMP_STMT;
   node->statements = vector_new();
 
-  while (peek_token()->type != tEND) {
+  if (get_token()->type != tLBRACE) {
+    error("tLBRACE is expected.");
+  }
+
+  while (1) {
+    Token *token = peek_token();
+    if (token->type == tRBRACE || token->type == tEND) break;
+
     Node *stmt = statement();
     vector_push(node->statements, (void *) stmt);
+  }
+
+  if (get_token()->type != tRBRACE) {
+    error("tRBRACE is expected.");
+  }
+
+  return node;
+}
+
+Node *function_definition() {
+  Token *id = get_token();
+  if (id->type != tIDENTIFIER) {
+    error("function definition should begin with tIDENTIFIER.");
+  }
+
+  Symbol *func_sym = symbol_new();
+  if (map_lookup(func_symbols, id->identifier)) {
+    error("duplicated function definition.");
+  }
+  map_put(func_symbols, id->identifier, (void *) func_sym);
+
+  if (get_token()->type != tLPAREN) {
+    error("tLPAREN is expected.");
+  }
+  if (get_token()->type != tRPAREN) {
+    error("tRPAREN is expected.");
+  }
+
+  map_clear(symbols);
+  Node *comp_stmt = compound_statement();
+
+  Node *node = node_new();
+  node->type = FUNC_DEF;
+  node->identifier = id->identifier;
+  node->left = comp_stmt;
+  node->vars_count = map_count(symbols);
+
+  return node;
+}
+
+Node *translate_unit() {
+  Node *node = node_new();
+  node->type = TLANS_UNIT;
+  node->definitions = vector_new();
+
+  while (peek_token()->type != tEND) {
+    Node *def = function_definition();
+    vector_push(node->definitions, (void *) def);
   }
 
   return node;
 }
 
 Node *parse() {
-  return compound_statement();
+  return translate_unit();
 }
 
 void parse_init() {
+  func_symbols = map_new();
   symbols = map_new();
 }
