@@ -7,21 +7,27 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-struct string {
+typedef struct string {
   int size, length;
   char *buffer;
-};
-typedef struct string String;
+} String;
 
 extern String *string_new();
 extern void string_push(String *string, char c);
 
-struct map {
+typedef struct vector {
+  int size, length;
+  void **array;
+} Vector;
+
+extern Vector *vector_new();
+extern void vector_push(Vector *vector, void *value);
+
+typedef struct map {
   int count;
   char *keys[1024];
   void *values[1024];
-};
-typedef struct map Map;
+} Map;
 
 extern Map *map_new();
 extern int map_count(Map *map);

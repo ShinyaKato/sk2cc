@@ -31,6 +31,9 @@ test_error() {
 gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
 ./tmp/string_test || failed "assertion of string.c was failed."
 
+gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test
+./tmp/vector_test || failed "assertion of vector.c was failed."
+
 gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
 ./tmp/map_test || failed "assertion of map.c was failed."
 
