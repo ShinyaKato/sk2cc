@@ -409,19 +409,25 @@ Node *expression_statement() {
   return node;
 }
 
-Node *parse() {
-  Node *node = expression_statement();
+Node *statement() {
+  return expression_statement();
+}
+
+Node *compound_statement() {
+  Node *node = node_new();
+  node->type = COMP_STMT;
+  node->statements = vector_new();
 
   while (peek_token()->type != tEND) {
-    Node *parent = node_new();
-    parent->type = BLOCK_ITEM;
-    parent->left = node;
-    parent->right = expression_statement();
-
-    node = parent;
+    Node *stmt = statement();
+    vector_push(node->statements, (void *) stmt);
   }
 
   return node;
+}
+
+Node *parse() {
+  return compound_statement();
 }
 
 void parse_init() {

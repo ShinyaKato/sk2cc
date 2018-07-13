@@ -114,7 +114,7 @@ typedef enum node_type {
   CONDITION,
   ASSIGN,
   FUNC_CALL,
-  BLOCK_ITEM
+  COMP_STMT,
 } NodeType;
 
 typedef struct node {
@@ -126,6 +126,7 @@ typedef struct node {
   struct node *right;
   struct node *args[6];
   int args_count;
+  Vector *statements;
 } Node;
 
 extern int symbols_count();

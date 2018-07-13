@@ -254,13 +254,10 @@ void gen_expr(Node *node) {
   }
 }
 
-void gen_block(Node *node) {
-  if (node->type == BLOCK_ITEM) {
-    gen_block(node->left);
+void gen_comp_stmt(Node *node) {
+  for (int i = 0; i < node->statements->length; i++) {
+    gen_expr((Node *) node->statements->array[i]);
     gen_pop("eax");
-    gen_expr(node->right);
-  } else {
-    gen_expr(node);
   }
 }
 
@@ -272,8 +269,7 @@ void gen(Node *node) {
 
   printf("  sub $%d, %%rsp\n", 4 * symbols_count());
 
-  gen_block(node);
-  gen_pop("eax");
+  gen_comp_stmt(node);
 
   printf("  add $%d, %%rsp\n", 4 * symbols_count());
 
