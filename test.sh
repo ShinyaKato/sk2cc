@@ -160,6 +160,17 @@ test_program "f(x, y, z) { x = x * y; y = x + z; x + y + z; } main() { f(1, 2, 3
 
 test_program "main() { x = 5; if (3 * 4 > 10) { x = 7; } x; }" 7
 test_program "main() { x = 5; if (3 * 4 < 10) { x = 7; } x; }" 5
+test_program "main() { x = 5; if (3 * 4 > 10) if (0) x = 7; x; }" 5
+test_program "main() { if (3 * 4 > 10) x = 3; else x = 4; x; }" 3
+test_program "main() { if (3 * 4 < 10) x = 3; else x = 4; x; }" 4
+test_program "main() { if (0) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; x; }" 0
+test_program "main() { if (0) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; x; }" 1
+test_program "main() { if (0) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; x; }" 0
+test_program "main() { if (0) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; x; }" 1
+test_program "main() { if (1) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; x; }" 2
+test_program "main() { if (1) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; x; }" 2
+test_program "main() { if (1) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; x; }" 3
+test_program "main() { if (1) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; x; }" 3
 
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."

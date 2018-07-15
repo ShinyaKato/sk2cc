@@ -277,6 +277,21 @@ void gen_stmt(Node *node) {
     gen_stmt(node->left);
     printf(".L%d:\n", label_end);
   }
+
+  if (node->type == IF_ELSE_STMT) {
+    int label_else = label_no++;
+    int label_end = label_no++;
+
+    gen_expr(node->condition);
+    gen_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_else);
+    gen_stmt(node->left);
+    printf("  jmp .L%d\n", label_end);
+    printf(".L%d:\n", label_else);
+    gen_stmt(node->right);
+    printf(".L%d:\n", label_end);
+  }
 }
 
 void gen_func_def(Node *node) {

@@ -431,20 +431,24 @@ Node *expression_statement() {
 }
 
 Node *selection_statement() {
+  Node *node = node_new();
+  node->type = IF_STMT;
+
   get_token();
   if (get_token()->type != tLPAREN) {
     error("tLPAREN is expected.");
   }
-  Node *condition = expression();
+  node->condition = expression();
   if (get_token()->type != tRPAREN) {
     error("tRPAREN is expected.");
   }
-  Node *left = statement();
+  node->left = statement();
 
-  Node *node = node_new();
-  node->type = IF_STMT;
-  node->condition = condition;
-  node->left = left;
+  if (peek_token()->type == tELSE) {
+    get_token();
+    node->type = IF_ELSE_STMT;
+    node->right = statement();
+  }
 
   return node;
 }
