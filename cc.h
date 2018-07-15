@@ -43,6 +43,7 @@ extern char get_char();
 typedef enum token_type {
   tINT,
   tIDENTIFIER,
+  tIF,
   tNOT,
   tLNOT,
   tADD,
@@ -118,6 +119,8 @@ typedef enum node_type {
   ASSIGN,
   FUNC_CALL,
   COMP_STMT,
+  EXPR_STMT,
+  IF_STMT,
   FUNC_DEF,
   TLANS_UNIT
 } NodeType;

@@ -43,8 +43,12 @@ Token *lex() {
       get_char();
       string_push(identifier, d);
     }
-    token->type = tIDENTIFIER;
-    token->identifier = identifier->buffer;
+    if (strcmp(identifier->buffer, "if") == 0) {
+      token->type = tIF;
+    } else {
+      token->type = tIDENTIFIER;
+      token->identifier = identifier->buffer;
+    }
   } else if (c == '~') {
     token->type = tNOT;
   } else if (c == '+') {

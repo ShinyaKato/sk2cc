@@ -255,10 +255,27 @@ void gen_expr(Node *node) {
   }
 }
 
-void gen_comp_stmt(Node *node) {
-  for (int i = 0; i < node->statements->length; i++) {
-    gen_expr((Node *) node->statements->array[i]);
+void gen_stmt(Node *node) {
+  if (node->type == COMP_STMT) {
+    for (int i = 0; i < node->statements->length; i++) {
+      gen_stmt((Node *) node->statements->array[i]);
+    }
+  }
+
+  if (node->type == EXPR_STMT) {
+    gen_expr(node->left);
     gen_pop("eax");
+  }
+
+  if (node->type == IF_STMT) {
+    int label_end = label_no++;
+
+    gen_expr(node->condition);
+    gen_pop("eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_end);
+    gen_stmt(node->left);
+    printf(".L%d:\n", label_end);
   }
 }
 
@@ -275,7 +292,7 @@ void gen_func_def(Node *node) {
     printf("  mov %%%s, %%rax\n", arg_reg[i]);
     printf("  movl %%eax, %d(%%rbp)\n", -(i * 4 + 4));
   }
-  gen_comp_stmt(node->left);
+  gen_stmt(node->left);
   printf("  add $%d, %%rsp\n", 4 * node->vars_count);
   printf("  pop %%rbp\n");
   printf("  ret\n");

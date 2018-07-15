@@ -391,19 +391,7 @@ Node *expression() {
   return assignment_expression();
 }
 
-Node *expression_statement() {
-  Node *node = expression();
-
-  if (get_token()->type != tSEMICOLON) {
-    error("tSEMICOLON is expected.");
-  }
-
-  return node;
-}
-
-Node *statement() {
-  return expression_statement();
-}
+Node *statement();
 
 Node *compound_statement() {
   Node *node = node_new();
@@ -424,6 +412,53 @@ Node *compound_statement() {
 
   if (get_token()->type != tRBRACE) {
     error("tRBRACE is expected.");
+  }
+
+  return node;
+}
+
+Node *expression_statement() {
+  Node *expr = expression();
+  if (get_token()->type != tSEMICOLON) {
+    error("tSEMICOLON is expected.");
+  }
+
+  Node *node = node_new();
+  node->type = EXPR_STMT;
+  node->left = expr;
+
+  return node;
+}
+
+Node *selection_statement() {
+  get_token();
+  if (get_token()->type != tLPAREN) {
+    error("tLPAREN is expected.");
+  }
+  Node *condition = expression();
+  if (get_token()->type != tRPAREN) {
+    error("tRPAREN is expected.");
+  }
+  Node *left = statement();
+
+  Node *node = node_new();
+  node->type = IF_STMT;
+  node->condition = condition;
+  node->left = left;
+
+  return node;
+}
+
+Node *statement() {
+  Node *node;
+
+  Token *token = peek_token();
+  if (token->type == tLBRACE) {
+    node = compound_statement();
+  } else if (token->type == tIF) {
+    node = selection_statement();
+  } else {
+    node = expression_statement();
   }
 
   return node;

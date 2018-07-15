@@ -158,6 +158,9 @@ test_program "f() { x = 2; x * x; } main() { t = f(); t * f(); }" 16
 test_program "f(x) { x * x; } main() { f(1) + f(2) + f(3); }" 14
 test_program "f(x, y, z) { x = x * y; y = x + z; x + y + z; } main() { f(1, 2, 3); }" 10
 
+test_program "main() { x = 5; if (3 * 4 > 10) { x = 7; } x; }" 7
+test_program "main() { x = 5; if (3 * 4 < 10) { x = 7; } x; }" 5
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."
