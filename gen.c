@@ -19,6 +19,14 @@ void gen_pop(char *reg) {
   printf("  add $4, %%rsp\n");
 }
 
+void gen_jump(char *inst, int label) {
+  printf("  %s .L%d\n", inst, label);
+}
+
+void gen_label(int label) {
+  printf(".L%d:\n", label);
+}
+
 void gen_expr(Node *node);
 
 void gen_operand(Node *node, char *reg) {
@@ -202,15 +210,15 @@ void gen_expr(Node *node) {
 
     gen_operand(node->left, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_false);
+    gen_jump("je", label_false);
     gen_operand(node->right, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_false);
+    gen_jump("je", label_false);
     printf("  movl $1, %%eax\n");
-    printf("  jmp .L%d\n", label_end);
-    printf(".L%d:\n", label_false);
+    gen_jump("jmp", label_end);
+    gen_label(label_false);
     printf("  movl $0, %%eax\n");
-    printf(".L%d:\n", label_end);
+    gen_label(label_end);
     gen_push("eax");
   }
 
@@ -220,15 +228,15 @@ void gen_expr(Node *node) {
 
     gen_operand(node->left, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  jne .L%d\n", label_true);
+    gen_jump("jne", label_true);
     gen_operand(node->right, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  jne .L%d\n", label_true);
+    gen_jump("jne", label_true);
     printf("  movl $0, %%eax\n");
-    printf("  jmp .L%d\n", label_end);
-    printf(".L%d:\n", label_true);
+    gen_jump("jmp", label_end);
+    gen_label(label_true);
     printf("  movl $1, %%eax\n");
-    printf(".L%d:\n", label_end);
+    gen_label(label_end);
     gen_push("eax");
   }
 
@@ -238,12 +246,12 @@ void gen_expr(Node *node) {
 
     gen_operand(node->condition, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_false);
+    gen_jump("je", label_false);
     gen_expr(node->left);
-    printf("  jmp .L%d\n", label_end);
-    printf(".L%d:\n", label_false);
+    gen_jump("jmp", label_end);
+    gen_label(label_false);
     gen_expr(node->right);
-    printf(".L%d:\n", label_end);
+    gen_label(label_end);
   }
 
   if (node->type == ASSIGN) {
@@ -273,9 +281,9 @@ void gen_stmt(Node *node) {
     gen_expr(node->condition);
     gen_pop("eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_end);
+    gen_jump("je", label_end);
     gen_stmt(node->left);
-    printf(".L%d:\n", label_end);
+    gen_label(label_end);
   }
 
   if (node->type == IF_ELSE_STMT) {
@@ -285,25 +293,25 @@ void gen_stmt(Node *node) {
     gen_expr(node->condition);
     gen_pop("eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_else);
+    gen_jump("je", label_else);
     gen_stmt(node->left);
-    printf("  jmp .L%d\n", label_end);
-    printf(".L%d:\n", label_else);
+    gen_jump("jmp", label_end);
+    gen_label(label_else);
     gen_stmt(node->right);
-    printf(".L%d:\n", label_end);
+    gen_label(label_end);
   }
 
   if (node->type == WHILE_STMT) {
     int label_begin = label_no++;
     int label_end = label_no++;
 
-    printf(".L%d:\n", label_begin);
+    gen_label(label_begin);
     gen_operand(node->condition, "eax");
     printf("  cmpl $0, %%eax\n");
-    printf("  je .L%d\n", label_end);
+    gen_jump("je", label_end);
     gen_stmt(node->left);
-    printf("  jmp .L%d\n", label_begin);
-    printf(".L%d:\n", label_end);
+    gen_jump("jmp", label_begin);
+    gen_label(label_end);
   }
 
   if (node->type == FOR_STMT) {
@@ -313,18 +321,18 @@ void gen_stmt(Node *node) {
     if (node->init) {
       gen_operand(node->init, "eax");
     }
-    printf(".L%d:\n", label_begin);
+    gen_label(label_begin);
     if (node->condition) {
       gen_operand(node->condition, "eax");
       printf("  cmpl $0, %%eax\n");
-      printf("  je .L%d\n", label_end);
+      gen_jump("je", label_end);
     }
     gen_stmt(node->left);
     if (node->after) {
       gen_operand(node->after, "eax");
     }
-    printf("  jmp .L%d\n", label_begin);
-    printf(".L%d:\n", label_end);
+    gen_jump("jmp", label_begin);
+    gen_label(label_end);
   }
 }
 
