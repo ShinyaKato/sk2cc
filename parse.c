@@ -352,7 +352,7 @@ Node *conditional_expression(Node *unary_exp) {
 
     Node *parent = node_new();
     parent->type = CONDITION;
-    parent->condition = node;
+    parent->control = node;
     parent->left = expression();
     if (get_token()->type != tCOLON) {
       error("tCOLON is expected.");
@@ -425,7 +425,7 @@ Node *expression_statement() {
 
   Node *node = node_new();
   node->type = EXPR_STMT;
-  node->left = expr;
+  node->expression = expr;
 
   return node;
 }
@@ -438,16 +438,16 @@ Node *selection_statement() {
   if (get_token()->type != tLPAREN) {
     error("tLPAREN is expected.");
   }
-  node->condition = expression();
+  node->control = expression();
   if (get_token()->type != tRPAREN) {
     error("tRPAREN is expected.");
   }
-  node->left = statement();
+  node->if_body = statement();
 
   if (peek_token()->type == tELSE) {
     get_token();
     node->type = IF_ELSE_STMT;
-    node->right = statement();
+    node->else_body = statement();
   }
 
   return node;
@@ -462,11 +462,11 @@ Node *iteration_statement() {
     if (get_token()->type != tLPAREN) {
       error("tLPAREN is expected.");
     }
-    node->condition = expression();
+    node->control = expression();
     if (get_token()->type != tRPAREN) {
       error("tRPAREN is expected.");
     }
-    node->left = statement();
+    node->loop_body = statement();
   } else if (token->type == tFOR) {
     node->type = FOR_STMT;
     if (get_token()->type != tLPAREN) {
@@ -481,22 +481,22 @@ Node *iteration_statement() {
       error("tSEMICOLON is expected.");
     }
     if (peek_token()->type != tSEMICOLON) {
-      node->condition = expression();
+      node->control = expression();
     } else {
-      node->condition = NULL;
+      node->control = NULL;
     }
     if (get_token()->type != tSEMICOLON) {
       error("tSEMICOLON is expected.");
     }
     if (peek_token()->type != tRPAREN) {
-      node->after = expression();
+      node->afterthrough = expression();
     } else {
-      node->after = NULL;
+      node->afterthrough = NULL;
     }
     if (get_token()->type != tRPAREN) {
       error("tRPAREN is expected.");
     }
-    node->left = statement();
+    node->loop_body = statement();
   }
 
   return node;
@@ -567,7 +567,7 @@ Node *function_definition() {
   Node *node = node_new();
   node->type = FUNC_DEF;
   node->identifier = id->identifier;
-  node->left = comp_stmt;
+  node->function_body = comp_stmt;
   node->params_count = params_count;
   node->vars_count = map_count(symbols);
 

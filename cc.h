@@ -41,19 +41,23 @@ extern char peek_char();
 extern char get_char();
 
 typedef enum token_type {
-  tINT,
-  tIDENTIFIER,
   tIF,
   tELSE,
   tWHILE,
   tFOR,
+  tIDENTIFIER,
+  tINT,
+  tLPAREN,
+  tRPAREN,
+  tRBRACE,
+  tLBRACE,
   tNOT,
   tLNOT,
-  tADD,
-  tSUB,
   tMUL,
   tDIV,
   tMOD,
+  tADD,
+  tSUB,
   tLSHIFT,
   tRSHIFT,
   tLT,
@@ -63,18 +67,14 @@ typedef enum token_type {
   tEQ,
   tNEQ,
   tAND,
-  tOR,
   tXOR,
+  tOR,
   tLAND,
   tLOR,
   tQUESTION,
   tCOLON,
-  tASSIGN,
   tSEMICOLON,
-  tLPAREN,
-  tRPAREN,
-  tRBRACE,
-  tLBRACE,
+  tASSIGN,
   tCOMMA,
   tEND
 } TokenType;
@@ -96,15 +96,16 @@ typedef struct symbol {
 typedef enum node_type {
   CONST,
   IDENTIFIER,
+  FUNC_CALL,
   UPLUS,
   UMINUS,
   NOT,
   LNOT,
-  ADD,
-  SUB,
   MUL,
   DIV,
   MOD,
+  ADD,
+  SUB,
   LSHIFT,
   RSHIFT,
   LT,
@@ -120,7 +121,6 @@ typedef enum node_type {
   LOR,
   CONDITION,
   ASSIGN,
-  FUNC_CALL,
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
@@ -136,17 +136,13 @@ typedef struct node {
   int int_value;
   char *identifier;
   Symbol *symbol;
-  struct node *condition;
-  struct node *left;
-  struct node *right;
   struct node *args[6];
   int args_count;
+  struct node *left, *right, *init, *control, *afterthrough, *expression;
   Vector *statements;
+  struct node *if_body, *else_body, *loop_body, *function_body;
+  int vars_count, params_count;
   Vector *definitions;
-  int params_count;
-  int vars_count;
-  struct node *init;
-  struct node *after;
 } Node;
 
 extern Node *parse();
