@@ -305,6 +305,27 @@ void gen_stmt(Node *node) {
     printf("  jmp .L%d\n", label_begin);
     printf(".L%d:\n", label_end);
   }
+
+  if (node->type == FOR_STMT) {
+    int label_begin = label_no++;
+    int label_end = label_no++;
+
+    if (node->init) {
+      gen_operand(node->init, "eax");
+    }
+    printf(".L%d:\n", label_begin);
+    if (node->condition) {
+      gen_operand(node->condition, "eax");
+      printf("  cmpl $0, %%eax\n");
+      printf("  je .L%d\n", label_end);
+    }
+    gen_stmt(node->left);
+    if (node->after) {
+      gen_operand(node->after, "eax");
+    }
+    printf("  jmp .L%d\n", label_begin);
+    printf(".L%d:\n", label_end);
+  }
 }
 
 void gen_func_def(Node *node) {

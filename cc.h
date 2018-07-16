@@ -46,6 +46,7 @@ typedef enum token_type {
   tIF,
   tELSE,
   tWHILE,
+  tFOR,
   tNOT,
   tLNOT,
   tADD,
@@ -125,6 +126,7 @@ typedef enum node_type {
   IF_STMT,
   IF_ELSE_STMT,
   WHILE_STMT,
+  FOR_STMT,
   FUNC_DEF,
   TLANS_UNIT
 } NodeType;
@@ -143,6 +145,8 @@ typedef struct node {
   Vector *definitions;
   int params_count;
   int vars_count;
+  struct node *init;
+  struct node *after;
 } Node;
 
 extern Node *parse();

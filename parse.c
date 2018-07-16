@@ -454,18 +454,50 @@ Node *selection_statement() {
 }
 
 Node *iteration_statement() {
+  Token *token = get_token();
   Node *node = node_new();
-  node->type = WHILE_STMT;
 
-  get_token();
-  if (get_token()->type != tLPAREN) {
-    error("tLPAREN is expected.");
+  if (token->type == tWHILE) {
+    node->type = WHILE_STMT;
+    if (get_token()->type != tLPAREN) {
+      error("tLPAREN is expected.");
+    }
+    node->condition = expression();
+    if (get_token()->type != tRPAREN) {
+      error("tRPAREN is expected.");
+    }
+    node->left = statement();
+  } else if (token->type == tFOR) {
+    node->type = FOR_STMT;
+    if (get_token()->type != tLPAREN) {
+      error("tLPAREN is expected.");
+    }
+    if (peek_token()->type != tSEMICOLON) {
+      node->init = expression();
+    } else {
+      node->init = NULL;
+    }
+    if (get_token()->type != tSEMICOLON) {
+      error("tSEMICOLON is expected.");
+    }
+    if (peek_token()->type != tSEMICOLON) {
+      node->condition = expression();
+    } else {
+      node->condition = NULL;
+    }
+    if (get_token()->type != tSEMICOLON) {
+      error("tSEMICOLON is expected.");
+    }
+    if (peek_token()->type != tRPAREN) {
+      node->after = expression();
+    } else {
+      node->after = NULL;
+    }
+    if (get_token()->type != tRPAREN) {
+      error("tRPAREN is expected.");
+    }
+    node->left = statement();
   }
-  node->condition = expression();
-  if (get_token()->type != tRPAREN) {
-    error("tRPAREN is expected.");
-  }
-  node->left = statement();
 
   return node;
 }
@@ -479,6 +511,8 @@ Node *statement() {
   } else if (token->type == tIF) {
     node = selection_statement();
   } else if (token->type == tWHILE) {
+    node = iteration_statement();
+  } else if (token->type == tFOR) {
     node = iteration_statement();
   } else {
     node = expression_statement();
