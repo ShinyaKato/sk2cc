@@ -45,6 +45,7 @@ typedef enum token_type {
   tIDENTIFIER,
   tIF,
   tELSE,
+  tWHILE,
   tNOT,
   tLNOT,
   tADD,
@@ -123,6 +124,7 @@ typedef enum node_type {
   EXPR_STMT,
   IF_STMT,
   IF_ELSE_STMT,
+  WHILE_STMT,
   FUNC_DEF,
   TLANS_UNIT
 } NodeType;

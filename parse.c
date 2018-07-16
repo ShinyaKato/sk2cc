@@ -453,6 +453,23 @@ Node *selection_statement() {
   return node;
 }
 
+Node *iteration_statement() {
+  Node *node = node_new();
+  node->type = WHILE_STMT;
+
+  get_token();
+  if (get_token()->type != tLPAREN) {
+    error("tLPAREN is expected.");
+  }
+  node->condition = expression();
+  if (get_token()->type != tRPAREN) {
+    error("tRPAREN is expected.");
+  }
+  node->left = statement();
+
+  return node;
+}
+
 Node *statement() {
   Node *node;
 
@@ -461,6 +478,8 @@ Node *statement() {
     node = compound_statement();
   } else if (token->type == tIF) {
     node = selection_statement();
+  } else if (token->type == tWHILE) {
+    node = iteration_statement();
   } else {
     node = expression_statement();
   }

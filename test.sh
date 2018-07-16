@@ -172,6 +172,13 @@ test_program "main() { if (1) if (0) x = 3; else x = 2; else if (1) x = 1; else 
 test_program "main() { if (1) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; x; }" 3
 test_program "main() { if (1) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; x; }" 3
 
+test_program "main() { x = 1; s = 0; while (x <= 0) { s = s + x; x = x + 1; } s; }" 0
+test_program "main() { x = 1; s = 0; while (x <= 1) { s = s + x; x = x + 1; } s; }" 1
+test_program "main() { x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } s; }" 55
+test_program "main() { x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } s; }" 55
+test_program "main() { x = 1; s = 0; while (x <= 10) { if (x % 2 == 0) s = s + x; x = x + 1; } s; }" 30
+test_program "main() { x = 1; s = 0; while (x <= 10) { if (x % 2 == 1) s = s + x; x = x + 1; } s; }" 25
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."

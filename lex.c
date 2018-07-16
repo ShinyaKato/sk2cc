@@ -47,6 +47,8 @@ Token *lex() {
       token->type = tIF;
     } else if (strcmp(identifier->buffer, "else") == 0) {
       token->type = tELSE;
+    } else if (strcmp(identifier->buffer, "while") == 0) {
+      token->type = tWHILE;
     } else {
       token->type = tIDENTIFIER;
       token->identifier = identifier->buffer;

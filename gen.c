@@ -292,6 +292,19 @@ void gen_stmt(Node *node) {
     gen_stmt(node->right);
     printf(".L%d:\n", label_end);
   }
+
+  if (node->type == WHILE_STMT) {
+    int label_begin = label_no++;
+    int label_end = label_no++;
+
+    printf(".L%d:\n", label_begin);
+    gen_operand(node->condition, "eax");
+    printf("  cmpl $0, %%eax\n");
+    printf("  je .L%d\n", label_end);
+    gen_stmt(node->left);
+    printf("  jmp .L%d\n", label_begin);
+    printf(".L%d:\n", label_end);
+  }
 }
 
 void gen_func_def(Node *node) {
