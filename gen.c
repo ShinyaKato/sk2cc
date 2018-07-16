@@ -271,15 +271,13 @@ void gen_stmt(Node *node) {
   }
 
   if (node->type == EXPR_STMT) {
-    gen_expr(node->left);
-    gen_pop("eax");
+    gen_operand(node->left, "eax");
   }
 
   if (node->type == IF_STMT) {
     int label_end = label_no++;
 
-    gen_expr(node->condition);
-    gen_pop("eax");
+    gen_operand(node->condition, "eax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_end);
     gen_stmt(node->left);
@@ -290,8 +288,7 @@ void gen_stmt(Node *node) {
     int label_else = label_no++;
     int label_end = label_no++;
 
-    gen_expr(node->condition);
-    gen_pop("eax");
+    gen_operand(node->condition, "eax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_else);
     gen_stmt(node->left);
