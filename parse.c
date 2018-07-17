@@ -379,6 +379,14 @@ Node *iteration_statement() {
     node->control = expression();
     expect_token(tRPAREN);
     node->loop_body = statement();
+  } else if (read_token(tDO)) {
+    node->type = DO_WHILE_STMT;
+    node->loop_body = statement();
+    expect_token(tWHILE);
+    expect_token(tLPAREN);
+    node->control = expression();
+    expect_token(tRPAREN);
+    expect_token(tSEMICOLON);
   } else if (read_token(tFOR)) {
     node->type = FOR_STMT;
     expect_token(tLPAREN);
@@ -402,6 +410,8 @@ Node *statement() {
   } else if (peek_token()->type == tIF) {
     node = selection_statement();
   } else if (peek_token()->type == tWHILE) {
+    node = iteration_statement();
+  } else if (peek_token()->type == tDO) {
     node = iteration_statement();
   } else if (peek_token()->type == tFOR) {
     node = iteration_statement();

@@ -179,6 +179,9 @@ test_program "main() { x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } s
 test_program "main() { x = 1; s = 0; while (x <= 10) { if (x % 2 == 0) s = s + x; x = x + 1; } s; }" 30
 test_program "main() { x = 1; s = 0; while (x <= 10) { if (x % 2 == 1) s = s + x; x = x + 1; } s; }" 25
 
+test_program "main() { i = 0; s = 0; do { s = s + i; i = i + 1; } while (i < 10); s; }" 45
+test_program "main() { i = 10; s = 0; do { s = s + i; i = i + 1; } while (i < 10); s; }" 10
+
 test_program "main() { s = 0; i = 0; for (; i < 10;) { s = s + i; i = i + 1; } s; }" 45
 test_program "main() { s = 0; i = 0; for (; i < 10; i = i + 1) { s = s + i; } s; }" 45
 test_program "main() { s = 0; for (i = 0; i < 10;) { s = s + i; i = i + 1; } s; }" 45

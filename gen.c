@@ -311,6 +311,18 @@ void gen_stmt(Node *node) {
     gen_label(label_end);
   }
 
+  if (node->type == DO_WHILE_STMT) {
+    int label_begin = label_no++;
+    int label_end = label_no++;
+
+    gen_label(label_begin);
+    gen_stmt(node->loop_body);
+    gen_operand(node->control, "eax");
+    printf("  cmpl $0, %%eax\n");
+    gen_jump("jne", label_begin);
+    gen_label(label_end);
+  }
+
   if (node->type == FOR_STMT) {
     int label_begin = label_no++;
     int label_end = label_no++;
