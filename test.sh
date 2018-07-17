@@ -187,6 +187,11 @@ test_program "main() { s = 0; i = 0; for (; i < 10; i = i + 1) { s = s + i; } s;
 test_program "main() { s = 0; for (i = 0; i < 10;) { s = s + i; i = i + 1; } s; }" 45
 test_program "main() { s = 0; for (i = 0; i < 10; i = i + 1) { s = s + i; } s; }" 45
 
+test_program "main() { i = 0; for (;; i = i + 1) { if (i < 100) continue; break; } i; }" 100
+test_program "main() { i = 0; do { i = i + 1; if (i < 100) continue; break; } while(1); i; }" 100
+test_program "main() { i = 0; do { i = i + 1; if (i < 100) continue; } while(i < 50); i; }" 50
+test_program "main() { i = 0; while (1) { i = i + 1; if (i < 100) continue; break; } i; }" 100
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."

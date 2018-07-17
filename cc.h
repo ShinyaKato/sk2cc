@@ -22,6 +22,7 @@ typedef struct vector {
 
 extern Vector *vector_new();
 extern void vector_push(Vector *vector, void *value);
+extern void *vector_pop(Vector *vector);
 
 typedef struct map {
   int count;
@@ -46,6 +47,8 @@ typedef enum token_type {
   tWHILE,
   tDO,
   tFOR,
+  tCONTINUE,
+  tBREAK,
   tIDENTIFIER,
   tINT,
   tLPAREN,
@@ -131,6 +134,8 @@ typedef enum node_type {
   WHILE_STMT,
   DO_WHILE_STMT,
   FOR_STMT,
+  CONTINUE_STMT,
+  BREAK_STMT,
   FUNC_DEF,
   TLANS_UNIT
 } NodeType;

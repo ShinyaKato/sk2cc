@@ -402,6 +402,20 @@ Node *iteration_statement() {
   return node;
 }
 
+Node *jump_statement() {
+  Node *node = node_new();
+
+  if (read_token(tCONTINUE)) {
+    node->type = CONTINUE_STMT;
+    expect_token(tSEMICOLON);
+  } else if (read_token(tBREAK)) {
+    node->type = BREAK_STMT;
+    expect_token(tSEMICOLON);
+  }
+
+  return node;
+}
+
 Node *statement() {
   Node *node;
 
@@ -415,6 +429,10 @@ Node *statement() {
     node = iteration_statement();
   } else if (peek_token()->type == tFOR) {
     node = iteration_statement();
+  } else if (peek_token()->type == tCONTINUE) {
+    node = jump_statement();
+  } else if (peek_token()->type == tBREAK) {
+    node = jump_statement();
   } else {
     node = expression_statement();
   }

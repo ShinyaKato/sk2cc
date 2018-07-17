@@ -22,3 +22,7 @@ void vector_push(Vector *vector, void *value) {
 
   vector->array[vector->length] = NULL;
 }
+
+void *vector_pop(Vector *vector) {
+  return vector->array[--vector->length];
+}

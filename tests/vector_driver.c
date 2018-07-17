@@ -33,5 +33,11 @@ int main(void) {
   assert(vector->length == 128);
   assert(vector->size == 256);
 
+  for (int i = 127; i >= 0; i--) {
+    int *ptr = (int *) vector_pop(vector);
+    assert(ptr == &data[i]);
+    assert(vector->length == i);
+  }
+
   return 0;
 }

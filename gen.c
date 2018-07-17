@@ -3,6 +3,7 @@
 char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
 int label_no = 0;
+Vector *continue_labels, *break_labels;
 
 void gen_immediate(int value) {
   printf("  sub $4, %%rsp\n");
@@ -302,6 +303,9 @@ void gen_stmt(Node *node) {
     int label_begin = label_no++;
     int label_end = label_no++;
 
+    vector_push(continue_labels, (void *) &label_begin);
+    vector_push(break_labels, (void *) &label_end);
+
     gen_label(label_begin);
     gen_operand(node->control, "eax");
     printf("  cmpl $0, %%eax\n");
@@ -309,23 +313,38 @@ void gen_stmt(Node *node) {
     gen_stmt(node->loop_body);
     gen_jump("jmp", label_begin);
     gen_label(label_end);
+
+    vector_pop(continue_labels);
+    vector_pop(break_labels);
   }
 
   if (node->type == DO_WHILE_STMT) {
     int label_begin = label_no++;
+    int label_control = label_no++;
     int label_end = label_no++;
+
+    vector_push(continue_labels, (void *) &label_control);
+    vector_push(break_labels, (void *) &label_end);
 
     gen_label(label_begin);
     gen_stmt(node->loop_body);
+    gen_label(label_control);
     gen_operand(node->control, "eax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("jne", label_begin);
     gen_label(label_end);
+
+    vector_pop(continue_labels);
+    vector_pop(break_labels);
   }
 
   if (node->type == FOR_STMT) {
     int label_begin = label_no++;
+    int label_afterthrough = label_no++;
     int label_end = label_no++;
+
+    vector_push(continue_labels, (void *) &label_afterthrough);
+    vector_push(break_labels, (void *) &label_end);
 
     if (node->init) {
       gen_operand(node->init, "eax");
@@ -337,11 +356,29 @@ void gen_stmt(Node *node) {
       gen_jump("je", label_end);
     }
     gen_stmt(node->loop_body);
+    gen_label(label_afterthrough);
     if (node->afterthrough) {
       gen_operand(node->afterthrough, "eax");
     }
     gen_jump("jmp", label_begin);
     gen_label(label_end);
+
+    vector_pop(continue_labels);
+    vector_pop(break_labels);
+  }
+
+  if (node->type == CONTINUE_STMT) {
+    if (continue_labels->length == 0) {
+      error("invalid continue statement.");
+    }
+    gen_jump("jmp", *(int *) continue_labels->array[continue_labels->length - 1]);
+  }
+
+  if (node->type == BREAK_STMT) {
+    if (break_labels->length == 0) {
+      error("invalid continue statement.");
+    }
+    gen_jump("jmp", *(int *) break_labels->array[break_labels->length - 1]);
   }
 }
 
@@ -364,7 +401,7 @@ void gen_func_def(Node *node) {
   printf("  ret\n");
 }
 
-void gen(Node *node) {
+void gen_trans_unit(Node *node) {
   for (int i = 0; i < node->definitions->length; i++) {
     gen_func_def((Node *) node->definitions->array[i]);
 
@@ -372,4 +409,11 @@ void gen(Node *node) {
       printf("\n");
     }
   }
+}
+
+void gen(Node *node) {
+  continue_labels = vector_new();
+  break_labels = vector_new();
+
+  gen_trans_unit(node);
 }
