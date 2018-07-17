@@ -1,5 +1,44 @@
 #include "cc.h"
 
+char token_type_name[][32] = {
+  "tIF",
+  "tELSE",
+  "tWHILE",
+  "tFOR",
+  "tIDENTIFIER",
+  "tINT",
+  "tLPAREN",
+  "tRPAREN",
+  "tRBRACE",
+  "tLBRACE",
+  "tNOT",
+  "tLNOT",
+  "tMUL",
+  "tDIV",
+  "tMOD",
+  "tADD",
+  "tSUB",
+  "tLSHIFT",
+  "tRSHIFT",
+  "tLT",
+  "tGT",
+  "tLTE",
+  "tGTE",
+  "tEQ",
+  "tNEQ",
+  "tAND",
+  "tXOR",
+  "tOR",
+  "tLAND",
+  "tLOR",
+  "tQUESTION",
+  "tCOLON",
+  "tSEMICOLON",
+  "tASSIGN",
+  "tCOMMA",
+  "tEND"
+};
+
 Token *token_end;
 
 bool has_next_token = false;
@@ -156,6 +195,22 @@ Token *get_token() {
     return next_token;
   }
   return lex();
+}
+
+Token *expect_token(TokenType type) {
+  Token *token = get_token();
+  if (token->type != type) {
+    char msg[256];
+    sprintf(msg, "%s is expected.", token_type_name[type]);
+    error(msg);
+  }
+  return token;
+}
+
+bool read_token(TokenType type) {
+  bool equal = peek_token()->type == type;
+  if (equal) get_token();
+  return equal;
 }
 
 void lex_init() {

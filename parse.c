@@ -4,7 +4,6 @@ Map *func_symbols, *symbols;
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
-
   return symbol;
 }
 
@@ -40,9 +39,7 @@ Node *primary_expression() {
     }
   } else if (token->type == tLPAREN) {
     node = expression();
-    if (get_token()->type != tRPAREN) {
-      error("tRPAREN is expected.");
-    }
+    expect_token(tRPAREN);
   } else {
     error("unexpected primary expression.");
   }
@@ -54,37 +51,24 @@ Node *postfix_expression() {
   Node *node = primary_expression();
 
   while (1) {
-    Token *token = peek_token();
-    if (token->type == tLPAREN) {
-      get_token();
-
+    if (read_token(tLPAREN)) {
       if (node->type != IDENTIFIER) {
-        error("unexpected function call.");
+        error("invalid function call.");
       }
 
       Node *parent = node_new();
       parent->type = FUNC_CALL;
       parent->left = node;
       parent->args_count = 0;
-
       if (peek_token()->type != tRPAREN) {
-        parent->args[0] = assignment_expression();
-        parent->args_count++;
-
-        while (peek_token()->type == tCOMMA) {
-          get_token();
-
+        do {
           if (parent->args_count >= 6) {
             error("too many arguments.");
           }
-
           parent->args[parent->args_count++] = assignment_expression();
-        }
+        } while (read_token(tCOMMA));
       }
-
-      if (get_token()->type != tRPAREN) {
-        error("tRPAREN is expected.");
-      }
+      expect_token(tRPAREN);
 
       node = parent;
     } else {
@@ -96,26 +80,21 @@ Node *postfix_expression() {
 }
 
 Node *unary_expression() {
-  Token *token = peek_token();
   Node *node;
 
-  if (token->type == tADD) {
-    get_token();
+  if (read_token(tADD)) {
     node = node_new();
     node->type = UPLUS;
     node->left = unary_expression();
-  } else if (token->type == tSUB) {
-    get_token();
+  } else if (read_token(tSUB)) {
     node = node_new();
     node->type = UMINUS;
     node->left = unary_expression();
-  } else if (token->type == tNOT) {
-    get_token();
+  } else if (read_token(tNOT)) {
     node = node_new();
     node->type = NOT;
     node->left = unary_expression();
-  } else if (token->type == tLNOT) {
-    get_token();
+  } else if (read_token(tLNOT)) {
     node = node_new();
     node->type = LNOT;
     node->left = unary_expression();
@@ -130,13 +109,11 @@ Node *multiplicative_expression(Node *unary_exp) {
   Node *node = unary_exp;
 
   while (1) {
-    Token *op = peek_token();
     NodeType type;
-    if (op->type == tMUL) type = MUL;
-    else if (op->type == tDIV) type = DIV;
-    else if (op->type == tMOD) type = MOD;
+    if (read_token(tMUL)) type = MUL;
+    else if (read_token(tDIV)) type = DIV;
+    else if (read_token(tMOD)) type = MOD;
     else break;
-    get_token();
 
     Node *parent = node_new();
     parent->type = type;
@@ -153,12 +130,10 @@ Node *additive_expression(Node *unary_exp) {
   Node *node = multiplicative_expression(unary_exp);
 
   while (1) {
-    Token *op = peek_token();
     NodeType type;
-    if (op->type == tADD) type = ADD;
-    else if (op->type == tSUB) type = SUB;
+    if (read_token(tADD)) type = ADD;
+    else if (read_token(tSUB)) type = SUB;
     else break;
-    get_token();
 
     Node *parent = node_new();
     parent->type = type;
@@ -175,12 +150,10 @@ Node *shift_expression(Node *unary_exp) {
   Node *node = additive_expression(unary_exp);
 
   while (1) {
-    Token *op = peek_token();
     NodeType type;
-    if (op->type == tLSHIFT) type = LSHIFT;
-    else if (op->type == tRSHIFT) type = RSHIFT;
+    if (read_token(tLSHIFT)) type = LSHIFT;
+    else if (read_token(tRSHIFT)) type = RSHIFT;
     else break;
-    get_token();
 
     Node *parent = node_new();
     parent->type = type;
@@ -197,14 +170,12 @@ Node *relational_expression(Node *unary_exp) {
   Node *node = shift_expression(unary_exp);
 
   while (1) {
-    Token *op = peek_token();
     NodeType type;
-    if (op->type == tLT) type = LT;
-    else if (op->type == tGT) type = GT;
-    else if (op->type == tLTE) type = LTE;
-    else if (op->type == tGTE) type = GTE;
+    if (read_token(tLT)) type = LT;
+    else if (read_token(tGT)) type = GT;
+    else if (read_token(tLTE)) type = LTE;
+    else if (read_token(tGTE)) type = GTE;
     else break;
-    get_token();
 
     Node *parent = node_new();
     parent->type = type;
@@ -221,12 +192,10 @@ Node *equality_expression(Node *unary_exp) {
   Node *node = relational_expression(unary_exp);
 
   while (1) {
-    Token *op = peek_token();
     NodeType type;
-    if (op->type == tEQ) type = EQ;
-    else if (op->type == tNEQ) type = NEQ;
+    if (read_token(tEQ)) type = EQ;
+    else if (read_token(tNEQ)) type = NEQ;
     else break;
-    get_token();
 
     Node *parent = node_new();
     parent->type = type;
@@ -242,15 +211,9 @@ Node *equality_expression(Node *unary_exp) {
 Node *and_expression(Node *unary_exp) {
   Node *node = equality_expression(unary_exp);
 
-  while (1) {
-    Token *op = peek_token();
-    NodeType type;
-    if (op->type == tAND) type = AND;
-    else break;
-    get_token();
-
+  while (read_token(tAND)) {
     Node *parent = node_new();
-    parent->type = type;
+    parent->type = AND;
     parent->left = node;
     parent->right = equality_expression(unary_expression());
 
@@ -263,15 +226,9 @@ Node *and_expression(Node *unary_exp) {
 Node *exclusive_or_expression(Node *unary_exp) {
   Node *node = and_expression(unary_exp);
 
-  while (1) {
-    Token *op = peek_token();
-    NodeType type;
-    if (op->type == tXOR) type = XOR;
-    else break;
-    get_token();
-
+  while (read_token(tXOR)) {
     Node *parent = node_new();
-    parent->type = type;
+    parent->type = XOR;
     parent->left = node;
     parent->right = and_expression(unary_expression());
 
@@ -284,15 +241,9 @@ Node *exclusive_or_expression(Node *unary_exp) {
 Node *inclusive_or_expression(Node *unary_exp) {
   Node *node = exclusive_or_expression(unary_exp);
 
-  while (1) {
-    Token *op = peek_token();
-    NodeType type;
-    if (op->type == tOR) type = OR;
-    else break;
-    get_token();
-
+  while (read_token(tOR)) {
     Node *parent = node_new();
-    parent->type = type;
+    parent->type = OR;
     parent->left = node;
     parent->right = exclusive_or_expression(unary_expression());
 
@@ -305,15 +256,9 @@ Node *inclusive_or_expression(Node *unary_exp) {
 Node *logical_and_expression(Node *unary_exp) {
   Node *node = inclusive_or_expression(unary_exp);
 
-  while (1) {
-    Token *op = peek_token();
-    NodeType type;
-    if (op->type == tLAND) type = LAND;
-    else break;
-    get_token();
-
+  while (read_token(tLAND)) {
     Node *parent = node_new();
-    parent->type = type;
+    parent->type = LAND;
     parent->left = node;
     parent->right = inclusive_or_expression(unary_expression());
 
@@ -326,15 +271,9 @@ Node *logical_and_expression(Node *unary_exp) {
 Node *logical_or_expression(Node *unary_exp) {
   Node *node = logical_and_expression(unary_exp);
 
-  while (1) {
-    Token *op = peek_token();
-    NodeType type;
-    if (op->type == tLOR) type = LOR;
-    else break;
-    get_token();
-
+  while (read_token(tLOR)) {
     Node *parent = node_new();
-    parent->type = type;
+    parent->type = LOR;
     parent->left = node;
     parent->right = logical_and_expression(unary_expression());
 
@@ -347,16 +286,12 @@ Node *logical_or_expression(Node *unary_exp) {
 Node *conditional_expression(Node *unary_exp) {
   Node *node = logical_or_expression(unary_exp);
 
-  if (peek_token()->type == tQUESTION) {
-    get_token();
-
+  if (read_token(tQUESTION)) {
     Node *parent = node_new();
     parent->type = CONDITION;
     parent->control = node;
     parent->left = expression();
-    if (get_token()->type != tCOLON) {
-      error("tCOLON is expected.");
-    }
+    expect_token(tCOLON);
     parent->right = conditional_expression(unary_expression());
 
     node = parent;
@@ -369,9 +304,7 @@ Node *assignment_expression() {
   Node *node;
 
   Node *unary_exp = unary_expression();
-  if (peek_token()->type == tASSIGN) {
-    get_token();
-
+  if (read_token(tASSIGN)) {
     if (unary_exp->type != IDENTIFIER) {
       error("left side of assignment operator should be identifier.");
     }
@@ -398,104 +331,63 @@ Node *compound_statement() {
   node->type = COMP_STMT;
   node->statements = vector_new();
 
-  if (get_token()->type != tLBRACE) {
-    error("tLBRACE is expected.");
-  }
-
+  expect_token(tLBRACE);
   while (1) {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
-
     Node *stmt = statement();
     vector_push(node->statements, (void *) stmt);
   }
-
-  if (get_token()->type != tRBRACE) {
-    error("tRBRACE is expected.");
-  }
+  expect_token(tRBRACE);
 
   return node;
 }
 
 Node *expression_statement() {
-  Node *expr = expression();
-  if (get_token()->type != tSEMICOLON) {
-    error("tSEMICOLON is expected.");
-  }
-
   Node *node = node_new();
   node->type = EXPR_STMT;
-  node->expression = expr;
+  node->expression = expression();
+  expect_token(tSEMICOLON);
 
   return node;
 }
 
 Node *selection_statement() {
   Node *node = node_new();
-  node->type = IF_STMT;
 
-  get_token();
-  if (get_token()->type != tLPAREN) {
-    error("tLPAREN is expected.");
-  }
-  node->control = expression();
-  if (get_token()->type != tRPAREN) {
-    error("tRPAREN is expected.");
-  }
-  node->if_body = statement();
-
-  if (peek_token()->type == tELSE) {
-    get_token();
-    node->type = IF_ELSE_STMT;
-    node->else_body = statement();
+  if (read_token(tIF)) {
+    node->type = IF_STMT;
+    expect_token(tLPAREN);
+    node->control = expression();
+    expect_token(tRPAREN);
+    node->if_body = statement();
+    if (read_token(tELSE)) {
+      node->type = IF_ELSE_STMT;
+      node->else_body = statement();
+    }
   }
 
   return node;
 }
 
 Node *iteration_statement() {
-  Token *token = get_token();
   Node *node = node_new();
 
-  if (token->type == tWHILE) {
+  if (read_token(tWHILE)) {
     node->type = WHILE_STMT;
-    if (get_token()->type != tLPAREN) {
-      error("tLPAREN is expected.");
-    }
+    expect_token(tLPAREN);
     node->control = expression();
-    if (get_token()->type != tRPAREN) {
-      error("tRPAREN is expected.");
-    }
+    expect_token(tRPAREN);
     node->loop_body = statement();
-  } else if (token->type == tFOR) {
+  } else if (read_token(tFOR)) {
     node->type = FOR_STMT;
-    if (get_token()->type != tLPAREN) {
-      error("tLPAREN is expected.");
-    }
-    if (peek_token()->type != tSEMICOLON) {
-      node->init = expression();
-    } else {
-      node->init = NULL;
-    }
-    if (get_token()->type != tSEMICOLON) {
-      error("tSEMICOLON is expected.");
-    }
-    if (peek_token()->type != tSEMICOLON) {
-      node->control = expression();
-    } else {
-      node->control = NULL;
-    }
-    if (get_token()->type != tSEMICOLON) {
-      error("tSEMICOLON is expected.");
-    }
-    if (peek_token()->type != tRPAREN) {
-      node->afterthrough = expression();
-    } else {
-      node->afterthrough = NULL;
-    }
-    if (get_token()->type != tRPAREN) {
-      error("tRPAREN is expected.");
-    }
+    expect_token(tLPAREN);
+    node->init = peek_token()->type != tSEMICOLON ? expression() : NULL;
+    expect_token(tSEMICOLON);
+    node->control = peek_token()->type != tSEMICOLON ? expression() : NULL;
+    expect_token(tSEMICOLON);
+    node->afterthrough = peek_token()->type != tRPAREN ? expression() : NULL;
+    expect_token(tRPAREN);
     node->loop_body = statement();
   }
 
@@ -505,14 +397,13 @@ Node *iteration_statement() {
 Node *statement() {
   Node *node;
 
-  Token *token = peek_token();
-  if (token->type == tLBRACE) {
+  if (peek_token()->type == tLBRACE) {
     node = compound_statement();
-  } else if (token->type == tIF) {
+  } else if (peek_token()->type == tIF) {
     node = selection_statement();
-  } else if (token->type == tWHILE) {
+  } else if (peek_token()->type == tWHILE) {
     node = iteration_statement();
-  } else if (token->type == tFOR) {
+  } else if (peek_token()->type == tFOR) {
     node = iteration_statement();
   } else {
     node = expression_statement();
@@ -522,32 +413,23 @@ Node *statement() {
 }
 
 Node *function_definition() {
-  Token *id = get_token();
-  if (id->type != tIDENTIFIER) {
-    error("function definition should begin with tIDENTIFIER.");
-  }
+  int params_count = 0;
+  map_clear(symbols);
 
+  Token *id = expect_token(tIDENTIFIER);
   Symbol *func_sym = symbol_new();
   if (map_lookup(func_symbols, id->identifier)) {
     error("duplicated function definition.");
   }
   map_put(func_symbols, id->identifier, (void *) func_sym);
 
-  if (get_token()->type != tLPAREN) {
-    error("tLPAREN is expected.");
-  }
-
-  int params_count = 0;
-  map_clear(symbols);
+  expect_token(tLPAREN);
   if (peek_token()->type != tRPAREN) {
     do {
       if (params_count >= 6) {
         error("too many parameters.");
       }
-      Token *token = get_token();
-      if (token->type != tIDENTIFIER) {
-        error("tIDENTIFIER is expected.");
-      }
+      Token *token = expect_token(tIDENTIFIER);
       if (map_lookup(symbols, token->identifier)) {
         error("duplicated parameter definition.");
       }
@@ -555,21 +437,16 @@ Node *function_definition() {
       param->position = -(map_count(symbols) * 4 + 4);
       map_put(symbols, token->identifier, param);
       params_count++;
-    } while (peek_token()->type == tCOMMA && get_token());
+    } while (read_token(tCOMMA));
   }
-
-  if (get_token()->type != tRPAREN) {
-    error("tRPAREN is expected.");
-  }
-
-  Node *comp_stmt = compound_statement();
+  expect_token(tRPAREN);
 
   Node *node = node_new();
   node->type = FUNC_DEF;
   node->identifier = id->identifier;
-  node->function_body = comp_stmt;
-  node->params_count = params_count;
+  node->function_body = compound_statement();
   node->vars_count = map_count(symbols);
+  node->params_count = params_count;
 
   return node;
 }
