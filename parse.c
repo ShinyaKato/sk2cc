@@ -411,6 +411,10 @@ Node *jump_statement() {
   } else if (read_token(tBREAK)) {
     node->type = BREAK_STMT;
     expect_token(tSEMICOLON);
+  } else if (read_token(tRETURN)) {
+    node->type = RETURN_STMT;
+    node->expression = peek_token()->type != tSEMICOLON ? expression() : NULL;
+    expect_token(tSEMICOLON);
   }
 
   return node;
@@ -432,6 +436,8 @@ Node *statement() {
   } else if (peek_token()->type == tCONTINUE) {
     node = jump_statement();
   } else if (peek_token()->type == tBREAK) {
+    node = jump_statement();
+  } else if (peek_token()->type == tRETURN) {
     node = jump_statement();
   } else {
     node = expression_statement();

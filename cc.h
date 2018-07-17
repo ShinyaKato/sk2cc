@@ -49,6 +49,7 @@ typedef enum token_type {
   tFOR,
   tCONTINUE,
   tBREAK,
+  tRETURN,
   tIDENTIFIER,
   tINT,
   tLPAREN,
@@ -136,6 +137,7 @@ typedef enum node_type {
   FOR_STMT,
   CONTINUE_STMT,
   BREAK_STMT,
+  RETURN_STMT,
   FUNC_DEF,
   TLANS_UNIT
 } NodeType;

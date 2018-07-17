@@ -4,6 +4,7 @@ char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
 int label_no = 0;
 Vector *continue_labels, *break_labels;
+int return_label;
 
 void gen_immediate(int value) {
   printf("  sub $4, %%rsp\n");
@@ -16,7 +17,7 @@ void gen_push(char *reg) {
 }
 
 void gen_pop(char *reg) {
-  printf("  movl 0(%%rsp), %%%s\n", reg);
+  if(reg) printf("  movl 0(%%rsp), %%%s\n", reg);
   printf("  add $4, %%rsp\n");
 }
 
@@ -272,7 +273,7 @@ void gen_stmt(Node *node) {
   }
 
   if (node->type == EXPR_STMT) {
-    gen_operand(node->expression, "eax");
+    gen_operand(node->expression, NULL);
   }
 
   if (node->type == IF_STMT) {
@@ -347,7 +348,7 @@ void gen_stmt(Node *node) {
     vector_push(break_labels, (void *) &label_end);
 
     if (node->init) {
-      gen_operand(node->init, "eax");
+      gen_operand(node->init, NULL);
     }
     gen_label(label_begin);
     if (node->control) {
@@ -358,7 +359,7 @@ void gen_stmt(Node *node) {
     gen_stmt(node->loop_body);
     gen_label(label_afterthrough);
     if (node->afterthrough) {
-      gen_operand(node->afterthrough, "eax");
+      gen_operand(node->afterthrough, NULL);
     }
     gen_jump("jmp", label_begin);
     gen_label(label_end);
@@ -380,12 +381,21 @@ void gen_stmt(Node *node) {
     }
     gen_jump("jmp", *(int *) break_labels->array[break_labels->length - 1]);
   }
+
+  if (node->type == RETURN_STMT) {
+    if (node->expression) {
+      gen_operand(node->expression, "eax");
+    }
+    gen_jump("jmp", return_label);
+  }
 }
 
 void gen_func_def(Node *node) {
   if (strcmp(node->identifier, "main") == 0) {
     printf("  .global main\n");
   }
+
+  return_label = label_no++;
 
   printf("%s:\n", node->identifier);
   printf("  push %%rbp\n");
@@ -396,6 +406,7 @@ void gen_func_def(Node *node) {
     printf("  movl %%eax, %d(%%rbp)\n", -(i * 4 + 4));
   }
   gen_stmt(node->function_body);
+  gen_label(return_label);
   printf("  add $%d, %%rsp\n", 4 * node->vars_count);
   printf("  pop %%rbp\n");
   printf("  ret\n");

@@ -8,6 +8,7 @@ char token_type_name[][32] = {
   "tFOR",
   "tCONTINUE",
   "tBREAK",
+  "tRETURN",
   "tIDENTIFIER",
   "tINT",
   "tLPAREN",
@@ -99,6 +100,8 @@ Token *lex() {
       token->type = tCONTINUE;
     } else if (strcmp(identifier->buffer, "break") == 0) {
       token->type = tBREAK;
+    } else if (strcmp(identifier->buffer, "return") == 0) {
+      token->type = tRETURN;
     } else {
       token->type = tIDENTIFIER;
       token->identifier = identifier->buffer;
