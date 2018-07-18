@@ -49,6 +49,10 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == IDENTIFIER) {
+    if (!node->symbol) {
+      error("undefined identifier.");
+    }
+
     int pos = node->symbol->position;
 
     printf("  movl %d(%%rbp), %%eax\n", pos);

@@ -1,6 +1,7 @@
 #include "cc.h"
 
 char token_type_name[][32] = {
+  "tINT",
   "tIF",
   "tELSE",
   "tWHILE",
@@ -10,7 +11,7 @@ char token_type_name[][32] = {
   "tBREAK",
   "tRETURN",
   "tIDENTIFIER",
-  "tINT",
+  "tINT_CONST",
   "tLPAREN",
   "tRPAREN",
   "tRBRACE",
@@ -75,7 +76,7 @@ Token *lex() {
       get_char();
       n = n * 10 + (d - '0');
     }
-    token->type = tINT;
+    token->type = tINT_CONST;
     token->int_value = n;
   }  else if (isalpha(c) || c == '_') {
     String *identifier = string_new();
@@ -86,7 +87,9 @@ Token *lex() {
       get_char();
       string_push(identifier, d);
     }
-    if (strcmp(identifier->buffer, "if") == 0) {
+    if (strcmp(identifier->buffer, "int") == 0) {
+      token->type = tINT;
+    } else if (strcmp(identifier->buffer, "if") == 0) {
       token->type = tIF;
     } else if (strcmp(identifier->buffer, "else") == 0) {
       token->type = tELSE;

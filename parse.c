@@ -19,7 +19,7 @@ Node *primary_expression() {
   Token *token = get_token();
   Node *node;
 
-  if (token->type == tINT) {
+  if (token->type == tINT_CONST) {
     node = node_new();
     node->type = CONST;
     node->int_value = token->int_value;
@@ -29,13 +29,10 @@ Node *primary_expression() {
     node->identifier = token->identifier;
     if (map_lookup(func_symbols, token->identifier)) {
       node->symbol = (Symbol *) map_lookup(func_symbols, token->identifier);
-    } else {
-      if (!map_lookup(symbols, token->identifier)) {
-        Symbol *symbol = symbol_new();
-        symbol->position = -(map_count(symbols) * 4 + 4);
-        map_put(symbols, token->identifier, symbol);
-      }
+    } else if (map_lookup(symbols, token->identifier)) {
       node->symbol = (Symbol *) map_lookup(symbols, token->identifier);
+    } else {
+      node->symbol = NULL;
     }
   } else if (token->type == tLPAREN) {
     node = expression();
@@ -324,6 +321,18 @@ Node *expression() {
   return assignment_expression();
 }
 
+void declaration() {
+  expect_token(tINT);
+  Token *token = expect_token(tIDENTIFIER);
+  expect_token(tSEMICOLON);
+
+  if (!map_lookup(symbols, token->identifier)) {
+    Symbol *symbol = symbol_new();
+    symbol->position = -(map_count(symbols) * 4 + 4);
+    map_put(symbols, token->identifier, symbol);
+  }
+}
+
 Node *statement();
 
 Node *compound_statement() {
@@ -335,8 +344,12 @@ Node *compound_statement() {
   while (1) {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
-    Node *stmt = statement();
-    vector_push(node->statements, (void *) stmt);
+    if (peek_token()->type == tINT) {
+      declaration();
+    } else {
+      Node *stmt = statement();
+      vector_push(node->statements, (void *) stmt);
+    }
   }
   expect_token(tRBRACE);
 

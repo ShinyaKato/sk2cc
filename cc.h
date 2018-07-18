@@ -42,6 +42,7 @@ extern char peek_char();
 extern char get_char();
 
 typedef enum token_type {
+  tINT,
   tIF,
   tELSE,
   tWHILE,
@@ -51,7 +52,7 @@ typedef enum token_type {
   tBREAK,
   tRETURN,
   tIDENTIFIER,
-  tINT,
+  tINT_CONST,
   tLPAREN,
   tRPAREN,
   tRBRACE,

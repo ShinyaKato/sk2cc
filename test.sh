@@ -138,15 +138,15 @@ test_expression "~183 & 255;" 72
 test_statements "789; 456; return 123;" 123
 test_statements "5 + 7 - 9; 3 >= 2 && 4 <= 5; 1 << 2; return (6 -4) * 32;" 64
 
-test_statements "x = 123; return 100 <= x && x < 200;" 1
-test_statements "x = 3; x = x * x + 1; return x + 3;" 13
-test_statements "return x = 2 * 3 * 4;" 24
-test_statements "return x = x = x = 3;" 3
-test_statements "x = 2; y = x + 5; return y;" 7
-test_statements "return x = y = z = 3;" 3
-test_statements "x = (y = (z = 1) + 2) + 3; return x;" 6
-test_statements "x = (y = (z = 1) + 2) + 3; return y;" 3
-test_statements "x = (y = (z = 1) + 2) + 3; return z;" 1
+test_statements "int x; x = 123; return 100 <= x && x < 200;" 1
+test_statements "int x; x = 3; x = x * x + 1; return x + 3;" 13
+test_statements "int x; return x = 2 * 3 * 4;" 24
+test_statements "int x; return x = x = x = 3;" 3
+test_statements "int x; int y; x = 2; y = x + 5; return y;" 7
+test_statements "int x; int y; int z; return x = y = z = 3;" 3
+test_statements "int x; int y; int z; x = (y = (z = 1) + 2) + 3; return x;" 6
+test_statements "int x; int y; int z; x = (y = (z = 1) + 2) + 3; return y;" 3
+test_statements "int x; int y; int z; x = (y = (z = 1) + 2) + 3; return z;" 1
 
 test_function_call "func_call();" "in func_call function."
 test_function_call "func_arg_1(1);" "1"
@@ -159,48 +159,48 @@ test_function_call "func_arg_2(2 * 3 < 6 ? 7 : 8, 13 / 2);" "8 6"
 test_function_call "func_arg_1(func_retval(3) + func_retval(4));" "25"
 
 test_program "f() { return 2; } g() { return 3; } main() { return f() * g(); }" 6
-test_program "f() { x = 2; y = 3; return x + 2 * y; } main() { t = f(); return t * 3; }" 24
-test_program "f() { x = 2; return x * x; } main() { t = f(); return t * f(); }" 16
+test_program "f() { int x; int y; x = 2; y = 3; return x + 2 * y; } main() { int t; t = f(); return t * 3; }" 24
+test_program "f() { int x; x = 2; return x * x; } main() { int t; t = f(); return t * f(); }" 16
 
 test_program "f(x) { return x * x; } main() { return f(1) + f(2) + f(3); }" 14
 test_program "f(x, y, z) { x = x * y; y = x + z; return x + y + z; } main() { return f(1, 2, 3); }" 10
 
-test_statements "x = 5; if (3 * 4 > 10) { x = 7; } return x;" 7
-test_statements "x = 5; if (3 * 4 < 10) { x = 7; } return x;" 5
-test_statements "x = 5; if (3 * 4 > 10) if (0) x = 7; return x;" 5
-test_statements "if (3 * 4 > 10) x = 3; else x = 4; return x;" 3
-test_statements "if (3 * 4 < 10) x = 3; else x = 4; return x;" 4
-test_statements "if (0) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 0
-test_statements "if (0) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 1
-test_statements "if (0) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 0
-test_statements "if (0) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 1
-test_statements "if (1) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 2
-test_statements "if (1) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 2
-test_statements "if (1) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 3
-test_statements "if (1) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 3
+test_statements "int x; x = 5; if (3 * 4 > 10) { x = 7; } return x;" 7
+test_statements "int x; x = 5; if (3 * 4 < 10) { x = 7; } return x;" 5
+test_statements "int x; x = 5; if (3 * 4 > 10) if (0) x = 7; return x;" 5
+test_statements "int x; if (3 * 4 > 10) x = 3; else x = 4; return x;" 3
+test_statements "int x; if (3 * 4 < 10) x = 3; else x = 4; return x;" 4
+test_statements "int x; if (0) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 0
+test_statements "int x; if (0) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 1
+test_statements "int x; if (0) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 0
+test_statements "int x; if (0) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 1
+test_statements "int x; if (1) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 2
+test_statements "int x; if (1) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 2
+test_statements "int x; if (1) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; return x;" 3
+test_statements "int x; if (1) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; return x;" 3
 
-test_statements "x = 1; s = 0; while (x <= 0) { s = s + x; x = x + 1; } return s;" 0
-test_statements "x = 1; s = 0; while (x <= 1) { s = s + x; x = x + 1; } return s;" 1
-test_statements "x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } return s;" 55
-test_statements "x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } return s;" 55
-test_statements "x = 1; s = 0; while (x <= 10) { if (x % 2 == 0) s = s + x; x = x + 1; } return s;" 30
-test_statements "x = 1; s = 0; while (x <= 10) { if (x % 2 == 1) s = s + x; x = x + 1; } return s;" 25
+test_statements "int x; int s; x = 1; s = 0; while (x <= 0) { s = s + x; x = x + 1; } return s;" 0
+test_statements "int x; int s; x = 1; s = 0; while (x <= 1) { s = s + x; x = x + 1; } return s;" 1
+test_statements "int x; int s; x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } return s;" 55
+test_statements "int x; int s; x = 1; s = 0; while (x <= 10) { s = s + x; x = x + 1; } return s;" 55
+test_statements "int x; int s; x = 1; s = 0; while (x <= 10) { if (x % 2 == 0) s = s + x; x = x + 1; } return s;" 30
+test_statements "int x; int s; x = 1; s = 0; while (x <= 10) { if (x % 2 == 1) s = s + x; x = x + 1; } return s;" 25
 
-test_statements "i = 0; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 45
-test_statements "i = 10; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 10
+test_statements "int i; int s; i = 0; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 45
+test_statements "int i; int s; i = 10; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 10
 
-test_statements "s = 0; i = 0; for (; i < 10;) { s = s + i; i = i + 1; } return s;" 45
-test_statements "s = 0; i = 0; for (; i < 10; i = i + 1) { s = s + i; } return s;" 45
-test_statements "s = 0; for (i = 0; i < 10;) { s = s + i; i = i + 1; } return s;" 45
-test_statements "s = 0; for (i = 0; i < 10; i = i + 1) { s = s + i; } return s;" 45
+test_statements "int s; int i; s = 0; i = 0; for (; i < 10;) { s = s + i; i = i + 1; } return s;" 45
+test_statements "int s; int i; s = 0; i = 0; for (; i < 10; i = i + 1) { s = s + i; } return s;" 45
+test_statements "int s; int i; s = 0; for (i = 0; i < 10;) { s = s + i; i = i + 1; } return s;" 45
+test_statements "int s; int i; s = 0; for (i = 0; i < 10; i = i + 1) { s = s + i; } return s;" 45
 
-test_statements "i = 0; for (;; i = i + 1) { if (i < 100) continue; break; } return i;" 100
-test_statements "i = 0; do { i = i + 1; if (i < 100) continue; break; } while(1); return i;" 100
-test_statements "i = 0; do { i = i + 1; if (i < 100) continue; } while(i < 50); return i;" 50
-test_statements "i = 0; while (1) { i = i + 1; if (i < 100) continue; break; } return i;" 100
+test_statements "int i; i = 0; for (;; i = i + 1) { if (i < 100) continue; break; } return i;" 100
+test_statements "int i; i = 0; do { i = i + 1; if (i < 100) continue; break; } while(1); return i;" 100
+test_statements "int i; i = 0; do { i = i + 1; if (i < 100) continue; } while(i < 50); return i;" 50
+test_statements "int i; i = 0; while (1) { i = i + 1; if (i < 100) continue; break; } return i;" 100
 
-test_statements "x = 0; return x; x = 1; return x;" 0
-test_statements "for (i = 0; i < 100; i = i + 1) if (i == 42) return i; return 123;" 42
+test_statements "int x; x = 0; return x; x = 1; return x;" 0
+test_statements "int i; for (i = 0; i < 100; i = i + 1) if (i == 42) return i; return 123;" 42
 
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
@@ -219,3 +219,4 @@ test_error "main(abc" "error: tRPAREN is expected."
 test_error "main(123) { 0; }" "error: tIDENTIFIER is expected."
 test_error "main(x, x) { 0; }" "error: duplicated parameter definition."
 test_error "main(a, b, c, d, e, f, g) { 0; }" "error: too many parameters."
+test_error "main() { x; }" "error: undefined identifier."
