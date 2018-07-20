@@ -105,6 +105,8 @@ typedef enum node_type {
   CONST,
   IDENTIFIER,
   FUNC_CALL,
+  ADDRESS,
+  INDIRECT,
   UPLUS,
   UMINUS,
   NOT,

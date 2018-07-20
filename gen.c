@@ -75,6 +75,20 @@ void gen_expr(Node *node) {
     gen_push("eax");
   }
 
+  if (node->type == ADDRESS) {
+    int pos = node->left->symbol->position;
+
+    printf("  lea %d(%%rbp), %%rax\n", pos);
+    printf("  push %%rax\n");
+  }
+
+  if (node->type == INDIRECT) {
+    gen_expr(node->left);
+    printf("  pop %%rax\n");
+    printf("  movl (%%rax), %%ecx\n");
+    gen_push("ecx");
+  }
+
   if (node->type == UPLUS) {
     gen_operand(node->left, "eax");
     gen_push("eax");

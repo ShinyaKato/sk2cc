@@ -79,7 +79,15 @@ Node *postfix_expression() {
 Node *unary_expression() {
   Node *node;
 
-  if (read_token(tADD)) {
+  if (read_token(tAND)) {
+    node = node_new();
+    node->type = ADDRESS;
+    node->left = unary_expression();
+  } else if (read_token(tMUL)) {
+    node = node_new();
+    node->type = INDIRECT;
+    node->left = unary_expression();
+  } else if (read_token(tADD)) {
     node = node_new();
     node->type = UPLUS;
     node->left = unary_expression();
