@@ -395,7 +395,7 @@ void gen_stmt(Node *node) {
 
   if (node->type == BREAK_STMT) {
     if (break_labels->length == 0) {
-      error("invalid continue statement.");
+      error("invalid break statement.");
     }
     gen_jump("jmp", *(int *) break_labels->array[break_labels->length - 1]);
   }
