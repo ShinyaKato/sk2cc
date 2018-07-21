@@ -150,12 +150,12 @@ typedef struct node {
   int int_value;
   char *identifier;
   Symbol *symbol;
-  struct node *args[6];
-  int args_count;
+  Vector *args;
   struct node *left, *right, *init, *control, *afterthrough, *expression;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
-  int local_vars_size, params_count;
+  Vector *params;
+  int local_vars_size;
   Vector *definitions;
 } Node;
 

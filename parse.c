@@ -56,13 +56,13 @@ Node *postfix_expression() {
       Node *parent = node_new();
       parent->type = FUNC_CALL;
       parent->left = node;
-      parent->args_count = 0;
+      parent->args = vector_new();
       if (peek_token()->type != tRPAREN) {
         do {
-          if (parent->args_count >= 6) {
+          if (parent->args->length >= 6) {
             error("too many arguments.");
           }
-          parent->args[parent->args_count++] = assignment_expression();
+          vector_push(parent->args, assignment_expression());
         } while (read_token(tCOMMA));
       }
       expect_token(tRPAREN);
@@ -468,7 +468,6 @@ Node *statement() {
 }
 
 Node *function_definition() {
-  int params_count = 0;
   map_clear(symbols);
 
   Token *id = expect_token(tIDENTIFIER);
@@ -478,20 +477,21 @@ Node *function_definition() {
   }
   map_put(func_symbols, id->identifier, (void *) func_sym);
 
+  Vector *params = vector_new();
   expect_token(tLPAREN);
   if (peek_token()->type != tRPAREN) {
     do {
-      if (params_count >= 6) {
+      if (params->length >= 6) {
         error("too many parameters.");
       }
       Token *token = expect_token(tIDENTIFIER);
       if (map_lookup(symbols, token->identifier)) {
         error("duplicated parameter definition.");
       }
-      Symbol *param = symbol_new();
-      param->offset = map_count(symbols) * 8 + 8;
-      map_put(symbols, token->identifier, param);
-      params_count++;
+      Symbol *symbol = symbol_new();
+      symbol->offset = map_count(symbols) * 8 + 8;
+      map_put(symbols, token->identifier, symbol);
+      vector_push(params, symbol);
     } while (read_token(tCOMMA));
   }
   expect_token(tRPAREN);
@@ -501,7 +501,7 @@ Node *function_definition() {
   node->identifier = id->identifier;
   node->function_body = compound_statement();
   node->local_vars_size = map_count(symbols) * 8;
-  node->params_count = params_count;
+  node->params = params;
 
   return node;
 }

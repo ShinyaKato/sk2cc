@@ -60,12 +60,12 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == FUNC_CALL) {
-    for (int i = 0; i < node->args_count; i++) {
-      gen_expr(node->args[i]);
+    for (int i = 0; i < node->args->length; i++) {
+      gen_expr((Node *) node->args->array[i]);
     }
 
     for (int i = 5; i >= 0; i--) {
-      if (i < node->args_count) {
+      if (i < node->args->length) {
         gen_pop("eax");
         printf("  mov %%rax, %%%s\n", arg_reg[i]);
       }
@@ -419,8 +419,8 @@ void gen_func_def(Node *node) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", node->local_vars_size);
-  for (int i = 0; i < node->params_count; i++) {
-    int offset = i * 8 + 8;
+  for (int i = 0; i < node->params->length; i++) {
+    int offset = ((Symbol *) node->params->array[i])->offset;
     printf("  mov %%%s, %%rax\n", arg_reg[i]);
     printf("  movl %%eax, %d(%%rbp)\n", -offset);
   }
