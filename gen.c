@@ -7,18 +7,18 @@ Vector *continue_labels, *break_labels;
 int return_label;
 
 void gen_immediate(int value) {
-  printf("  sub $4, %%rsp\n");
+  printf("  sub $8, %%rsp\n");
   printf("  movl $%d, 0(%%rsp)\n", value);
 }
 
 void gen_push(char *reg) {
-  printf("  sub $4, %%rsp\n");
+  printf("  sub $8, %%rsp\n");
   printf("  movl %%%s, 0(%%rsp)\n", reg);
 }
 
 void gen_pop(char *reg) {
   if(reg) printf("  movl 0(%%rsp), %%%s\n", reg);
-  printf("  add $4, %%rsp\n");
+  printf("  add $8, %%rsp\n");
 }
 
 void gen_jump(char *inst, int label) {
@@ -53,9 +53,9 @@ void gen_expr(Node *node) {
       error("undefined identifier.");
     }
 
-    int pos = node->symbol->position;
+    int offset = node->symbol->offset;
 
-    printf("  movl %d(%%rbp), %%eax\n", pos);
+    printf("  movl %d(%%rbp), %%eax\n", -offset);
     gen_push("eax");
   }
 
@@ -76,9 +76,9 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ADDRESS) {
-    int pos = node->left->symbol->position;
+    int offset = node->left->symbol->offset;
 
-    printf("  lea %d(%%rbp), %%rax\n", pos);
+    printf("  lea %d(%%rbp), %%rax\n", -offset);
     printf("  push %%rax\n");
   }
 
@@ -275,10 +275,10 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ASSIGN) {
-    int pos = node->left->symbol->position;
+    int offset = node->left->symbol->offset;
 
     gen_operand(node->right, "eax");
-    printf("  movl %%eax, %d(%%rbp)\n", pos);
+    printf("  movl %%eax, %d(%%rbp)\n", -offset);
     gen_push("eax");
   }
 }
@@ -418,14 +418,15 @@ void gen_func_def(Node *node) {
   printf("%s:\n", node->identifier);
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
-  printf("  sub $%d, %%rsp\n", 4 * node->vars_count);
+  printf("  sub $%d, %%rsp\n", node->local_vars_size);
   for (int i = 0; i < node->params_count; i++) {
+    int offset = i * 8 + 8;
     printf("  mov %%%s, %%rax\n", arg_reg[i]);
-    printf("  movl %%eax, %d(%%rbp)\n", -(i * 4 + 4));
+    printf("  movl %%eax, %d(%%rbp)\n", -offset);
   }
   gen_stmt(node->function_body);
   gen_label(return_label);
-  printf("  add $%d, %%rsp\n", 4 * node->vars_count);
+  printf("  add $%d, %%rsp\n", node->local_vars_size);
   printf("  pop %%rbp\n");
   printf("  ret\n");
 }

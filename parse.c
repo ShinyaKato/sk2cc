@@ -336,7 +336,7 @@ void declaration() {
 
   if (!map_lookup(symbols, token->identifier)) {
     Symbol *symbol = symbol_new();
-    symbol->position = -(map_count(symbols) * 4 + 4);
+    symbol->offset = map_count(symbols) * 8 + 8;
     map_put(symbols, token->identifier, symbol);
   }
 }
@@ -489,7 +489,7 @@ Node *function_definition() {
         error("duplicated parameter definition.");
       }
       Symbol *param = symbol_new();
-      param->position = -(map_count(symbols) * 4 + 4);
+      param->offset = map_count(symbols) * 8 + 8;
       map_put(symbols, token->identifier, param);
       params_count++;
     } while (read_token(tCOMMA));
@@ -500,7 +500,7 @@ Node *function_definition() {
   node->type = FUNC_DEF;
   node->identifier = id->identifier;
   node->function_body = compound_statement();
-  node->vars_count = map_count(symbols);
+  node->local_vars_size = map_count(symbols) * 8;
   node->params_count = params_count;
 
   return node;

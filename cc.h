@@ -98,7 +98,7 @@ extern bool read_token(TokenType type);
 extern void lex_init();
 
 typedef struct symbol {
-  int position;
+  int offset;
 } Symbol;
 
 typedef enum node_type {
@@ -155,7 +155,7 @@ typedef struct node {
   struct node *left, *right, *init, *control, *afterthrough, *expression;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
-  int vars_count, params_count;
+  int local_vars_size, params_count;
   Vector *definitions;
 } Node;
 
