@@ -54,13 +54,11 @@ void gen_expr(Node *node) {
       error("undefined identifier.");
     }
 
-    int offset = symbol->offset;
-
-    if (symbol->value_type->type == INT) {
-      printf("  movl %d(%%rbp), %%eax\n", -offset);
+    if (node->value_type->type == INT) {
+      printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
       gen_push("eax");
-    } else if (symbol->value_type->type == POINTER) {
-      printf("  mov %d(%%rbp), %%rax\n", -offset);
+    } else if (node->value_type->type == POINTER) {
+      printf("  mov %d(%%rbp), %%rax\n", -symbol->offset);
       printf("  push %%rax\n");
     }
   }
@@ -282,16 +280,15 @@ void gen_expr(Node *node) {
 
   if (node->type == ASSIGN) {
     Symbol *symbol = node->left->symbol;
-    int offset = symbol->offset;
 
-    if (symbol->value_type->type == INT) {
+    if (node->left->value_type->type == INT) {
       gen_operand(node->right, "eax");
-      printf("  movl %%eax, %d(%%rbp)\n", -offset);
+      printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
       gen_push("eax");
-    } else if (symbol->value_type->type == POINTER) {
+    } else if (node->left->value_type->type == POINTER) {
       gen_expr(node->right);
       printf("  pop %%rax\n");
-      printf("  mov %%rax, %d(%%rbp)\n", -offset);
+      printf("  mov %%rax, %d(%%rbp)\n", -symbol->offset);
       printf("  push %%rax\n");
     }
   }

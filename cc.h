@@ -104,7 +104,7 @@ typedef enum type_type {
 
 typedef struct type {
   TypeType type;
-  struct type *pointer_to;
+  struct type *pointer_of;
 } Type;
 
 typedef struct symbol {
@@ -158,6 +158,7 @@ typedef enum node_type {
 
 typedef struct node {
   enum node_type type;
+  Type *value_type;
   int int_value;
   char *identifier;
   Symbol *symbol;

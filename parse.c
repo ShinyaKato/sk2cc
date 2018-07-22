@@ -2,14 +2,27 @@
 
 Map *func_symbols, *symbols;
 
-Symbol *symbol_new() {
-  Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
-  return symbol;
-}
-
 Type *type_new() {
   Type *type = (Type *) malloc(sizeof(Type));
   return type;
+}
+
+Type *int_type() {
+  Type *type = type_new();
+  type->type = INT;
+  return type;
+}
+
+Type *pointer_to(Type *type) {
+  Type *pointer = type_new();
+  pointer->type = POINTER;
+  pointer->pointer_of = type;
+  return pointer;
+}
+
+Symbol *symbol_new() {
+  Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
+  return symbol;
 }
 
 Node *node_new() {
@@ -27,18 +40,23 @@ Node *primary_expression() {
   if (token->type == tINT_CONST) {
     node = node_new();
     node->type = CONST;
+    node->value_type = int_type();
     node->int_value = token->int_value;
   } else if (token->type == tIDENTIFIER) {
+    char *identifier = token->identifier;
+    Symbol *symbol;
+    if (map_lookup(func_symbols, identifier)) {
+      symbol = (Symbol *) map_lookup(func_symbols, identifier);
+    } else if (map_lookup(symbols, identifier)) {
+      symbol = (Symbol *) map_lookup(symbols, identifier);
+    } else {
+      symbol = NULL;
+    }
     node = node_new();
     node->type = IDENTIFIER;
-    node->identifier = token->identifier;
-    if (map_lookup(func_symbols, token->identifier)) {
-      node->symbol = (Symbol *) map_lookup(func_symbols, token->identifier);
-    } else if (map_lookup(symbols, token->identifier)) {
-      node->symbol = (Symbol *) map_lookup(symbols, token->identifier);
-    } else {
-      node->symbol = NULL;
-    }
+    node->value_type = symbol ? symbol->value_type : int_type();
+    node->identifier = identifier;
+    node->symbol = symbol;
   } else if (token->type == tLPAREN) {
     node = expression();
     expect_token(tRPAREN);
@@ -60,6 +78,7 @@ Node *postfix_expression() {
 
       Node *parent = node_new();
       parent->type = FUNC_CALL;
+      parent->value_type = int_type();
       parent->left = node;
       parent->args = vector_new();
       if (peek_token()->type != tRPAREN) {
@@ -85,29 +104,59 @@ Node *unary_expression() {
   Node *node;
 
   if (read_token(tAND)) {
+    Node *expr = unary_expression();
+    if (expr->type != IDENTIFIER) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = ADDRESS;
-    node->left = unary_expression();
+    node->value_type = pointer_to(expr->value_type);
+    node->left = expr;
   } else if (read_token(tMUL)) {
+    Node *expr = unary_expression();
+    if (expr->value_type->type != POINTER) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = INDIRECT;
-    node->left = unary_expression();
+    node->value_type = expr->value_type->pointer_of;
+    node->left = expr;
   } else if (read_token(tADD)) {
+    Node *expr = unary_expression();
+    if (expr->value_type->type != INT) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = UPLUS;
-    node->left = unary_expression();
+    node->value_type = expr->value_type;
+    node->left = expr;
   } else if (read_token(tSUB)) {
+    Node *expr = unary_expression();
+    if (expr->value_type->type != INT) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = UMINUS;
-    node->left = unary_expression();
+    node->value_type = expr->value_type;
+    node->left = expr;
   } else if (read_token(tNOT)) {
+    Node *expr = unary_expression();
+    if (expr->value_type->type != INT) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = NOT;
-    node->left = unary_expression();
+    node->value_type = expr->value_type;
+    node->left = expr;
   } else if (read_token(tLNOT)) {
+    Node *expr = unary_expression();
+    if (expr->value_type->type != INT) {
+      error("invalid operand type.");
+    }
     node = node_new();
     node->type = LNOT;
-    node->left = unary_expression();
+    node->value_type = expr->value_type;
+    node->left = expr;
   } else {
     node = postfix_expression();
   }
@@ -125,12 +174,21 @@ Node *multiplicative_expression(Node *unary_exp) {
     else if (read_token(tMOD)) type = MOD;
     else break;
 
-    Node *parent = node_new();
-    parent->type = type;
-    parent->left = node;
-    parent->right = unary_expression();
+    Node *left = node;
+    Node *right = unary_expression();
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = type;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -145,12 +203,21 @@ Node *additive_expression(Node *unary_exp) {
     else if (read_token(tSUB)) type = SUB;
     else break;
 
-    Node *parent = node_new();
-    parent->type = type;
-    parent->left = node;
-    parent->right = multiplicative_expression(unary_expression());
+    Node *left = node;
+    Node *right = multiplicative_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = type;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -165,12 +232,21 @@ Node *shift_expression(Node *unary_exp) {
     else if (read_token(tRSHIFT)) type = RSHIFT;
     else break;
 
-    Node *parent = node_new();
-    parent->type = type;
-    parent->left = node;
-    parent->right = additive_expression(unary_expression());
+    Node *left = node;
+    Node *right = additive_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = type;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -187,12 +263,21 @@ Node *relational_expression(Node *unary_exp) {
     else if (read_token(tGTE)) type = GTE;
     else break;
 
-    Node *parent = node_new();
-    parent->type = type;
-    parent->left = node;
-    parent->right = shift_expression(unary_expression());
+    Node *left = node;
+    Node *right = shift_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = type;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -207,12 +292,21 @@ Node *equality_expression(Node *unary_exp) {
     else if (read_token(tNEQ)) type = NEQ;
     else break;
 
-    Node *parent = node_new();
-    parent->type = type;
-    parent->left = node;
-    parent->right = relational_expression(unary_expression());
+    Node *left = node;
+    Node *right = relational_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = type;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -222,12 +316,21 @@ Node *and_expression(Node *unary_exp) {
   Node *node = equality_expression(unary_exp);
 
   while (read_token(tAND)) {
-    Node *parent = node_new();
-    parent->type = AND;
-    parent->left = node;
-    parent->right = equality_expression(unary_expression());
+    Node *left = node;
+    Node *right = equality_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = AND;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -237,12 +340,21 @@ Node *exclusive_or_expression(Node *unary_exp) {
   Node *node = and_expression(unary_exp);
 
   while (read_token(tXOR)) {
-    Node *parent = node_new();
-    parent->type = XOR;
-    parent->left = node;
-    parent->right = and_expression(unary_expression());
+    Node *left = node;
+    Node *right = and_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = XOR;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -252,12 +364,21 @@ Node *inclusive_or_expression(Node *unary_exp) {
   Node *node = exclusive_or_expression(unary_exp);
 
   while (read_token(tOR)) {
-    Node *parent = node_new();
-    parent->type = OR;
-    parent->left = node;
-    parent->right = exclusive_or_expression(unary_expression());
+    Node *left = node;
+    Node *right = exclusive_or_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = OR;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -267,12 +388,21 @@ Node *logical_and_expression(Node *unary_exp) {
   Node *node = inclusive_or_expression(unary_exp);
 
   while (read_token(tLAND)) {
-    Node *parent = node_new();
-    parent->type = LAND;
-    parent->left = node;
-    parent->right = inclusive_or_expression(unary_expression());
+    Node *left = node;
+    Node *right = inclusive_or_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = LAND;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -282,12 +412,21 @@ Node *logical_or_expression(Node *unary_exp) {
   Node *node = logical_and_expression(unary_exp);
 
   while (read_token(tLOR)) {
-    Node *parent = node_new();
-    parent->type = LOR;
-    parent->left = node;
-    parent->right = logical_and_expression(unary_expression());
+    Node *left = node;
+    Node *right = logical_and_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = LOR;
+    node->value_type = value_type;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -297,14 +436,24 @@ Node *conditional_expression(Node *unary_exp) {
   Node *node = logical_or_expression(unary_exp);
 
   if (read_token(tQUESTION)) {
-    Node *parent = node_new();
-    parent->type = CONDITION;
-    parent->control = node;
-    parent->left = expression();
+    Node *control = node;
+    Node *left = expression();
     expect_token(tCOLON);
-    parent->right = conditional_expression(unary_expression());
+    Node *right = conditional_expression(unary_expression());
 
-    node = parent;
+    Type *value_type;
+    if (left->value_type->type == INT && right->value_type->type == INT) {
+      value_type = int_type();
+    } else {
+      error("invalid operand type.");
+    }
+
+    node = node_new();
+    node->type = CONDITION;
+    node->value_type = value_type;
+    node->control = control;
+    node->left = left;
+    node->right = right;
   }
 
   return node;
@@ -315,14 +464,21 @@ Node *assignment_expression() {
 
   Node *unary_exp = unary_expression();
   if (read_token(tASSIGN)) {
-    if (unary_exp->type != IDENTIFIER) {
+    Node *left = unary_exp;
+    Node *right = assignment_expression();
+
+    if (left->type != IDENTIFIER) {
       error("left side of assignment operator should be identifier.");
+    }
+    if (left->value_type->type != right->value_type->type) {
+      error("invalid operand type.");
     }
 
     node = node_new();
     node->type = ASSIGN;
-    node->left = unary_exp;
-    node->right = assignment_expression();
+    node->value_type = left->value_type;
+    node->left = left;
+    node->right = right;
   } else {
     node = conditional_expression(unary_exp);
   }
@@ -335,16 +491,10 @@ Node *expression() {
 }
 
 void declaration() {
+  Type *type = int_type();
   expect_token(tINT);
-
-  Type *type = type_new();
-  type->type = INT;
-
   while (read_token(tMUL)) {
-    Type *ptr_type = type_new();
-    ptr_type->type = POINTER;
-    ptr_type->pointer_to = type;
-    type = ptr_type;
+    type = pointer_to(type);
   }
 
   Token *token = expect_token(tIDENTIFIER);
