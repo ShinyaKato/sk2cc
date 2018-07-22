@@ -70,13 +70,23 @@ void gen_expr(Node *node) {
 
     for (int i = 5; i >= 0; i--) {
       if (i < node->args->length) {
-        gen_pop("eax");
-        printf("  mov %%rax, %%%s\n", arg_reg[i]);
+        Node *arg = (Node *) node->args->array[i];
+        if (arg->value_type->type == INT) {
+          gen_pop("eax");
+          printf("  mov %%rax, %%%s\n", arg_reg[i]);
+        } else if (arg->value_type->type == POINTER) {
+          printf("  pop %%%s\n", arg_reg[i]);
+        }
       }
     }
 
     printf("  call %s\n", node->left->identifier);
-    gen_push("eax");
+
+    if (node->value_type->type == INT) {
+      gen_push("eax");
+    } else if (node->value_type->type == POINTER) {
+      printf("  push %%rax\n");
+    }
   }
 
   if (node->type == ADDRESS) {
@@ -429,8 +439,14 @@ void gen_stmt(Node *node) {
   }
 
   if (node->type == RETURN_STMT) {
-    if (node->expression) {
-      gen_operand(node->expression, "eax");
+    Node *expr = node->expression;
+    if (expr) {
+      if (expr->value_type->type == INT) {
+        gen_operand(expr, "eax");
+      } else if (expr->value_type->type == POINTER) {
+        gen_expr(expr);
+        printf("  pop %%rax\n");
+      }
     }
     gen_jump("jmp", return_label);
   }
@@ -447,12 +463,19 @@ void gen_func_def(Node *node) {
   printf("  push %%rbp\n");
   printf("  mov %%rsp, %%rbp\n");
   printf("  sub $%d, %%rsp\n", node->local_vars_size);
+
   for (int i = 0; i < node->params->length; i++) {
-    int offset = ((Symbol *) node->params->array[i])->offset;
-    printf("  mov %%%s, %%rax\n", arg_reg[i]);
-    printf("  movl %%eax, %d(%%rbp)\n", -offset);
+    Symbol *symbol = (Symbol *) node->params->array[i];
+    if (symbol->value_type->type == INT) {
+      printf("  mov %%%s, %%rax\n", arg_reg[i]);
+      printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
+    } else if (symbol->value_type->type == POINTER) {
+      printf("  mov %%%s, %d(%%rbp)\n", arg_reg[i], -symbol->offset);
+    }
   }
+
   gen_stmt(node->function_body);
+
   gen_label(return_label);
   printf("  add $%d, %%rsp\n", node->local_vars_size);
   printf("  pop %%rbp\n");

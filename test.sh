@@ -9,14 +9,14 @@ failed() {
 
 test_expression() {
   exp=$1; val=$2;
-  echo "main() { return $exp }" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
+  echo "int main() { return $exp }" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
   ./tmp/out
   [ $? -ne $val ] && failed "\"$exp\" should be $val."
 }
 
 test_statements() {
   exp=$1; val=$2;
-  echo "main() { $exp }" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
+  echo "int main() { $exp }" | ./cc > tmp/out.s && gcc tmp/out.s -o tmp/out || failed "failed to compile \"$exp\"."
   ./tmp/out
   [ $? -ne $val ] && failed "\"$exp\" should be $val."
 }
@@ -30,7 +30,7 @@ test_program() {
 
 test_function_call() {
   exp=$1; output=$2;
-  echo "main() { $exp }" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
+  echo "int main() { $exp }" | ./cc > tmp/out.s && gcc -c tmp/out.s -o tmp/out.o || failed "failed to compile \"$exp\"."
   gcc -c tests/func_call_stub.c -o tmp/stub.o || failed "failed to compile stub."
   gcc tmp/out.o tmp/stub.o -o tmp/out || failed "failed to link \"$exp\" and stub."
   ./tmp/out > tmp/stdout.txt && echo "$output" | diff - tmp/stdout.txt || failed "standard output should be \"$output\"."
@@ -158,12 +158,12 @@ test_function_call "func_arg_6(1, 2, 3, 4, 5, 6);" "1 2 3 4 5 6"
 test_function_call "func_arg_2(2 * 3 < 6 ? 7 : 8, 13 / 2);" "8 6"
 test_function_call "func_arg_1(func_retval(3) + func_retval(4));" "25"
 
-test_program "f() { return 2; } g() { return 3; } main() { return f() * g(); }" 6
-test_program "f() { int x; int y; x = 2; y = 3; return x + 2 * y; } main() { int t; t = f(); return t * 3; }" 24
-test_program "f() { int x; x = 2; return x * x; } main() { int t; t = f(); return t * f(); }" 16
+test_program "int f() { return 2; } int g() { return 3; } int main() { return f() * g(); }" 6
+test_program "int f() { int x; int y; x = 2; y = 3; return x + 2 * y; } int main() { int t; t = f(); return t * 3; }" 24
+test_program "int f() { int x; x = 2; return x * x; } int main() { int t; t = f(); return t * f(); }" 16
 
-test_program "f(x) { return x * x; } main() { return f(1) + f(2) + f(3); }" 14
-test_program "f(x, y, z) { x = x * y; y = x + z; return x + y + z; } main() { return f(1, 2, 3); }" 10
+test_program "int f(int x) { return x * x; } int main() { return f(1) + f(2) + f(3); }" 14
+test_program "int f(int x, int y, int z) { x = x * y; y = x + z; return x + y + z; } int main() { return f(1, 2, 3); }" 10
 
 test_statements "int x; x = 5; if (3 * 4 > 10) { x = 7; } return x;" 7
 test_statements "int x; x = 5; if (3 * 4 < 10) { x = 7; } return x;" 5
@@ -211,25 +211,31 @@ test_statements "int x; x = 123; int *y; y = &x; int **z; z = &y; return **z;" 1
 test_statements "int x; x = 123; int *y; y = &x; *y = 231; return x;" 231
 test_statements "int x1; int x2; x1 = 123; x2 = 231; int *y; y = &x1; int **z; z = &y; *z = &x2; *y = 12; return x2;" 12
 
-test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
-test_error "main() { 5 + *; }" "error: unexpected primary expression."
-test_error "main() { 5 }" "error: tSEMICOLON is expected."
-test_error "main() { 5 (4); }" "error: invalid function call."
-test_error "main() { 1 ? 2; }" "error: tCOLON is expected."
-test_error "main() { 1 = 2 + 3; }" "error: left side of assignment operator should be identifier or indirect operator."
-test_error "main() { func_call(1, 2, 3, 4, 5, 6, 7); }" "error: too many arguments."
-test_error "main() { func_call(1, 2, 3; }" "error: tRPAREN is expected."
-test_error "main()" "error: tLBRACE is expected."
-test_error "main() { 2;" "error: tRBRACE is expected."
-test_error "123" "error: tIDENTIFIER is expected."
-test_error "f() { 1; } f() { 2; } main() { 1; }" "error: duplicated function definition."
-test_error "main" "error: tLPAREN is expected."
-test_error "main(abc" "error: tRPAREN is expected."
-test_error "main(123) { 0; }" "error: tIDENTIFIER is expected."
-test_error "main(x, x) { 0; }" "error: duplicated parameter definition."
-test_error "main(a, b, c, d, e, f, g) { 0; }" "error: too many parameters."
-test_error "main() { x; }" "error: undefined identifier."
-test_error "main() { continue; }" "error: invalid continue statement."
-test_error "main() { break; }" "error: invalid break statement."
-test_error "main() { return &123; }" "error: invalid operand type."
-test_error "main() { return *123; }" "error: invalid operand type."
+test_program "int *f(int *p) { return p; } int main() { int x; x = 123; int *y; y = f(&x); return *y; }" 123
+test_program "int *f(int *p) { *p = 231; return p; } int main() { int x; x = 123; int *y; y = f(&x); return *y; }" 231
+
+test_function_call "int *x; alloc(&x, 53, 29, 64); print_int(*x);" "53"
+
+test_error "int main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
+test_error "int main() { 5 + *; }" "error: unexpected primary expression."
+test_error "int main() { 5 }" "error: tSEMICOLON is expected."
+test_error "int main() { 5 (4); }" "error: invalid function call."
+test_error "int main() { 1 ? 2; }" "error: tCOLON is expected."
+test_error "int main() { 1 = 2 + 3; }" "error: left side of assignment operator should be identifier or indirect operator."
+test_error "int main() { func_call(1, 2, 3, 4, 5, 6, 7); }" "error: too many arguments."
+test_error "int main() { func_call(1, 2, 3; }" "error: tRPAREN is expected."
+test_error "int main()" "error: tLBRACE is expected."
+test_error "int main() { 2;" "error: tRBRACE is expected."
+test_error "123" "error: tINT is expected."
+test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "error: duplicated function definition."
+test_error "int main" "error: tLPAREN is expected."
+test_error "int main(int abc" "error: tRPAREN is expected."
+test_error "int main(int 123) { 0; }" "error: tIDENTIFIER is expected."
+test_error "int main(int x, int x) { 0; }" "error: duplicated parameter definition."
+test_error "int main(int a, int b, int c, int d, int e, int f, int g) { 0; }" "error: too many parameters."
+test_error "int main(x) { return x; }" "error: tINT is expected."
+test_error "int main() { x; }" "error: undefined identifier."
+test_error "int main() { continue; }" "error: invalid continue statement."
+test_error "int main() { break; }" "error: invalid break statement."
+test_error "int main() { return &123; }" "error: invalid operand type."
+test_error "int main() { return *123; }" "error: invalid operand type."

@@ -76,9 +76,11 @@ Node *postfix_expression() {
         error("invalid function call.");
       }
 
+      Symbol *symbol = (Symbol *) map_lookup(func_symbols, node->identifier);
+
       Node *parent = node_new();
       parent->type = FUNC_CALL;
-      parent->value_type = int_type();
+      parent->value_type = symbol ? symbol->value_type : int_type();
       parent->left = node;
       parent->args = vector_new();
       if (peek_token()->type != tRPAREN) {
@@ -637,10 +639,15 @@ Node *statement() {
 Node *function_definition() {
   map_clear(symbols);
 
+  expect_token(tINT);
+  Type *type = int_type();
+  while (read_token(tMUL)) {
+    type = pointer_to(type);
+  }
+
   Token *id = expect_token(tIDENTIFIER);
   Symbol *func_sym = symbol_new();
-  func_sym->value_type = type_new();
-  func_sym->value_type->type = INT;
+  func_sym->value_type = type;
   if (map_lookup(func_symbols, id->identifier)) {
     error("duplicated function definition.");
   }
@@ -653,13 +660,17 @@ Node *function_definition() {
       if (params->length >= 6) {
         error("too many parameters.");
       }
+      expect_token(tINT);
+      Type *param_type = int_type();
+      while (read_token(tMUL)) {
+        param_type = pointer_to(param_type);
+      }
       Token *token = expect_token(tIDENTIFIER);
       if (map_lookup(symbols, token->identifier)) {
         error("duplicated parameter definition.");
       }
       Symbol *symbol = symbol_new();
-      symbol->value_type = type_new();
-      symbol->value_type->type = INT;
+      symbol->value_type = param_type;
       symbol->offset = map_count(symbols) * 8 + 8;
       map_put(symbols, token->identifier, symbol);
       vector_push(params, symbol);

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 int func_call(void) {
   printf("in func_call function.\n");
@@ -37,4 +38,17 @@ int func_arg_6(int a, int b, int c, int d, int e, int f) {
 
 int func_retval(int x) {
   return x * x;
+}
+
+int print_int(int n) {
+  printf("%d\n", n);
+  return 0;
+}
+
+int *alloc(int **buf, int a, int b, int c) {
+  *buf = (int *) malloc(sizeof(int) * 3);
+  (*buf)[0] = a;
+  (*buf)[1] = b;
+  (*buf)[2] = c;
+  return 0;
 }
