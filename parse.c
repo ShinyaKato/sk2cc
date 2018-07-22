@@ -467,8 +467,8 @@ Node *assignment_expression() {
     Node *left = unary_exp;
     Node *right = assignment_expression();
 
-    if (left->type != IDENTIFIER) {
-      error("left side of assignment operator should be identifier.");
+    if (left->type != IDENTIFIER && left->type != INDIRECT) {
+      error("left side of assignment operator should be identifier or indirect operator.");
     }
     if (left->value_type->type != right->value_type->type) {
       error("invalid operand type.");

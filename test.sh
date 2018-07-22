@@ -208,12 +208,15 @@ test_statements "int x; int y; x = 7; y = 5; return *&x * *&y;" 35
 test_statements "int x; x = 123; int *y; y = &x; return *y;" 123
 test_statements "int x; x = 123; int *y; y = &x; int **z; z = &y; return **z;" 123
 
+test_statements "int x; x = 123; int *y; y = &x; *y = 231; return x;" 231
+test_statements "int x1; int x2; x1 = 123; x2 = 231; int *y; y = &x1; int **z; z = &y; *z = &x2; *y = 12; return x2;" 12
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."
 test_error "main() { 5 (4); }" "error: invalid function call."
 test_error "main() { 1 ? 2; }" "error: tCOLON is expected."
-test_error "main() { 1 = 2 + 3; }" "error: left side of assignment operator should be identifier."
+test_error "main() { 1 = 2 + 3; }" "error: left side of assignment operator should be identifier or indirect operator."
 test_error "main() { func_call(1, 2, 3, 4, 5, 6, 7); }" "error: too many arguments."
 test_error "main() { func_call(1, 2, 3; }" "error: tRPAREN is expected."
 test_error "main()" "error: tLBRACE is expected."
