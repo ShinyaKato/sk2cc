@@ -205,6 +205,9 @@ test_statements "int i; for (i = 0; i < 100; i = i + 1) if (i == 42) return i; r
 test_statements "int x; x = 7; return *&x;" 7
 test_statements "int x; int y; x = 7; y = 5; return *&x * *&y;" 35
 
+test_statements "int x; x = 123; int *y; y = &x; return *y;" 123
+test_statements "int x; x = 123; int *y; y = &x; int **z; z = &y; return **z;" 123
+
 test_error "main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
 test_error "main() { 5 + *; }" "error: unexpected primary expression."
 test_error "main() { 5 }" "error: tSEMICOLON is expected."

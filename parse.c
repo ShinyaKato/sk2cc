@@ -7,6 +7,11 @@ Symbol *symbol_new() {
   return symbol;
 }
 
+Type *type_new() {
+  Type *type = (Type *) malloc(sizeof(Type));
+  return type;
+}
+
 Node *node_new() {
   Node *node = (Node *) malloc(sizeof(Node));
   return node;
@@ -331,11 +336,23 @@ Node *expression() {
 
 void declaration() {
   expect_token(tINT);
+
+  Type *type = type_new();
+  type->type = INT;
+
+  while (read_token(tMUL)) {
+    Type *ptr_type = type_new();
+    ptr_type->type = POINTER;
+    ptr_type->pointer_to = type;
+    type = ptr_type;
+  }
+
   Token *token = expect_token(tIDENTIFIER);
   expect_token(tSEMICOLON);
 
   if (!map_lookup(symbols, token->identifier)) {
     Symbol *symbol = symbol_new();
+    symbol->value_type = type;
     symbol->offset = map_count(symbols) * 8 + 8;
     map_put(symbols, token->identifier, symbol);
   }
@@ -472,6 +489,8 @@ Node *function_definition() {
 
   Token *id = expect_token(tIDENTIFIER);
   Symbol *func_sym = symbol_new();
+  func_sym->value_type = type_new();
+  func_sym->value_type->type = INT;
   if (map_lookup(func_symbols, id->identifier)) {
     error("duplicated function definition.");
   }
@@ -489,6 +508,8 @@ Node *function_definition() {
         error("duplicated parameter definition.");
       }
       Symbol *symbol = symbol_new();
+      symbol->value_type = type_new();
+      symbol->value_type->type = INT;
       symbol->offset = map_count(symbols) * 8 + 8;
       map_put(symbols, token->identifier, symbol);
       vector_push(params, symbol);

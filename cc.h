@@ -97,7 +97,18 @@ extern Token *expect_token(TokenType type);
 extern bool read_token(TokenType type);
 extern void lex_init();
 
+typedef enum type_type {
+  INT,
+  POINTER
+} TypeType;
+
+typedef struct type {
+  TypeType type;
+  struct type *pointer_to;
+} Type;
+
 typedef struct symbol {
+  Type *value_type;
   int offset;
 } Symbol;
 
