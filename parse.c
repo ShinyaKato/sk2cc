@@ -211,6 +211,8 @@ Node *additive_expression(Node *unary_exp) {
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
       value_type = int_type();
+    } else if (left->value_type->type == POINTER && right->value_type->type == INT) {
+      value_type = left->value_type;
     } else {
       error("invalid operand type.");
     }

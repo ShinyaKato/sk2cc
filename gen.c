@@ -149,15 +149,59 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ADD) {
-    gen_operands(node->left, node->right, "eax", "ecx");
-    printf("  addl %%ecx, %%eax\n");
-    gen_push("eax");
+    Node *left = node->left;
+    Node *right = node->right;
+    Type *left_type = left->value_type;
+    Type *right_type = right->value_type;
+
+    if (left_type->type == INT && right_type->type == INT) {
+      gen_operands(node->left, node->right, "eax", "ecx");
+      printf("  addl %%ecx, %%eax\n");
+      gen_push("eax");
+    }
+
+    if (left_type->type == POINTER && right_type->type == INT) {
+      int size;
+      if (left_type->pointer_of->type == INT) size = 4;
+      else if (left_type->pointer_of->type == POINTER) size = 8;
+      else error("cannot identify size of pointer_of.");
+
+      gen_expr(node->left);
+      gen_operand(node->right, "eax");
+      printf("  mov $%d, %%rdx\n", size);
+      printf("  mul %%rdx\n");
+      printf("  pop %%rcx\n");
+      printf("  add %%rax, %%rcx\n");
+      printf("  push %%rcx\n");
+    }
   }
 
   if (node->type == SUB) {
-    gen_operands(node->left, node->right, "eax", "ecx");
-    printf("  subl %%ecx, %%eax\n");
-    gen_push("eax");
+    Node *left = node->left;
+    Node *right = node->right;
+    Type *left_type = left->value_type;
+    Type *right_type = right->value_type;
+
+    if (left_type->type == INT && right_type->type == INT) {
+      gen_operands(node->left, node->right, "eax", "ecx");
+      printf("  subl %%ecx, %%eax\n");
+      gen_push("eax");
+    }
+
+    if (left_type->type == POINTER && right_type->type == INT) {
+      int size;
+      if (left_type->pointer_of->type == INT) size = 4;
+      else if (left_type->pointer_of->type == POINTER) size = 8;
+      else error("cannot identify size of pointer_of.");
+
+      gen_expr(node->left);
+      gen_operand(node->right, "eax");
+      printf("  mov $%d, %%rdx\n", size);
+      printf("  mul %%rdx\n");
+      printf("  pop %%rcx\n");
+      printf("  sub %%rax, %%rcx\n");
+      printf("  push %%rcx\n");
+    }
   }
 
   if (node->type == LSHIFT) {
