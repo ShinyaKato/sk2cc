@@ -340,7 +340,9 @@ void gen_expr(Node *node) {
         gen_operand(node->right, "eax");
         printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
         gen_push("eax");
-      } else if (node->left->value_type->type == POINTER) {
+      }
+
+      if (node->left->value_type->type == POINTER) {
         gen_expr(node->right);
         printf("  pop %%rax\n");
         printf("  mov %%rax, %d(%%rbp)\n", -symbol->offset);
@@ -349,15 +351,19 @@ void gen_expr(Node *node) {
     }
 
     if (node->left->type == INDIRECT) {
-      gen_expr(node->left->left);
-      printf("  pop %%rcx\n");
       if (node->left->left->value_type->type == INT) {
+        gen_expr(node->left->left);
         gen_operand(node->right, "eax");
+        printf("  pop %%rcx\n");
         printf("  movl %%eax, (%%rcx)\n");
         gen_push("eax");
-      } else if (node->left->left->value_type->type == POINTER) {
+      }
+
+      if (node->left->left->value_type->type == POINTER) {
+        gen_expr(node->left->left);
         gen_expr(node->right);
         printf("  pop %%rax\n");
+        printf("  pop %%rcx\n");
         printf("  mov %%rax, (%%rcx)\n");
         printf("  push %%rax\n");
       }

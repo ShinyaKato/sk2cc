@@ -218,7 +218,7 @@ test_function_call "int *x; alloc(&x, 53, 29, 64); print_int(*x);" "53"
 test_function_call "int *x; alloc(&x, 53, 29, 64); print_int(*(x + 1));" 29
 test_function_call "int *x; alloc(&x, 53, 29, 64); print_int(*(x + 2));" 64
 test_function_call "int *x; alloc(&x, 53, 29, 64); *(x + 1) = 5; print_int(*(x + 1));" 5
-# test_function_call "int *x; alloc(&x, 53, 29, 64); *(x + 1) = *(x + 2); print_int(*(x + 1));" 64
+test_function_call "int *x; alloc(&x, 53, 29, 64); *(x + 1) = *(x + 2); print_int(*(x + 1));" 64
 test_function_call "int *x; alloc(&x, 53, 29, 64); int *y; y = x + 2; print_int(*(y - 1));" 29
 
 test_error "int main() { 2 * (3 + 4; }" "error: tRPAREN is expected."
