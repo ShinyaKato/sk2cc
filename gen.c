@@ -58,8 +58,13 @@ void gen_expr(Node *node) {
       printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
       gen_push("eax");
     } else if (node->value_type->type == POINTER) {
-      printf("  mov %d(%%rbp), %%rax\n", -symbol->offset);
-      printf("  push %%rax\n");
+      if (node->symbol->value_type->type == POINTER) {
+        printf("  mov %d(%%rbp), %%rax\n", -symbol->offset);
+        printf("  push %%rax\n");
+      } else if (node->symbol->value_type->type == ARRAY) {
+        printf("  lea %d(%%rbp), %%rax\n", -symbol->offset);
+        printf("  push %%rax\n");
+      }
     }
   }
 
@@ -161,10 +166,7 @@ void gen_expr(Node *node) {
     }
 
     if (left_type->type == POINTER && right_type->type == INT) {
-      int size;
-      if (left_type->pointer_of->type == INT) size = 4;
-      else if (left_type->pointer_of->type == POINTER) size = 8;
-      else error("cannot identify size of pointer_of.");
+      int size = left_type->pointer_of->size;
 
       gen_expr(node->left);
       gen_operand(node->right, "eax");
@@ -351,7 +353,7 @@ void gen_expr(Node *node) {
     }
 
     if (node->left->type == INDIRECT) {
-      if (node->left->left->value_type->type == INT) {
+      if (node->left->left->value_type->pointer_of->type == INT) {
         gen_expr(node->left->left);
         gen_operand(node->right, "eax");
         printf("  pop %%rcx\n");
@@ -359,7 +361,7 @@ void gen_expr(Node *node) {
         gen_push("eax");
       }
 
-      if (node->left->left->value_type->type == POINTER) {
+      if (node->left->left->value_type->pointer_of->type == POINTER) {
         gen_expr(node->left->left);
         gen_expr(node->right);
         printf("  pop %%rax\n");

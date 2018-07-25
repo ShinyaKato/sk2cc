@@ -230,6 +230,13 @@ test_stmts_stdout "int *x; alloc(&x, 53, 29, 64); *(x + 1) = 5; print_int(*(x + 
 test_stmts_stdout "int *x; alloc(&x, 53, 29, 64); *(x + 1) = *(x + 2); print_int(*(x + 1));" "64"
 test_stmts_stdout "int *x; alloc(&x, 53, 29, 64); int *y; y = x + 2; print_int(*(y - 1));" "29"
 
+test_stmts_retval "int x, *y; x = 2; *y = x + 3; return *y + 4;" 9
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 0);" 0
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 2);" 4
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 4);" 16
+test_stmts_retval "int a, *x[4]; a = 2; *(x + 3) = &a; return **(x + 3);" 2
+test_stmts_retval "int x[3][4]; *(*(x + 2) + 3) = 5; return *(*(x + 2) + 3);" 5
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

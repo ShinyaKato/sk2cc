@@ -1,6 +1,13 @@
 #include "cc.h"
 
 Map *func_symbols, *symbols;
+int local_vars_size;
+
+int put_local_variable(int size) {
+  int align_size = size / 8 * 8;
+  if (size % 8 != 0) align_size += 8;
+  return local_vars_size += align_size;
+}
 
 Type *type_new() {
   Type *type = (Type *) malloc(sizeof(Type));
@@ -8,16 +15,27 @@ Type *type_new() {
 }
 
 Type *int_type() {
-  Type *type = type_new();
-  type->type = INT;
-  return type;
+  Type *int_type = type_new();
+  int_type->type = INT;
+  int_type->size = 4;
+  return int_type;
 }
 
 Type *pointer_to(Type *type) {
   Type *pointer = type_new();
   pointer->type = POINTER;
   pointer->pointer_of = type;
+  pointer->size = 8;
   return pointer;
+}
+
+Type *array_of(Type *type, int array_size) {
+  Type *array = type_new();
+  array->type = ARRAY;
+  array->pointer_of = type;
+  array->array_size = array_size;
+  array->size = type->size * array_size;
+  return array;
 }
 
 Symbol *symbol_new() {
@@ -45,16 +63,24 @@ Node *primary_expression() {
   } else if (token->type == tIDENTIFIER) {
     char *identifier = token->identifier;
     Symbol *symbol;
+    Type *value_type;
     if (map_lookup(func_symbols, identifier)) {
       symbol = (Symbol *) map_lookup(func_symbols, identifier);
+      value_type = symbol->value_type;
     } else if (map_lookup(symbols, identifier)) {
       symbol = (Symbol *) map_lookup(symbols, identifier);
+      if (symbol->value_type->type == ARRAY) {
+        value_type = pointer_to(symbol->value_type->pointer_of);
+      } else {
+        value_type = symbol->value_type;
+      }
     } else {
       symbol = NULL;
+      value_type = int_type();
     }
     node = node_new();
     node->type = IDENTIFIER;
-    node->value_type = symbol ? symbol->value_type : int_type();
+    node->value_type = value_type;
     node->identifier = identifier;
     node->symbol = symbol;
   } else if (token->type == tLPAREN) {
@@ -119,9 +145,15 @@ Node *unary_expression() {
     if (expr->value_type->type != POINTER) {
       error("invalid operand type.");
     }
+    Type *value_type;
+    if (expr->value_type->pointer_of->type == ARRAY) {
+      value_type = pointer_to(expr->value_type->pointer_of->pointer_of);
+    } else {
+      value_type = expr->value_type->pointer_of;
+    }
     node = node_new();
     node->type = INDIRECT;
-    node->value_type = expr->value_type->pointer_of;
+    node->value_type = value_type;
     node->left = expr;
   } else if (read_token(tADD)) {
     Node *expr = unary_expression();
@@ -494,22 +526,49 @@ Node *expression() {
   return assignment_expression();
 }
 
-void declaration() {
-  Type *type = int_type();
+Type *declaration_specifiers() {
   expect_token(tINT);
+  return int_type();
+}
+
+Type *direct_declarator(Type *type) {
+  if (read_token(tLBRACKET)) {
+    int size = expect_token(tINT_CONST)->int_value;
+    expect_token(tRBRACKET);
+    type = array_of(direct_declarator(type), size);
+  }
+  return type;
+}
+
+void declarator(Type *type) {
   while (read_token(tMUL)) {
     type = pointer_to(type);
   }
 
-  Token *token = expect_token(tIDENTIFIER);
-  expect_token(tSEMICOLON);
+  Token *id = expect_token(tIDENTIFIER);
 
-  if (!map_lookup(symbols, token->identifier)) {
+  type = direct_declarator(type);
+
+  if (!map_lookup(symbols, id->identifier)) {
     Symbol *symbol = symbol_new();
     symbol->value_type = type;
-    symbol->offset = map_count(symbols) * 8 + 8;
-    map_put(symbols, token->identifier, symbol);
+    symbol->offset = put_local_variable(type->size);
+    map_put(symbols, id->identifier, symbol);
   }
+}
+
+void init_declarator(Type *type) {
+  declarator(type);
+}
+
+void declaration() {
+  Type *type = declaration_specifiers();
+  if (peek_token()->type != tSEMICOLON) {
+    do {
+      init_declarator(type);
+    } while (read_token(tCOMMA));
+  }
+  expect_token(tSEMICOLON);
 }
 
 Node *statement();
@@ -640,6 +699,7 @@ Node *statement() {
 
 Node *function_definition() {
   map_clear(symbols);
+  local_vars_size = 0;
 
   expect_token(tINT);
   Type *type = int_type();
@@ -673,7 +733,7 @@ Node *function_definition() {
       }
       Symbol *symbol = symbol_new();
       symbol->value_type = param_type;
-      symbol->offset = map_count(symbols) * 8 + 8;
+      symbol->offset = put_local_variable(param_type->size);
       map_put(symbols, token->identifier, symbol);
       vector_push(params, symbol);
     } while (read_token(tCOMMA));
@@ -684,7 +744,7 @@ Node *function_definition() {
   node->type = FUNC_DEF;
   node->identifier = id->identifier;
   node->function_body = compound_statement();
-  node->local_vars_size = map_count(symbols) * 8;
+  node->local_vars_size = local_vars_size;
   node->params = params;
 
   return node;

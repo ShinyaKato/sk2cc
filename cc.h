@@ -53,6 +53,8 @@ typedef enum token_type {
   tRETURN,
   tIDENTIFIER,
   tINT_CONST,
+  tLBRACKET,
+  tRBRACKET,
   tLPAREN,
   tRPAREN,
   tRBRACE,
@@ -99,12 +101,15 @@ extern void lex_init();
 
 typedef enum type_type {
   INT,
-  POINTER
+  POINTER,
+  ARRAY
 } TypeType;
 
 typedef struct type {
   TypeType type;
   struct type *pointer_of;
+  int array_size;
+  int size;
 } Type;
 
 typedef struct symbol {

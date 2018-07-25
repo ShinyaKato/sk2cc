@@ -12,6 +12,8 @@ char token_type_name[][32] = {
   "tRETURN",
   "tIDENTIFIER",
   "tINT_CONST",
+  "tLBRACKET",
+  "tRBRACKET",
   "tLPAREN",
   "tRPAREN",
   "tRBRACE",
@@ -179,6 +181,10 @@ Token *lex() {
     token->type = tCOLON;
   } else if (c == ';') {
     token->type = tSEMICOLON;
+  } else if (c == '[') {
+    token->type = tLBRACKET;
+  } else if (c == ']') {
+    token->type = tRBRACKET;
   } else if (c == '(') {
     token->type = tLPAREN;
   } else if (c == ')') {
