@@ -120,6 +120,32 @@ Node *postfix_expression() {
       expect_token(tRPAREN);
 
       node = parent;
+    } else if (read_token(tLBRACKET)) {
+      Node *left = node;
+      Node *right = expression();
+      expect_token(tRBRACKET);
+
+      if (!(left->value_type->type == POINTER && right->value_type->type == INT)) {
+        error("invalid operand type.");
+      }
+
+      Node *expr = node_new();
+      expr->type = ADD;
+      expr->value_type = left->value_type;
+      expr->left = left;
+      expr->right = right;
+
+      Type *value_type;
+      if (expr->value_type->pointer_of->type == ARRAY) {
+        value_type = pointer_to(expr->value_type->pointer_of->pointer_of);
+      } else {
+        value_type = expr->value_type->pointer_of;
+      }
+
+      node = node_new();
+      node->type = INDIRECT;
+      node->value_type = value_type;
+      node->left = expr;
     } else {
       break;
     }

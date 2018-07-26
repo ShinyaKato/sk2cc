@@ -32,7 +32,7 @@ test_stmts_retval() {
 
 test_prog_stdout() {
   prog=$1
-  expect=$2
+  expect="`echo -e "$2"`"
   compile "$prog"
   stdout=`"./tmp/out"`
   [ "$stdout" != "$expect" ] && failed "stdout of \"$prog\" should be \"$expect\", but got \"$stdout\"."
@@ -238,6 +238,36 @@ test_stmts_retval "int a, *x[4]; a = 2; *(x + 3) = &a; return **(x + 3);" 2
 test_stmts_retval "int x[3][4]; **x = 5; return **x;" 5
 test_stmts_retval "int x[3][4]; *(*(x + 2) + 3) = 5; return *(*(x + 2) + 3);" 5
 test_stmts_retval "int x[3][3], i, j; for (i = 0; i < 3; i = i + 1) for (j = 0; j < 3; j = j + 1) *(*(x + i) + j) = i * j; return *(*(x + 2) + 1);" 2
+
+test_stmts_stdout "
+  int A[3][3], B[3][3], C[3][3];
+  int i, j, k;
+
+  A[0][0] = 2; A[0][1] = 3; A[0][2] = 4;
+  A[1][0] = 3; A[1][1] = 4; A[1][2] = 5;
+  A[2][0] = 4; A[2][1] = 5; A[2][2] = 6;
+
+  B[0][0] = 1; B[0][1] = 2; B[0][2] = 3;
+  B[1][0] = 2; B[1][1] = 4; B[1][2] = 6;
+  B[2][0] = 3; B[2][1] = 6; B[2][2] = 9;
+
+  for (i = 0; i < 3; i = i + 1) {
+    for (j = 0; j < 3; j = j + 1) {
+      C[i][j] = 0;
+      for (k = 0; k < 3; k = k + 1) {
+        C[i][j] = C[i][j] + A[i][k] * B[k][j];
+      }
+    }
+  }
+
+  for (i = 0; i < 3; i = i + 1) {
+    for (j = 0; j < 3; j = j + 1) {
+      print_int(C[i][j]);
+    }
+  }
+
+  return 0;
+" "20\n40\n60\n26\n52\n78\n32\n64\n96\n"
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
