@@ -235,7 +235,9 @@ test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i
 test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 2);" 4
 test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 4);" 16
 test_stmts_retval "int a, *x[4]; a = 2; *(x + 3) = &a; return **(x + 3);" 2
+test_stmts_retval "int x[3][4]; **x = 5; return **x;" 5
 test_stmts_retval "int x[3][4]; *(*(x + 2) + 3) = 5; return *(*(x + 2) + 3);" 5
+test_stmts_retval "int x[3][3], i, j; for (i = 0; i < 3; i = i + 1) for (j = 0; j < 3; j = j + 1) *(*(x + i) + j) = i * j; return *(*(x + 2) + 1);" 2
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

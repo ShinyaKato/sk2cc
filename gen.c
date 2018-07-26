@@ -103,9 +103,11 @@ void gen_expr(Node *node) {
 
   if (node->type == INDIRECT) {
     gen_expr(node->left);
-    printf("  pop %%rax\n");
-    printf("  movl (%%rax), %%ecx\n");
-    gen_push("ecx");
+    if (node->left->value_type->pointer_of->type != ARRAY) {
+      printf("  pop %%rax\n");
+      printf("  movl (%%rax), %%ecx\n");
+      gen_push("ecx");
+    }
   }
 
   if (node->type == UPLUS) {
