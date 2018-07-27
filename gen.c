@@ -2,23 +2,15 @@
 
 char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
-int label_no = 0;
+int label_no = 0, return_label;
 Vector *continue_labels, *break_labels;
-int return_label;
-
-void gen_immediate(int value) {
-  printf("  sub $8, %%rsp\n");
-  printf("  movl $%d, 0(%%rsp)\n", value);
-}
 
 void gen_push(char *reg) {
-  printf("  sub $8, %%rsp\n");
-  printf("  movl %%%s, 0(%%rsp)\n", reg);
+  printf("  pushq %%%s\n", reg);
 }
 
 void gen_pop(char *reg) {
-  if(reg) printf("  movl 0(%%rsp), %%%s\n", reg);
-  printf("  add $8, %%rsp\n");
+  printf("  popq %%%s\n", reg);
 }
 
 void gen_jump(char *inst, int label) {
@@ -45,7 +37,8 @@ void gen_operands(Node *left, Node *right, char *reg_left, char *reg_right) {
 
 void gen_expr(Node *node) {
   if (node->type == CONST) {
-    gen_immediate(node->int_value);
+    printf("  movl $%d, %%eax\n", node->int_value);
+    gen_push("rax");
   }
 
   if (node->type == IDENTIFIER) {
@@ -53,247 +46,219 @@ void gen_expr(Node *node) {
     if (!symbol) {
       error("undefined identifier.");
     }
-
-    if (node->value_type->type == INT) {
+    if (symbol->value_type->type == INT) {
       printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
-      gen_push("eax");
-    } else if (node->value_type->type == POINTER) {
-      if (node->symbol->value_type->type == POINTER) {
-        printf("  mov %d(%%rbp), %%rax\n", -symbol->offset);
-        printf("  push %%rax\n");
-      } else if (node->symbol->value_type->type == ARRAY) {
-        printf("  lea %d(%%rbp), %%rax\n", -symbol->offset);
-        printf("  push %%rax\n");
-      }
+    } else if (symbol->value_type->type == POINTER) {
+      printf("  movq %d(%%rbp), %%rax\n", -symbol->offset);
+    } else if (symbol->value_type->type == ARRAY) {
+      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
     }
+    gen_push("rax");
   }
 
   if (node->type == FUNC_CALL) {
     for (int i = 0; i < node->args->length; i++) {
       gen_expr((Node *) node->args->array[i]);
     }
-
     for (int i = 5; i >= 0; i--) {
       if (i < node->args->length) {
-        Node *arg = (Node *) node->args->array[i];
-        if (arg->value_type->type == INT) {
-          gen_pop("eax");
-          printf("  mov %%rax, %%%s\n", arg_reg[i]);
-        } else if (arg->value_type->type == POINTER) {
-          printf("  pop %%%s\n", arg_reg[i]);
-        }
+        gen_pop(arg_reg[i]);
       }
     }
-
     printf("  call %s\n", node->left->identifier);
-
-    if (node->value_type->type == INT) {
-      gen_push("eax");
-    } else if (node->value_type->type == POINTER) {
-      printf("  push %%rax\n");
-    }
+    gen_push("rax");
   }
 
   if (node->type == ADDRESS) {
     int offset = node->left->symbol->offset;
-
-    printf("  lea %d(%%rbp), %%rax\n", -offset);
-    printf("  push %%rax\n");
+    printf("  leaq %d(%%rbp), %%rax\n", -offset);
+    gen_push("rax");
   }
 
   if (node->type == INDIRECT) {
     gen_expr(node->left);
     if (node->left->value_type->pointer_of->type != ARRAY) {
-      printf("  pop %%rax\n");
-      printf("  movl (%%rax), %%ecx\n");
-      gen_push("ecx");
+      gen_pop("rax");
+      if (node->left->value_type->type == INT) {
+        printf("  movl (%%rax), %%ecx\n");
+      } else if (node->left->value_type->type == POINTER) {
+        printf("  movq (%%rax), %%rcx\n");
+      }
+      gen_push("rcx");
     }
   }
 
   if (node->type == UPLUS) {
-    gen_operand(node->left, "eax");
-    gen_push("eax");
+    gen_operand(node->left, "rax");
+    gen_push("rax");
   }
 
   if (node->type == UMINUS) {
-    gen_operand(node->left, "eax");
+    gen_operand(node->left, "rax");
     printf("  negl %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == NOT) {
-    gen_operand(node->left, "eax");
+    gen_operand(node->left, "rax");
     printf("  notl %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == LNOT) {
-    gen_operand(node->left, "eax");
+    gen_operand(node->left, "rax");
     printf("  cmpl $0, %%eax\n");
     printf("  sete %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == MUL) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  imull %%ecx\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == DIV) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  movl $0, %%edx\n");
     printf("  idivl %%ecx\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == MOD) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  movl $0, %%edx\n");
     printf("  idivl %%ecx\n");
-    gen_push("edx");
+    gen_push("rdx");
   }
 
   if (node->type == ADD) {
-    Node *left = node->left;
-    Node *right = node->right;
-    Type *left_type = left->value_type;
-    Type *right_type = right->value_type;
+    Type *left_type = node->left->value_type;
+    Type *right_type = node->right->value_type;
 
     if (left_type->type == INT && right_type->type == INT) {
-      gen_operands(node->left, node->right, "eax", "ecx");
+      gen_operands(node->left, node->right, "rax", "rcx");
       printf("  addl %%ecx, %%eax\n");
-      gen_push("eax");
-    }
-
-    if (left_type->type == POINTER && right_type->type == INT) {
+      gen_push("rax");
+    } else if (left_type->type == POINTER && right_type->type == INT) {
       int size = left_type->pointer_of->size;
-
       gen_expr(node->left);
-      gen_operand(node->right, "eax");
-      printf("  mov $%d, %%rdx\n", size);
-      printf("  mul %%rdx\n");
-      printf("  pop %%rcx\n");
-      printf("  add %%rax, %%rcx\n");
-      printf("  push %%rcx\n");
+      gen_operand(node->right, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      gen_pop("rcx");
+      printf("  addq %%rax, %%rcx\n");
+      gen_push("rcx");
     }
   }
 
   if (node->type == SUB) {
-    Node *left = node->left;
-    Node *right = node->right;
-    Type *left_type = left->value_type;
-    Type *right_type = right->value_type;
+    Type *left_type = node->left->value_type;
+    Type *right_type = node->right->value_type;
 
     if (left_type->type == INT && right_type->type == INT) {
-      gen_operands(node->left, node->right, "eax", "ecx");
+      gen_operands(node->left, node->right, "rax", "rcx");
       printf("  subl %%ecx, %%eax\n");
-      gen_push("eax");
-    }
-
-    if (left_type->type == POINTER && right_type->type == INT) {
-      int size;
-      if (left_type->pointer_of->type == INT) size = 4;
-      else if (left_type->pointer_of->type == POINTER) size = 8;
-      else error("cannot identify size of pointer_of.");
-
+      gen_push("rax");
+    } else if (left_type->type == POINTER && right_type->type == INT) {
+      int size = left_type->pointer_of->size;
       gen_expr(node->left);
-      gen_operand(node->right, "eax");
-      printf("  mov $%d, %%rdx\n", size);
-      printf("  mul %%rdx\n");
-      printf("  pop %%rcx\n");
-      printf("  sub %%rax, %%rcx\n");
-      printf("  push %%rcx\n");
+      gen_operand(node->right, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      gen_pop("rcx");
+      printf("  subq %%rax, %%rcx\n");
+      gen_push("rcx");
     }
   }
 
   if (node->type == LSHIFT) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  sall %%cl, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == RSHIFT) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  sarl %%cl, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == LT) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  setl %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == GT) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  setg %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == LTE) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  setle %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == GTE) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  setge %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == EQ) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  sete %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == NEQ) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  cmpl %%ecx, %%eax\n");
     printf("  setne %%al\n");
     printf("  movzbl %%al, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == AND) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  andl %%ecx, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == XOR) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  xorl %%ecx, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == OR) {
-    gen_operands(node->left, node->right, "eax", "ecx");
+    gen_operands(node->left, node->right, "rax", "rcx");
     printf("  orl %%ecx, %%eax\n");
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == LAND) {
     int label_false = label_no++;
     int label_end = label_no++;
 
-    gen_operand(node->left, "eax");
+    gen_operand(node->left, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_false);
-    gen_operand(node->right, "eax");
+    gen_operand(node->right, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_false);
     printf("  movl $1, %%eax\n");
@@ -301,17 +266,17 @@ void gen_expr(Node *node) {
     gen_label(label_false);
     printf("  movl $0, %%eax\n");
     gen_label(label_end);
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == LOR) {
     int label_true = label_no++;
     int label_end = label_no++;
 
-    gen_operand(node->left, "eax");
+    gen_operand(node->left, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("jne", label_true);
-    gen_operand(node->right, "eax");
+    gen_operand(node->right, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("jne", label_true);
     printf("  movl $0, %%eax\n");
@@ -319,14 +284,14 @@ void gen_expr(Node *node) {
     gen_label(label_true);
     printf("  movl $1, %%eax\n");
     gen_label(label_end);
-    gen_push("eax");
+    gen_push("rax");
   }
 
   if (node->type == CONDITION) {
     int label_false = label_no++;
     int label_end = label_no++;
 
-    gen_operand(node->control, "eax");
+    gen_operand(node->control, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_false);
     gen_expr(node->left);
@@ -341,35 +306,35 @@ void gen_expr(Node *node) {
       Symbol *symbol = node->left->symbol;
 
       if (node->left->value_type->type == INT) {
-        gen_operand(node->right, "eax");
+        gen_operand(node->right, "rax");
         printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-        gen_push("eax");
+        gen_push("rax");
       }
 
       if (node->left->value_type->type == POINTER) {
         gen_expr(node->right);
-        printf("  pop %%rax\n");
-        printf("  mov %%rax, %d(%%rbp)\n", -symbol->offset);
-        printf("  push %%rax\n");
+        gen_pop("rax");
+        printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
+        gen_push("rax");
       }
     }
 
     if (node->left->type == INDIRECT) {
       if (node->left->left->value_type->pointer_of->type == INT) {
         gen_expr(node->left->left);
-        gen_operand(node->right, "eax");
+        gen_operand(node->right, "rax");
         printf("  pop %%rcx\n");
         printf("  movl %%eax, (%%rcx)\n");
-        gen_push("eax");
+        gen_push("rax");
       }
 
       if (node->left->left->value_type->pointer_of->type == POINTER) {
         gen_expr(node->left->left);
         gen_expr(node->right);
-        printf("  pop %%rax\n");
-        printf("  pop %%rcx\n");
-        printf("  mov %%rax, (%%rcx)\n");
-        printf("  push %%rax\n");
+        gen_pop("rax");
+        gen_pop("rcx");
+        printf("  movq %%rax, (%%rcx)\n");
+        gen_push("rax");
       }
     }
   }
@@ -383,13 +348,14 @@ void gen_stmt(Node *node) {
   }
 
   if (node->type == EXPR_STMT) {
-    gen_operand(node->expression, NULL);
+    gen_expr(node->expression);
+    printf("  addq $8, %%rsp\n");
   }
 
   if (node->type == IF_STMT) {
     int label_end = label_no++;
 
-    gen_operand(node->control, "eax");
+    gen_operand(node->control, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_end);
     gen_stmt(node->if_body);
@@ -400,7 +366,7 @@ void gen_stmt(Node *node) {
     int label_else = label_no++;
     int label_end = label_no++;
 
-    gen_operand(node->control, "eax");
+    gen_operand(node->control, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_else);
     gen_stmt(node->if_body);
@@ -418,7 +384,7 @@ void gen_stmt(Node *node) {
     vector_push(break_labels, (void *) &label_end);
 
     gen_label(label_begin);
-    gen_operand(node->control, "eax");
+    gen_operand(node->control, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("je", label_end);
     gen_stmt(node->loop_body);
@@ -440,7 +406,7 @@ void gen_stmt(Node *node) {
     gen_label(label_begin);
     gen_stmt(node->loop_body);
     gen_label(label_control);
-    gen_operand(node->control, "eax");
+    gen_operand(node->control, "rax");
     printf("  cmpl $0, %%eax\n");
     gen_jump("jne", label_begin);
     gen_label(label_end);
@@ -458,18 +424,20 @@ void gen_stmt(Node *node) {
     vector_push(break_labels, (void *) &label_end);
 
     if (node->init) {
-      gen_operand(node->init, NULL);
+      gen_expr(node->init);
+      printf("  addq $8, %%rsp\n");
     }
     gen_label(label_begin);
     if (node->control) {
-      gen_operand(node->control, "eax");
+      gen_operand(node->control, "rax");
       printf("  cmpl $0, %%eax\n");
       gen_jump("je", label_end);
     }
     gen_stmt(node->loop_body);
     gen_label(label_afterthrough);
     if (node->afterthrough) {
-      gen_operand(node->afterthrough, NULL);
+      gen_expr(node->afterthrough);
+      printf("  addq $8, %%rsp\n");
     }
     gen_jump("jmp", label_begin);
     gen_label(label_end);
@@ -493,14 +461,8 @@ void gen_stmt(Node *node) {
   }
 
   if (node->type == RETURN_STMT) {
-    Node *expr = node->expression;
-    if (expr) {
-      if (expr->value_type->type == INT) {
-        gen_operand(expr, "eax");
-      } else if (expr->value_type->type == POINTER) {
-        gen_expr(expr);
-        printf("  pop %%rax\n");
-      }
+    if (node->expression) {
+      gen_operand(node->expression, "rax");
     }
     gen_jump("jmp", return_label);
   }
@@ -514,35 +476,31 @@ void gen_func_def(Node *node) {
   return_label = label_no++;
 
   printf("%s:\n", node->identifier);
-  printf("  push %%rbp\n");
-  printf("  mov %%rsp, %%rbp\n");
-  printf("  sub $%d, %%rsp\n", node->local_vars_size);
+  gen_push("rbp");
+  printf("  movq %%rsp, %%rbp\n");
+  printf("  subq $%d, %%rsp\n", node->local_vars_size);
 
   for (int i = 0; i < node->params->length; i++) {
     Symbol *symbol = (Symbol *) node->params->array[i];
     if (symbol->value_type->type == INT) {
-      printf("  mov %%%s, %%rax\n", arg_reg[i]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->value_type->type == POINTER) {
-      printf("  mov %%%s, %d(%%rbp)\n", arg_reg[i], -symbol->offset);
+      printf("  movq %%%s, %d(%%rbp)\n", arg_reg[i], -symbol->offset);
     }
   }
 
   gen_stmt(node->function_body);
 
   gen_label(return_label);
-  printf("  add $%d, %%rsp\n", node->local_vars_size);
-  printf("  pop %%rbp\n");
+  printf("  addq $%d, %%rsp\n", node->local_vars_size);
+  gen_pop("rbp");
   printf("  ret\n");
 }
 
 void gen_trans_unit(Node *node) {
   for (int i = 0; i < node->definitions->length; i++) {
     gen_func_def((Node *) node->definitions->array[i]);
-
-    if (i + 1 < node->definitions->length) {
-      printf("\n");
-    }
   }
 }
 
