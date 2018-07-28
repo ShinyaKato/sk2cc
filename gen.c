@@ -77,7 +77,7 @@ void gen_expr(Node *node) {
 
   if (node->type == INDIRECT) {
     gen_expr(node->left);
-    if (node->left->value_type->pointer_of->type != ARRAY) {
+    if (node->left->value_type->pointer_to->type != ARRAY) {
       gen_pop("rax");
       if (node->left->value_type->type == INT) {
         printf("  movl (%%rax), %%ecx\n");
@@ -142,7 +142,7 @@ void gen_expr(Node *node) {
       printf("  addl %%ecx, %%eax\n");
       gen_push("rax");
     } else if (left_type->type == POINTER && right_type->type == INT) {
-      int size = left_type->pointer_of->size;
+      int size = left_type->pointer_to->size;
       gen_expr(node->left);
       gen_operand(node->right, "rax");
       printf("  movq $%d, %%rcx\n", size);
@@ -162,7 +162,7 @@ void gen_expr(Node *node) {
       printf("  subl %%ecx, %%eax\n");
       gen_push("rax");
     } else if (left_type->type == POINTER && right_type->type == INT) {
-      int size = left_type->pointer_of->size;
+      int size = left_type->pointer_to->size;
       gen_expr(node->left);
       gen_operand(node->right, "rax");
       printf("  movq $%d, %%rcx\n", size);
@@ -320,7 +320,7 @@ void gen_expr(Node *node) {
     }
 
     if (node->left->type == INDIRECT) {
-      if (node->left->left->value_type->pointer_of->type == INT) {
+      if (node->left->left->value_type->pointer_to->type == INT) {
         gen_expr(node->left->left);
         gen_operand(node->right, "rax");
         printf("  pop %%rcx\n");
@@ -328,7 +328,7 @@ void gen_expr(Node *node) {
         gen_push("rax");
       }
 
-      if (node->left->left->value_type->pointer_of->type == POINTER) {
+      if (node->left->left->value_type->pointer_to->type == POINTER) {
         gen_expr(node->left->left);
         gen_expr(node->right);
         gen_pop("rax");

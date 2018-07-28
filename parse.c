@@ -14,28 +14,35 @@ Type *type_new() {
   return type;
 }
 
-Type *int_type() {
+Type *type_int() {
   Type *int_type = type_new();
   int_type->type = INT;
   int_type->size = 4;
   return int_type;
 }
 
-Type *pointer_to(Type *type) {
+Type *type_pointer_to(Type *type) {
   Type *pointer = type_new();
   pointer->type = POINTER;
-  pointer->pointer_of = type;
+  pointer->pointer_to = type;
   pointer->size = 8;
   return pointer;
 }
 
-Type *array_of(Type *type, int array_size) {
+Type *type_array_of(Type *type, int array_size) {
   Type *array = type_new();
   array->type = ARRAY;
-  array->pointer_of = type;
+  array->array_of = type;
   array->array_size = array_size;
   array->size = type->size * array_size;
   return array;
+}
+
+Type *type_convert(Type *type) {
+  if (type->type == ARRAY) {
+    return type_pointer_to(type->array_of);
+  }
+  return type;
 }
 
 Symbol *symbol_new() {
@@ -58,30 +65,26 @@ Node *primary_expression() {
   if (token->type == tINT_CONST) {
     node = node_new();
     node->type = CONST;
-    node->value_type = int_type();
+    node->value_type = type_int();
     node->int_value = token->int_value;
   } else if (token->type == tIDENTIFIER) {
-    char *identifier = token->identifier;
     Symbol *symbol;
     Type *value_type;
-    if (map_lookup(func_symbols, identifier)) {
-      symbol = (Symbol *) map_lookup(func_symbols, identifier);
+    if (map_lookup(func_symbols, token->identifier)) {
+      symbol = (Symbol *) map_lookup(func_symbols, token->identifier);
       value_type = symbol->value_type;
-    } else if (map_lookup(symbols, identifier)) {
-      symbol = (Symbol *) map_lookup(symbols, identifier);
-      if (symbol->value_type->type == ARRAY) {
-        value_type = pointer_to(symbol->value_type->pointer_of);
-      } else {
-        value_type = symbol->value_type;
-      }
+    } else if (map_lookup(symbols, token->identifier)) {
+      symbol = (Symbol *) map_lookup(symbols, token->identifier);
+      value_type = type_convert(symbol->value_type);
     } else {
       symbol = NULL;
-      value_type = int_type();
+      value_type = type_int();
     }
+
     node = node_new();
     node->type = IDENTIFIER;
     node->value_type = value_type;
-    node->identifier = identifier;
+    node->identifier = token->identifier;
     node->symbol = symbol;
   } else if (token->type == tLPAREN) {
     node = expression();
@@ -98,28 +101,26 @@ Node *postfix_expression() {
 
   while (1) {
     if (read_token(tLPAREN)) {
-      if (node->type != IDENTIFIER) {
+      Node *expr = node;
+      if (expr->type != IDENTIFIER) {
         error("invalid function call.");
       }
-
-      Symbol *symbol = (Symbol *) map_lookup(func_symbols, node->identifier);
-
-      Node *parent = node_new();
-      parent->type = FUNC_CALL;
-      parent->value_type = symbol ? symbol->value_type : int_type();
-      parent->left = node;
-      parent->args = vector_new();
+      Vector *args = vector_new();
       if (peek_token()->type != tRPAREN) {
         do {
-          if (parent->args->length >= 6) {
+          if (args->length >= 6) {
             error("too many arguments.");
           }
-          vector_push(parent->args, assignment_expression());
+          vector_push(args, assignment_expression());
         } while (read_token(tCOMMA));
       }
       expect_token(tRPAREN);
 
-      node = parent;
+      node = node_new();
+      node->type = FUNC_CALL;
+      node->value_type = expr->value_type;
+      node->left = expr;
+      node->args = args;
     } else if (read_token(tLBRACKET)) {
       Node *left = node;
       Node *right = expression();
@@ -135,16 +136,9 @@ Node *postfix_expression() {
       expr->left = left;
       expr->right = right;
 
-      Type *value_type;
-      if (expr->value_type->pointer_of->type == ARRAY) {
-        value_type = pointer_to(expr->value_type->pointer_of->pointer_of);
-      } else {
-        value_type = expr->value_type->pointer_of;
-      }
-
       node = node_new();
       node->type = INDIRECT;
-      node->value_type = value_type;
+      node->value_type = type_convert(expr->value_type->pointer_to);
       node->left = expr;
     } else {
       break;
@@ -164,22 +158,16 @@ Node *unary_expression() {
     }
     node = node_new();
     node->type = ADDRESS;
-    node->value_type = pointer_to(expr->value_type);
+    node->value_type = type_pointer_to(expr->value_type);
     node->left = expr;
   } else if (read_token(tMUL)) {
     Node *expr = unary_expression();
     if (expr->value_type->type != POINTER) {
       error("invalid operand type.");
     }
-    Type *value_type;
-    if (expr->value_type->pointer_of->type == ARRAY) {
-      value_type = pointer_to(expr->value_type->pointer_of->pointer_of);
-    } else {
-      value_type = expr->value_type->pointer_of;
-    }
     node = node_new();
     node->type = INDIRECT;
-    node->value_type = value_type;
+    node->value_type = type_convert(expr->value_type->pointer_to);
     node->left = expr;
   } else if (read_token(tADD)) {
     Node *expr = unary_expression();
@@ -239,7 +227,7 @@ Node *multiplicative_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -268,7 +256,7 @@ Node *additive_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else if (left->value_type->type == POINTER && right->value_type->type == INT) {
       value_type = left->value_type;
     } else {
@@ -299,7 +287,7 @@ Node *shift_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -330,7 +318,7 @@ Node *relational_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -359,7 +347,7 @@ Node *equality_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -383,7 +371,7 @@ Node *and_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -407,7 +395,7 @@ Node *exclusive_or_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -431,7 +419,7 @@ Node *inclusive_or_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -455,7 +443,7 @@ Node *logical_and_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -479,7 +467,7 @@ Node *logical_or_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -505,7 +493,7 @@ Node *conditional_expression(Node *unary_exp) {
 
     Type *value_type;
     if (left->value_type->type == INT && right->value_type->type == INT) {
-      value_type = int_type();
+      value_type = type_int();
     } else {
       error("invalid operand type.");
     }
@@ -554,21 +542,21 @@ Node *expression() {
 
 Type *declaration_specifiers() {
   expect_token(tINT);
-  return int_type();
+  return type_int();
 }
 
 Type *direct_declarator(Type *type) {
   if (read_token(tLBRACKET)) {
     int size = expect_token(tINT_CONST)->int_value;
     expect_token(tRBRACKET);
-    type = array_of(direct_declarator(type), size);
+    type = type_array_of(direct_declarator(type), size);
   }
   return type;
 }
 
 void declarator(Type *type) {
   while (read_token(tMUL)) {
-    type = pointer_to(type);
+    type = type_pointer_to(type);
   }
 
   Token *id = expect_token(tIDENTIFIER);
@@ -700,21 +688,14 @@ Node *jump_statement() {
 Node *statement() {
   Node *node;
 
-  if (peek_token()->type == tLBRACE) {
+  TokenType type = peek_token()->type;
+  if (type == tLBRACE) {
     node = compound_statement();
-  } else if (peek_token()->type == tIF) {
+  } else if (type == tIF) {
     node = selection_statement();
-  } else if (peek_token()->type == tWHILE) {
+  } else if (type == tWHILE || type == tDO || type == tFOR) {
     node = iteration_statement();
-  } else if (peek_token()->type == tDO) {
-    node = iteration_statement();
-  } else if (peek_token()->type == tFOR) {
-    node = iteration_statement();
-  } else if (peek_token()->type == tCONTINUE) {
-    node = jump_statement();
-  } else if (peek_token()->type == tBREAK) {
-    node = jump_statement();
-  } else if (peek_token()->type == tRETURN) {
+  } else if (type == tCONTINUE || type == tBREAK || type == tRETURN) {
     node = jump_statement();
   } else {
     node = expression_statement();
@@ -728,9 +709,9 @@ Node *function_definition() {
   local_vars_size = 0;
 
   expect_token(tINT);
-  Type *type = int_type();
+  Type *type = type_int();
   while (read_token(tMUL)) {
-    type = pointer_to(type);
+    type = type_pointer_to(type);
   }
 
   Token *id = expect_token(tIDENTIFIER);
@@ -749,9 +730,9 @@ Node *function_definition() {
         error("too many parameters.");
       }
       expect_token(tINT);
-      Type *param_type = int_type();
+      Type *param_type = type_int();
       while (read_token(tMUL)) {
-        param_type = pointer_to(param_type);
+        param_type = type_pointer_to(param_type);
       }
       Token *token = expect_token(tIDENTIFIER);
       if (map_lookup(symbols, token->identifier)) {

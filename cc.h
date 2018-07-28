@@ -107,9 +107,8 @@ typedef enum type_type {
 
 typedef struct type {
   TypeType type;
-  struct type *pointer_of;
-  int array_size;
-  int size;
+  struct type *pointer_to, *array_of;
+  int array_size, size;
 } Type;
 
 typedef struct symbol {
