@@ -23,6 +23,18 @@ void gen_label(int label) {
 
 void gen_expr(Node *node);
 
+void gen_lvalue(Node *node) {
+  if (node->type == IDENTIFIER) {
+    Symbol *symbol = node->symbol;
+    printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+    gen_push("rax");
+  }
+
+  if (node->type == INDIRECT) {
+    gen_expr(node->left);
+  }
+}
+
 void gen_operand(Node *node, char *reg) {
   gen_expr(node);
   gen_pop(reg);
@@ -302,41 +314,17 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ASSIGN) {
-    if (node->left->type == IDENTIFIER) {
-      Symbol *symbol = node->left->symbol;
-
-      if (node->left->value_type->type == INT) {
-        gen_operand(node->right, "rax");
-        printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-        gen_push("rax");
-      }
-
-      if (node->left->value_type->type == POINTER) {
-        gen_expr(node->right);
-        gen_pop("rax");
-        printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
-        gen_push("rax");
-      }
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rcx");
+    gen_pop("rax");
+    if (node->left->value_type->type == INT) {
+      printf("  movl %%ecx, (%%rax)\n");
+    } else if (node->left->value_type->type == POINTER) {
+      printf("  movq %%rcx, (%%rax)\n");
+    } else {
+      error("invalid assignment.");
     }
-
-    if (node->left->type == INDIRECT) {
-      if (node->left->left->value_type->pointer_to->type == INT) {
-        gen_expr(node->left->left);
-        gen_operand(node->right, "rax");
-        printf("  pop %%rcx\n");
-        printf("  movl %%eax, (%%rcx)\n");
-        gen_push("rax");
-      }
-
-      if (node->left->left->value_type->pointer_to->type == POINTER) {
-        gen_expr(node->left->left);
-        gen_expr(node->right);
-        gen_pop("rax");
-        gen_pop("rcx");
-        printf("  movq %%rax, (%%rcx)\n");
-        gen_push("rax");
-      }
-    }
+    gen_push("rcx");
   }
 }
 
