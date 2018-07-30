@@ -2,9 +2,9 @@
 
 int main(void) {
   lex_init();
-  parse_init();
 
   Node *node = parse();
+  analyze(node);
   gen(node);
 
   return 0;

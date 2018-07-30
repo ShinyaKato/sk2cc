@@ -111,7 +111,14 @@ typedef struct type {
   int array_size, size;
 } Type;
 
+extern Type *type_new();
+extern Type *type_int();
+extern Type *type_pointer_to(Type *type);
+extern Type *type_array_of(Type *type, int array_size);
+extern Type *type_convert(Type *type);
+
 typedef struct symbol {
+  char *identifier;
   Type *value_type;
   int offset;
 } Symbol;
@@ -146,6 +153,7 @@ typedef enum node_type {
   LOR,
   CONDITION,
   ASSIGN,
+  VAR_DECL,
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
@@ -167,16 +175,18 @@ typedef struct node {
   char *identifier;
   Symbol *symbol;
   Vector *args;
-  struct node *left, *right, *init, *control, *afterthrough, *expression;
+  struct node *left, *right, *init, *control, *afterthrough, *expr;
+  Vector *var_symbols;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
-  Vector *params;
+  Vector *param_symbols;
   int local_vars_size;
   Vector *definitions;
 } Node;
 
 extern Node *parse();
-extern void parse_init();
+
+extern void analyze(Node *node);
 
 extern void gen(Node *node);
 
