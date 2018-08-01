@@ -33,25 +33,29 @@ Node *expression();
 
 Node *primary_expression() {
   Token *token = get_token();
-  Node *node;
 
   if (token->type == tINT_CONST) {
-    node = node_new();
+    Node *node = node_new();
     node->type = CONST;
     node->value_type = type_int();
     node->int_value = token->int_value;
-  } else if (token->type == tIDENTIFIER) {
-    node = node_new();
-    node->type = IDENTIFIER;
-    node->identifier = token->identifier;
-  } else if (token->type == tLPAREN) {
-    node = expression();
-    expect_token(tRPAREN);
-  } else {
-    error("unexpected primary expression.");
+    return node;
   }
 
-  return node;
+  if (token->type == tIDENTIFIER) {
+    Node *node = node_new();
+    node->type = IDENTIFIER;
+    node->identifier = token->identifier;
+    return node;
+  }
+
+  if (token->type == tLPAREN) {
+    Node *node = expression();
+    expect_token(tRPAREN);
+    return node;
+  }
+
+  error("unexpected primary expression.");
 }
 
 Node *postfix_expression() {

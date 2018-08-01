@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdbool.h>
+#include <stdnoreturn.h>
 
 typedef struct string {
   int size, length;
@@ -36,7 +38,7 @@ extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
 extern void map_clear();
 
-extern void error(char *message);
+extern noreturn void error(char *format, ...);
 
 extern char peek_char();
 extern char get_char();

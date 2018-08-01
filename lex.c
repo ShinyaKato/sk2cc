@@ -221,9 +221,7 @@ Token *get_token() {
 Token *expect_token(TokenType type) {
   Token *token = get_token();
   if (token->type != type) {
-    char msg[256];
-    sprintf(msg, "%s is expected.", token_type_name[type]);
-    error(msg);
+    error("%s is expected.", token_type_name[type]);
   }
   return token;
 }
