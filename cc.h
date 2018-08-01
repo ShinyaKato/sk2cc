@@ -45,6 +45,7 @@ extern char get_char();
 
 typedef enum token_type {
   tINT,
+  tCHAR,
   tIF,
   tELSE,
   tWHILE,
@@ -102,6 +103,7 @@ extern bool read_token(TokenType type);
 extern void lex_init();
 
 typedef enum type_type {
+  CHAR,
   INT,
   POINTER,
   ARRAY
@@ -114,6 +116,7 @@ typedef struct type {
 } Type;
 
 extern Type *type_new();
+extern Type *type_char();
 extern Type *type_int();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);

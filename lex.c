@@ -2,6 +2,7 @@
 
 char token_type_name[][32] = {
   "tINT",
+  "tCHAR",
   "tIF",
   "tELSE",
   "tWHILE",
@@ -89,7 +90,9 @@ Token *lex() {
       get_char();
       string_push(identifier, d);
     }
-    if (strcmp(identifier->buffer, "int") == 0) {
+    if (strcmp(identifier->buffer, "char") == 0) {
+      token->type = tCHAR;
+    } else if (strcmp(identifier->buffer, "int") == 0) {
       token->type = tINT;
     } else if (strcmp(identifier->buffer, "if") == 0) {
       token->type = tIF;

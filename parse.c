@@ -346,8 +346,12 @@ Node *expression() {
 }
 
 Type *declaration_specifiers() {
-  expect_token(tINT);
-  return type_int();
+  if (read_token(tCHAR)) {
+    return type_char();
+  } else if (read_token(tINT)) {
+    return type_int();
+  }
+  error("type specifier is expected.");
 }
 
 Type *direct_declarator(Type *type) {
@@ -406,7 +410,7 @@ Node *compound_statement() {
   while (1) {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
-    if (peek_token()->type == tINT) {
+    if (peek_token()->type == tINT || peek_token()->type == tCHAR) {
       Type *specifier = declaration_specifiers();
       Symbol *symbol = init_declarator(specifier);
       vector_push(node->statements, declaration(specifier, symbol));

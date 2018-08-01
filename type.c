@@ -5,6 +5,13 @@ Type *type_new() {
   return type;
 }
 
+Type *type_char() {
+  Type *char_type = type_new();
+  char_type->type = CHAR;
+  char_type->size = 1;
+  return char_type;
+}
+
 Type *type_int() {
   Type *int_type = type_new();
   int_type->type = INT;
