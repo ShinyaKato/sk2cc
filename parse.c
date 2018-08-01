@@ -371,18 +371,16 @@ Symbol *declarator(Type *type) {
   return symbol;
 }
 
-Symbol *init_declarator(Type *type) {
-  return declarator(type);
+Symbol *init_declarator(Type *specifier) {
+  return declarator(specifier);
 }
 
-Node *declaration() {
-  Type *type = declaration_specifiers();
+Node *declaration(Type *specifier, Symbol *first) {
   Vector *var_symbols = vector_new();
-  if (peek_token()->type != tSEMICOLON) {
-    do {
-      Symbol *symbol = init_declarator(type);
-      vector_push(var_symbols, symbol);
-    } while (read_token(tCOMMA));
+  vector_push(var_symbols, first);
+  while (read_token(tCOMMA)) {
+    Symbol *symbol = init_declarator(specifier);
+    vector_push(var_symbols, symbol);
   }
   expect_token(tSEMICOLON);
 
@@ -405,7 +403,9 @@ Node *compound_statement() {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
     if (peek_token()->type == tINT) {
-      vector_push(node->statements, declaration());
+      Type *specifier = declaration_specifiers();
+      Symbol *symbol = init_declarator(specifier);
+      vector_push(node->statements, declaration(specifier, symbol));
     } else {
       Node *stmt = statement();
       vector_push(node->statements, stmt);
@@ -512,18 +512,7 @@ Node *statement() {
   return node;
 }
 
-Node *function_definition() {
-  expect_token(tINT);
-  Type *type = type_int();
-  while (read_token(tMUL)) {
-    type = type_pointer_to(type);
-  }
-
-  Token *id = expect_token(tIDENTIFIER);
-  Symbol *func_symbol = symbol_new();
-  func_symbol->identifier = id->identifier;
-  func_symbol->value_type = type;
-
+Node *function_definition(Symbol *func_symbol) {
   Vector *param_symbols = vector_new();
   expect_token(tLPAREN);
   if (peek_token()->type != tRPAREN) {
@@ -544,10 +533,24 @@ Node *function_definition() {
 
   Node *node = node_new();
   node->type = FUNC_DEF;
-  node->identifier = id->identifier;
+  node->identifier = func_symbol->identifier;
   node->symbol = func_symbol;
   node->function_body = compound_statement();
   node->param_symbols = param_symbols;
+
+  return node;
+}
+
+Node *external_definition() {
+  Type *specifier = declaration_specifiers();
+  Symbol *symbol = init_declarator(specifier);
+
+  Node *node;
+  if (peek_token()->type == tLPAREN) {
+    node = function_definition(symbol);
+  } else {
+    node = declaration(specifier, symbol);
+  }
 
   return node;
 }
@@ -558,8 +561,8 @@ Node *translate_unit() {
   node->definitions = vector_new();
 
   while (peek_token()->type != tEND) {
-    Node *def = function_definition();
-    vector_push(node->definitions, (void *) def);
+    Node *def = external_definition();
+    vector_push(node->definitions, def);
   }
 
   return node;

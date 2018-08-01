@@ -1,6 +1,6 @@
 #include "cc.h"
 
-Map *func_symbols, *symbols;
+Map *external_symbols, *symbols;
 int local_vars_size;
 
 int break_level = 0, continue_level = 0;
@@ -17,12 +17,12 @@ void analyze_expr(Node *node) {
   }
 
   if (node->type == IDENTIFIER) {
-    if (map_lookup(func_symbols, node->identifier)) {
-      Symbol *symbol = map_lookup(func_symbols, node->identifier);
-      node->symbol = symbol;
-      node->value_type = symbol->value_type;
-    } else if (map_lookup(symbols, node->identifier)) {
+    if (map_lookup(symbols, node->identifier)) {
       Symbol *symbol = map_lookup(symbols, node->identifier);
+      node->symbol = symbol;
+      node->value_type = type_convert(symbol->value_type);
+    } else if (map_lookup(external_symbols, node->identifier)) {
+      Symbol *symbol = map_lookup(external_symbols, node->identifier);
       node->symbol = symbol;
       node->value_type = type_convert(symbol->value_type);
     } else {
@@ -227,7 +227,13 @@ void analyze_var_decl(Node *node) {
   for (int i = 0; i < node->var_symbols->length; i++) {
     Symbol *symbol = node->var_symbols->array[i];
     symbol->offset = put_local_variable(symbol->value_type->size);
-    map_put(symbols, symbol->identifier, symbol);
+    if (symbols == NULL) {
+      symbol->type = GLOBAL;
+      map_put(external_symbols, symbol->identifier, symbol);
+    } else {
+      symbol->type = LOCAL;
+      map_put(symbols, symbol->identifier, symbol);
+    }
   }
 }
 
@@ -311,13 +317,13 @@ void analyze_stmt(Node *node) {
 }
 
 void analyze_func_def(Node *node) {
-  map_clear(symbols);
+  symbols = map_new();
   local_vars_size = 0;
 
-  if (map_lookup(func_symbols, node->symbol->identifier)) {
+  if (map_lookup(external_symbols, node->symbol->identifier)) {
     error("duplicated function definition.");
   }
-  map_put(func_symbols, node->symbol->identifier, node->symbol);
+  map_put(external_symbols, node->symbol->identifier, node->symbol);
 
   if (node->param_symbols->length > 6) {
     error("too many parameters.");
@@ -328,23 +334,30 @@ void analyze_func_def(Node *node) {
       error("duplicated parameter declaration.");
     }
     param->offset = put_local_variable(param->value_type->size);
+    param->type = LOCAL;
     map_put(symbols, param->identifier, param);
   }
 
   analyze_stmt(node->function_body);
 
   node->local_vars_size = local_vars_size;
+
+  symbols = NULL;
 }
 
 void analyze(Node *node) {
-  func_symbols = map_new();
-  symbols = map_new();
+  external_symbols = map_new();
+  symbols = NULL;
 
   break_level = 0;
   continue_level = 0;
 
   for (int i = 0; i < node->definitions->length; i++) {
     Node *def = node->definitions->array[i];
-    analyze_func_def(def);
+    if (def->type == FUNC_DEF) {
+      analyze_func_def(def);
+    } else if (def->type == VAR_DECL) {
+      analyze_var_decl(def);
+    }
   }
 }

@@ -117,7 +117,13 @@ extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_convert(Type *type);
 
+typedef enum symbol_type {
+  GLOBAL,
+  LOCAL
+} SymbolType;
+
 typedef struct symbol {
+  SymbolType type;
   char *identifier;
   Type *value_type;
   int offset;

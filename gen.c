@@ -26,7 +26,11 @@ void gen_expr(Node *node);
 void gen_lvalue(Node *node) {
   if (node->type == IDENTIFIER) {
     Symbol *symbol = node->symbol;
-    printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+    if (symbol->type == GLOBAL) {
+      printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
+    } else if (symbol->type == LOCAL) {
+      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+    }
     gen_push("rax");
   }
 
@@ -58,12 +62,22 @@ void gen_expr(Node *node) {
     if (!symbol) {
       error("undefined identifier.");
     }
-    if (symbol->value_type->type == INT) {
-      printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
-    } else if (symbol->value_type->type == POINTER) {
-      printf("  movq %d(%%rbp), %%rax\n", -symbol->offset);
-    } else if (symbol->value_type->type == ARRAY) {
-      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+    if (symbol->type == GLOBAL) {
+      if (symbol->value_type->type == INT) {
+        printf("  movl %s(%%rip), %%eax\n", symbol->identifier);
+      } else if (symbol->value_type->type == POINTER) {
+        printf("  movq %s(%%rip), %%rax\n", symbol->identifier);
+      } else if (symbol->value_type->type == ARRAY) {
+        printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
+      }
+    } else if (symbol->type == LOCAL) {
+      if (symbol->value_type->type == INT) {
+        printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
+      } else if (symbol->value_type->type == POINTER) {
+        printf("  movq %d(%%rbp), %%rax\n", -symbol->offset);
+      } else if (symbol->value_type->type == ARRAY) {
+        printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+      }
     }
     gen_push("rax");
   }
@@ -82,8 +96,12 @@ void gen_expr(Node *node) {
   }
 
   if (node->type == ADDRESS) {
-    int offset = node->expr->symbol->offset;
-    printf("  leaq %d(%%rbp), %%rax\n", -offset);
+    Symbol *symbol = node->expr->symbol;
+    if (symbol->type == GLOBAL) {
+      printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
+    } else if (symbol->type == LOCAL) {
+      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+    }
     gen_push("rax");
   }
 
@@ -448,7 +466,17 @@ void gen_stmt(Node *node) {
   }
 }
 
+void gen_glob_var_decl(Node *node) {
+  printf("  .data\n");
+  for (int i = 0; i < node->var_symbols->length; i++) {
+    Symbol *symbol = node->var_symbols->array[i];
+    printf("%s:\n", symbol->identifier);
+    printf("  .zero %d\n", symbol->value_type->size);
+  }
+}
+
 void gen_func_def(Node *node) {
+  printf("  .text\n");
   if (strcmp(node->identifier, "main") == 0) {
     printf("  .global main\n");
   }
@@ -480,7 +508,12 @@ void gen_func_def(Node *node) {
 
 void gen_trans_unit(Node *node) {
   for (int i = 0; i < node->definitions->length; i++) {
-    gen_func_def((Node *) node->definitions->array[i]);
+    Node *def = node->definitions->array[i];
+    if (def->type == FUNC_DEF) {
+      gen_func_def(def);
+    } else if (def->type == VAR_DECL) {
+      gen_glob_var_decl(def);
+    }
   }
 }
 

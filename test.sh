@@ -269,6 +269,15 @@ test_stmts_stdout "
   return 0;
 " "20\n40\n60\n26\n52\n78\n32\n64\n96\n"
 
+test_prog_retval "int x; int main() { return 0; }" 0
+test_prog_retval "int x, y[20]; int main() { return 0; }" 0
+test_prog_retval "int x; int func() { x = 8; } int main() { func(); return x; }" 8
+test_prog_retval "int y[20]; int func() { y[5] = 3; } int main() { func(); return y[5]; }" 3
+test_prog_retval "int x; int func(int *p) { *p = 123; } int main() { func(&x); return x; }" 123
+test_prog_retval "int x, *y; int func() { *y = 123; } int main() { y = &x; func(); return x; }" 123
+test_prog_retval "int x; int func() { int x; x = 123; } int main() { x = 0; func(); return x; }" 0
+test_prog_retval "int x; int func() { return x; } int y[4], z; int main() { x = 21; return func(); }" 21
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
@@ -281,7 +290,6 @@ test_error "int main()" "tLBRACE is expected."
 test_error "int main() { 2;" "tRBRACE is expected."
 test_error "123" "tINT is expected."
 test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "duplicated function definition."
-test_error "int main" "tLPAREN is expected."
 test_error "int main(int abc" "tRPAREN is expected."
 test_error "int main(int 123) { 0; }" "tIDENTIFIER is expected."
 test_error "int main(int x, int x) { 0; }" "duplicated parameter declaration."
@@ -292,3 +300,6 @@ test_error "int main() { continue; }" "continue statement should appear in loops
 test_error "int main() { break; }" "break statement should appear in loops."
 test_error "int main() { return &123; }" "operand of unary & operator should be identifier."
 test_error "int main() { return *123; }" "operand of unary * operator should have pointer type."
+test_error "int x, main() { return 0; };" "tSEMICOLON is expected."
+test_error "int main() { return 0; }, x;" "tINT is expected."
+test_error "int func() { return x; } int x; int main() { func(); }" "undefined identifier."
