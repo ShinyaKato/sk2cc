@@ -501,8 +501,7 @@ void gen_func_def(Node *node) {
   gen_stmt(node->function_body);
 
   gen_label(return_label);
-  printf("  addq $%d, %%rsp\n", node->local_vars_size);
-  gen_pop("rbp");
+  printf("  leave\n");
   printf("  ret\n");
 }
 
