@@ -100,6 +100,7 @@ void gen_expr(Node *node) {
         gen_pop(arg_reg[i]);
       }
     }
+    printf("  movl $0, %%eax\n");
     printf("  call %s\n", node->expr->identifier);
     gen_push("rax");
   }
