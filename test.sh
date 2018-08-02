@@ -10,7 +10,7 @@ failed() {
 compile() {
   prog=$1
   echo "$prog" | ./cc > tmp/out.s || failed "failed to compile \"$prog\"."
-  gcc tmp/out.s tmp/func_call_stub.o -o tmp/out || failed "failed to link \"$prog\" and stubs."
+  gcc -no-pie tmp/out.s tmp/func_call_stub.o -o tmp/out || failed "failed to link \"$prog\" and stubs."
 }
 
 test_prog_retval() {
@@ -280,6 +280,9 @@ test_prog_retval "int x; int func() { return x; } int y[4], z; int main() { x = 
 
 test_prog_retval "char c, s[20]; int main() { return 0; }" 0
 test_prog_retval "int main() { char c, s[20]; return 0; }" 0
+test_prog_retval "int main() { char c1, c2, c3; c1 = 13; c2 = 65; c3 = c1 + c2; return c3; }" 78
+test_prog_stdout "int main() { char s[3]; s[0] = 65; s[1] = 66; s[2] = 67; print_string(s); return 0; }" "ABC"
+test_prog_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i = i + 1) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

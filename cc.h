@@ -121,6 +121,7 @@ extern Type *type_int();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_convert(Type *type);
+extern bool type_integer(Type *type);
 
 typedef enum symbol_type {
   GLOBAL,

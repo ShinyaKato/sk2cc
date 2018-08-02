@@ -45,6 +45,14 @@ int print_int(int n) {
   return 0;
 }
 
+void print_char(char c) {
+  printf("%c\n", c);
+}
+
+void print_string(char *s) {
+  printf("%s\n", s);
+}
+
 int *alloc(int **buf, int a, int b, int c) {
   *buf = (int *) malloc(sizeof(int) * 3);
   (*buf)[0] = a;

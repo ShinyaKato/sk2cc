@@ -66,7 +66,7 @@ void analyze_expr(Node *node) {
 
   if (node->type == UPLUS) {
     analyze_expr(node->expr);
-    if (node->expr->value_type->type == INT) {
+    if (type_integer(node->expr->value_type)) {
       node->value_type = node->expr->value_type;
     } else {
       error("operand of unary + operator should have integer type.");
@@ -75,7 +75,7 @@ void analyze_expr(Node *node) {
 
   if (node->type == UMINUS) {
     analyze_expr(node->expr);
-    if (node->expr->value_type->type == INT) {
+    if (type_integer(node->expr->value_type)) {
       node->value_type = node->expr->value_type;
     } else {
       error("operand of unary - operator should have integer type.");
@@ -84,7 +84,7 @@ void analyze_expr(Node *node) {
 
   if (node->type == NOT) {
     analyze_expr(node->expr);
-    if (node->expr->value_type->type == INT) {
+    if (type_integer(node->expr->value_type)) {
       node->value_type = node->expr->value_type;
     } else {
       error("operand of ~ operator should have integer type.");
@@ -94,7 +94,7 @@ void analyze_expr(Node *node) {
   if (node->type == LNOT) {
     analyze_expr(node->expr);
     node->value_type = node->expr->value_type;
-    if (node->expr->value_type->type == INT) {
+    if (type_integer(node->expr->value_type)) {
       node->value_type = node->expr->value_type;
     } else {
       error("operand of ! operator should have integer type.");
@@ -104,7 +104,7 @@ void analyze_expr(Node *node) {
   if (node->type == MUL || node->type == DIV) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       if (node->type == MUL) error("operands of binary * should have integer type.");
@@ -115,7 +115,7 @@ void analyze_expr(Node *node) {
   if (node->type == MOD) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of %% operator should have integer type.");
@@ -125,9 +125,9 @@ void analyze_expr(Node *node) {
   if (node->type == ADD) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
-    } else if (node->left->value_type->type == POINTER && node->right->value_type->type == INT) {
+    } else if (node->left->value_type->type == POINTER && type_integer(node->right->value_type)) {
       node->value_type = node->left->value_type;
     } else {
       error("invalid operand types for binary + operator.");
@@ -137,9 +137,9 @@ void analyze_expr(Node *node) {
   if (node->type == SUB) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
-    } else if (node->left->value_type->type == POINTER && node->right->value_type->type == INT) {
+    } else if (node->left->value_type->type == POINTER && type_integer(node->right->value_type)) {
       node->value_type = node->left->value_type;
     } else {
       error("invalid operand types for binary - operator.");
@@ -149,7 +149,7 @@ void analyze_expr(Node *node) {
   if (node->type == LSHIFT || node->type == RSHIFT) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of shift operators should be integer type.");
@@ -159,7 +159,7 @@ void analyze_expr(Node *node) {
   if (node->type == LT || node->type == GT || node->type == LTE || node->type == GTE) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of relational operators should be integer type.");
@@ -169,7 +169,7 @@ void analyze_expr(Node *node) {
   if (node->type == EQ || node->type == NEQ) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of equality operators should be integer type.");
@@ -179,7 +179,7 @@ void analyze_expr(Node *node) {
   if (node->type == AND || node->type == XOR || node->type == OR) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of bit operators should be integer type.");
@@ -189,7 +189,7 @@ void analyze_expr(Node *node) {
   if (node->type == LAND || node->type == LOR) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of logical and/or operators should be integer type.");
@@ -200,10 +200,10 @@ void analyze_expr(Node *node) {
     analyze_expr(node->control);
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->control->value_type->type != INT) {
+    if (!type_integer(node->control->value_type)) {
       error("control expression of conditional-expression should have integer type.");
     }
-    if (node->left->value_type->type == INT && node->right->value_type->type == INT) {
+    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
       node->value_type = type_int();
     } else {
       error("operands of conditional-expression should be integer type.");
@@ -215,9 +215,6 @@ void analyze_expr(Node *node) {
     analyze_expr(node->right);
     if (node->left->type != IDENTIFIER && node->left->type != INDIRECT) {
       error("left side of assignment operator should be identifier or indirect operator.");
-    }
-    if (node->left->value_type->type != node->right->value_type->type) {
-      error("operands types of assignment operator should be the same.");
     }
     node->value_type = node->left->value_type;
   }

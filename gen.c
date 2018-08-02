@@ -63,7 +63,9 @@ void gen_expr(Node *node) {
       error("undefined identifier.");
     }
     if (symbol->type == GLOBAL) {
-      if (symbol->value_type->type == INT) {
+      if (symbol->value_type->type == CHAR) {
+        printf("  movsbl %s(%%rip), %%eax\n", symbol->identifier);
+      } else if (symbol->value_type->type == INT) {
         printf("  movl %s(%%rip), %%eax\n", symbol->identifier);
       } else if (symbol->value_type->type == POINTER) {
         printf("  movq %s(%%rip), %%rax\n", symbol->identifier);
@@ -71,7 +73,9 @@ void gen_expr(Node *node) {
         printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
       }
     } else if (symbol->type == LOCAL) {
-      if (symbol->value_type->type == INT) {
+      if (symbol->value_type->type == CHAR) {
+        printf("  movsbl %d(%%rbp), %%eax\n", -symbol->offset);
+      } else if (symbol->value_type->type == INT) {
         printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
       } else if (symbol->value_type->type == POINTER) {
         printf("  movq %d(%%rbp), %%rax\n", -symbol->offset);
@@ -109,7 +113,9 @@ void gen_expr(Node *node) {
     gen_expr(node->expr);
     if (node->expr->value_type->pointer_to->type != ARRAY) {
       gen_pop("rax");
-      if (node->expr->value_type->type == INT) {
+      if (node->expr->value_type->type == CHAR) {
+        printf("  mobsbl (%%rax), %%ecx\n");
+      } else if (node->expr->value_type->type == INT) {
         printf("  movl (%%rax), %%ecx\n");
       } else if (node->expr->value_type->type == POINTER) {
         printf("  movq (%%rax), %%rcx\n");
@@ -167,11 +173,11 @@ void gen_expr(Node *node) {
     Type *left_type = node->left->value_type;
     Type *right_type = node->right->value_type;
 
-    if (left_type->type == INT && right_type->type == INT) {
+    if (type_integer(left_type) && type_integer(right_type)) {
       gen_operands(node->left, node->right, "rax", "rcx");
       printf("  addl %%ecx, %%eax\n");
       gen_push("rax");
-    } else if (left_type->type == POINTER && right_type->type == INT) {
+    } else if (left_type->type == POINTER && type_integer(right_type)) {
       int size = left_type->pointer_to->size;
       gen_expr(node->left);
       gen_operand(node->right, "rax");
@@ -187,11 +193,11 @@ void gen_expr(Node *node) {
     Type *left_type = node->left->value_type;
     Type *right_type = node->right->value_type;
 
-    if (left_type->type == INT && right_type->type == INT) {
+    if (type_integer(left_type) && type_integer(right_type)) {
       gen_operands(node->left, node->right, "rax", "rcx");
       printf("  subl %%ecx, %%eax\n");
       gen_push("rax");
-    } else if (left_type->type == POINTER && right_type->type == INT) {
+    } else if (left_type->type == POINTER && type_integer(right_type)) {
       int size = left_type->pointer_to->size;
       gen_expr(node->left);
       gen_operand(node->right, "rax");
@@ -335,7 +341,9 @@ void gen_expr(Node *node) {
     gen_lvalue(node->left);
     gen_operand(node->right, "rcx");
     gen_pop("rax");
-    if (node->left->value_type->type == INT) {
+    if (node->left->value_type->type == CHAR) {
+      printf("  movb %%cl, (%%rax)\n");
+    } else if (node->left->value_type->type == INT) {
       printf("  movl %%ecx, (%%rax)\n");
     } else if (node->left->value_type->type == POINTER) {
       printf("  movq %%rcx, (%%rax)\n");
@@ -490,7 +498,7 @@ void gen_func_def(Node *node) {
 
   for (int i = 0; i < node->param_symbols->length; i++) {
     Symbol *symbol = (Symbol *) node->param_symbols->array[i];
-    if (symbol->value_type->type == INT) {
+    if (type_integer(symbol->value_type)) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->value_type->type == POINTER) {

@@ -42,3 +42,7 @@ Type *type_convert(Type *type) {
   }
   return type;
 }
+
+bool type_integer(Type *type) {
+  return type->type == INT || type->type == CHAR;
+}
