@@ -1,5 +1,7 @@
 #include "cc.h"
 
+Vector *string_literals;
+
 Map *external_symbols, *symbols;
 int local_vars_size;
 
@@ -14,6 +16,12 @@ int put_local_variable(int size) {
 void analyze_expr(Node *node) {
   if (node->type == CONST) {
     node->value_type = type_int();
+  }
+
+  if (node->type == STRING_LITERAL) {
+    node->value_type = type_pointer_to(type_char());
+    node->string_label = string_literals->length;
+    vector_push(string_literals, node->string_literal);
   }
 
   if (node->type == IDENTIFIER) {
@@ -343,6 +351,8 @@ void analyze_func_def(Node *node) {
 }
 
 void analyze(Node *node) {
+  string_literals = vector_new();
+
   external_symbols = map_new();
   symbols = NULL;
 
@@ -357,4 +367,6 @@ void analyze(Node *node) {
       analyze_var_decl(def);
     }
   }
+
+  node->string_literals = string_literals;
 }

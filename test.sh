@@ -283,6 +283,9 @@ test_prog_retval "int main() { char c, s[20]; return 0; }" 0
 test_prog_retval "int main() { char c1, c2, c3; c1 = 13; c2 = 65; c3 = c1 + c2; return c3; }" 78
 test_prog_stdout "int main() { char s[3]; s[0] = 65; s[1] = 66; s[2] = 67; print_string(s); return 0; }" "ABC"
 test_prog_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i = i + 1) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
+test_prog_stdout "int main() { puts(\"hello world\"); return 0; }" "hello world"
+test_prog_stdout "int main() { char *s; s = \"hello world\"; puts(s); return 0; }" "hello world"
+test_prog_stdout "int main() { char *s; s = \"hello world\"; print_char(s[6]); return 0; }" "w"
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

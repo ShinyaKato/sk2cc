@@ -13,6 +13,7 @@ char token_type_name[][32] = {
   "tRETURN",
   "tIDENTIFIER",
   "tINT_CONST",
+  "tSTRING_LITERAL",
   "tLBRACKET",
   "tRBRACKET",
   "tLPAREN",
@@ -81,6 +82,15 @@ Token *lex() {
     }
     token->type = tINT_CONST;
     token->int_value = n;
+  } else if (c == '"') {
+    String *literal = string_new();
+    while (1) {
+      char d = get_char();
+      if (d == '"') break;
+      string_push(literal, d);
+    }
+    token->type = tSTRING_LITERAL;
+    token->string_literal = literal->buffer;
   }  else if (isalpha(c) || c == '_') {
     String *identifier = string_new();
     string_push(identifier, c);

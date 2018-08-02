@@ -56,6 +56,7 @@ typedef enum token_type {
   tRETURN,
   tIDENTIFIER,
   tINT_CONST,
+  tSTRING_LITERAL,
   tLBRACKET,
   tRBRACKET,
   tLPAREN,
@@ -93,6 +94,7 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   int int_value;
+  char *string_literal;
   char *identifier;
 } Token;
 
@@ -137,6 +139,7 @@ typedef struct symbol {
 
 typedef enum node_type {
   CONST,
+  STRING_LITERAL,
   IDENTIFIER,
   FUNC_CALL,
   ADDRESS,
@@ -184,6 +187,8 @@ typedef struct node {
   enum node_type type;
   Type *value_type;
   int int_value;
+  char *string_literal;
+  int string_label;
   char *identifier;
   Symbol *symbol;
   Vector *args;
@@ -193,6 +198,7 @@ typedef struct node {
   struct node *if_body, *else_body, *loop_body, *function_body;
   Vector *param_symbols;
   int local_vars_size;
+  Vector *string_literals;
   Vector *definitions;
 } Node;
 

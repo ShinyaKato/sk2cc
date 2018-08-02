@@ -42,6 +42,13 @@ Node *primary_expression() {
     return node;
   }
 
+  if (token->type == tSTRING_LITERAL) {
+    Node *node = node_new();
+    node->type = STRING_LITERAL;
+    node->string_literal = token->string_literal;
+    return node;
+  }
+
   if (token->type == tIDENTIFIER) {
     Node *node = node_new();
     node->type = IDENTIFIER;

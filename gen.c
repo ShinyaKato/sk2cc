@@ -57,6 +57,11 @@ void gen_expr(Node *node) {
     gen_push("rax");
   }
 
+  if (node->type == STRING_LITERAL) {
+    printf("  movq $.LC%d, %%rax\n", node->string_label);
+    gen_push("rax");
+  }
+
   if (node->type == IDENTIFIER) {
     Symbol *symbol = node->symbol;
     if (!symbol) {
@@ -514,6 +519,13 @@ void gen_func_def(Node *node) {
 }
 
 void gen_trans_unit(Node *node) {
+  for (int i = 0; i < node->string_literals->length; i++) {
+    char *literal = node->string_literals->array[i];
+    printf("  .text\n");
+    printf(".LC%d:\n", i);
+    printf("  .string \"%s\"\n", literal);
+  }
+
   for (int i = 0; i < node->definitions->length; i++) {
     Node *def = node->definitions->array[i];
     if (def->type == FUNC_DEF) {
