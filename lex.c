@@ -91,7 +91,7 @@ Token *lex() {
     }
     token->type = tSTRING_LITERAL;
     token->string_literal = literal->buffer;
-  }  else if (isalpha(c) || c == '_') {
+  } else if (isalpha(c) || c == '_') {
     String *identifier = string_new();
     string_push(identifier, c);
     while (1) {

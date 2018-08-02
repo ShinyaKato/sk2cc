@@ -37,7 +37,6 @@ Node *primary_expression() {
   if (token->type == tINT_CONST) {
     Node *node = node_new();
     node->type = CONST;
-    node->value_type = type_int();
     node->int_value = token->int_value;
     return node;
   }
