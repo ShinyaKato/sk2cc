@@ -350,6 +350,17 @@ void analyze_func_def(Node *node) {
   symbols = NULL;
 }
 
+void analyze_trans_unit(Node *node) {
+  for (int i = 0; i < node->definitions->length; i++) {
+    Node *def = node->definitions->array[i];
+    if (def->type == VAR_DECL) {
+      analyze_var_decl(def);
+    } else if (def->type == FUNC_DEF) {
+      analyze_func_def(def);
+    }
+  }
+}
+
 void analyze(Node *node) {
   string_literals = vector_new();
 
@@ -359,14 +370,7 @@ void analyze(Node *node) {
   break_level = 0;
   continue_level = 0;
 
-  for (int i = 0; i < node->definitions->length; i++) {
-    Node *def = node->definitions->array[i];
-    if (def->type == FUNC_DEF) {
-      analyze_func_def(def);
-    } else if (def->type == VAR_DECL) {
-      analyze_var_decl(def);
-    }
-  }
+  analyze_trans_unit(node);
 
   node->string_literals = string_literals;
 }

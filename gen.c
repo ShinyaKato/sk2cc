@@ -480,8 +480,7 @@ void gen_stmt(Node *node) {
   }
 }
 
-void gen_glob_var_decl(Node *node) {
-  printf("  .data\n");
+void gen_gvar_decl(Node *node) {
   for (int i = 0; i < node->var_symbols->length; i++) {
     Symbol *symbol = node->var_symbols->array[i];
     printf("%s:\n", symbol->identifier);
@@ -490,7 +489,6 @@ void gen_glob_var_decl(Node *node) {
 }
 
 void gen_func_def(Node *node) {
-  printf("  .text\n");
   if (strcmp(node->identifier, "main") == 0) {
     printf("  .global main\n");
   }
@@ -520,19 +518,26 @@ void gen_func_def(Node *node) {
 }
 
 void gen_trans_unit(Node *node) {
+  printf("  .text\n");
   for (int i = 0; i < node->string_literals->length; i++) {
     char *literal = node->string_literals->array[i];
-    printf("  .text\n");
     printf(".LC%d:\n", i);
     printf("  .string \"%s\"\n", literal);
   }
 
+  printf("  .data\n");
+  for (int i = 0; i < node->definitions->length; i++) {
+    Node *def = node->definitions->array[i];
+    if (def->type == VAR_DECL) {
+      gen_gvar_decl(def);
+    }
+  }
+
+  printf("  .text\n");
   for (int i = 0; i < node->definitions->length; i++) {
     Node *def = node->definitions->array[i];
     if (def->type == FUNC_DEF) {
       gen_func_def(def);
-    } else if (def->type == VAR_DECL) {
-      gen_glob_var_decl(def);
     }
   }
 }

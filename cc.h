@@ -198,8 +198,7 @@ typedef struct node {
   struct node *if_body, *else_body, *loop_body, *function_body;
   Vector *param_symbols;
   int local_vars_size;
-  Vector *string_literals;
-  Vector *definitions;
+  Vector *string_literals, *definitions;
 } Node;
 
 extern Node *parse();
