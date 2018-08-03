@@ -104,7 +104,6 @@ extern Token *peek_token();
 extern Token *get_token();
 extern Token *expect_token(TokenType type);
 extern bool read_token(TokenType type);
-extern void lex_init();
 
 typedef enum type_type {
   CHAR,

@@ -50,8 +50,6 @@ char token_type_name[][32] = {
   "tEND"
 };
 
-Token *token_end;
-
 bool has_next_token = false;
 Token *next_token;
 
@@ -68,7 +66,9 @@ Token *lex() {
   }
 
   if (peek_char() == EOF) {
-    return token_end;
+    Token *token = token_new();
+    token->type = tEND;
+    return token;
   }
 
   Token *token = token_new();
@@ -255,9 +255,4 @@ bool read_token(TokenType type) {
   bool equal = peek_token()->type == type;
   if (equal) get_token();
   return equal;
-}
-
-void lex_init() {
-  token_end = token_new();
-  token_end->type = tEND;
 }
