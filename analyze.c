@@ -21,7 +21,7 @@ void analyze_expr(Node *node) {
   if (node->type == STRING_LITERAL) {
     node->value_type = type_pointer_to(type_char());
     node->string_label = string_literals->length;
-    vector_push(string_literals, node->string_literal);
+    vector_push(string_literals, node->string_value);
   }
 
   if (node->type == IDENTIFIER) {

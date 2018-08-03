@@ -520,9 +520,9 @@ void gen_func_def(Node *node) {
 void gen_trans_unit(Node *node) {
   printf("  .text\n");
   for (int i = 0; i < node->string_literals->length; i++) {
-    char *literal = node->string_literals->array[i];
+    String *str = node->string_literals->array[i];
     printf(".LC%d:\n", i);
-    printf("  .string \"%s\"\n", literal);
+    printf("  .string \"%s\"\n", str->buffer);
   }
 
   printf("  .data\n");

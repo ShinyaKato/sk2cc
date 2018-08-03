@@ -23,6 +23,7 @@ Node *node_new() {
   node->loop_body = NULL;
   node->function_body = NULL;
   node->param_symbols = NULL;
+  node->string_literals = NULL;
   node->definitions = NULL;
 
   return node;
@@ -44,7 +45,7 @@ Node *primary_expression() {
   if (token->type == tSTRING_LITERAL) {
     Node *node = node_new();
     node->type = STRING_LITERAL;
-    node->string_literal = token->string_literal;
+    node->string_value = token->string_value;
     return node;
   }
 

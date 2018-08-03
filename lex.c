@@ -83,14 +83,14 @@ Token *lex() {
     token->type = tINT_CONST;
     token->int_value = n;
   } else if (c == '"') {
-    String *literal = string_new();
+    String *str = string_new();
     while (1) {
       char d = get_char();
       if (d == '"') break;
-      string_push(literal, d);
+      string_push(str, d);
     }
     token->type = tSTRING_LITERAL;
-    token->string_literal = literal->buffer;
+    token->string_value = str;
   } else if (isalpha(c) || c == '_') {
     String *identifier = string_new();
     string_push(identifier, c);

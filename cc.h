@@ -94,7 +94,7 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   int int_value;
-  char *string_literal;
+  String *string_value;
   char *identifier;
 } Token;
 
@@ -187,7 +187,7 @@ typedef struct node {
   enum node_type type;
   Type *value_type;
   int int_value;
-  char *string_literal;
+  String *string_value;
   int string_label;
   char *identifier;
   Symbol *symbol;
