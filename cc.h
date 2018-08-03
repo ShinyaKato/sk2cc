@@ -46,6 +46,7 @@ extern char get_char();
 typedef enum token_type {
   tINT,
   tCHAR,
+  tSIZEOF,
   tIF,
   tELSE,
   tWHILE,
@@ -115,7 +116,7 @@ typedef enum type_type {
 typedef struct type {
   TypeType type;
   struct type *pointer_to, *array_of;
-  int array_size, size;
+  int array_size, size, original_size;
 } Type;
 
 extern Type *type_new();
@@ -153,6 +154,7 @@ typedef enum node_type {
   UMINUS,
   NOT,
   LNOT,
+  SIZEOF,
   MUL,
   DIV,
   MOD,
@@ -206,6 +208,7 @@ typedef struct node {
   Vector *string_literals, *definitions;
 } Node;
 
+extern Node *node_new();
 extern Node *parse();
 
 extern void analyze(Node *node);

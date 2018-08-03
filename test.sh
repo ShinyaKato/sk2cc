@@ -304,6 +304,20 @@ test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p 
 test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; p--; return *p; }" 91
 test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; --p; return *p; }" 91
 
+test_prog_retval "int main() { return sizeof(123); }" 4
+test_prog_retval "int main() { return sizeof 123; }" 4
+test_prog_retval "int main() { return sizeof 123 + 13; }" 17
+test_prog_retval "int main() { char x; return sizeof(x); }" 1
+test_prog_retval "int main() { int x; return sizeof(x); }" 4
+test_prog_retval "int main() { int *x; return sizeof(x); }" 8
+test_prog_retval "int main() { int **x; return sizeof(x); }" 8
+test_prog_retval "int main() { int x[4]; return sizeof(x); }" 16
+test_prog_retval "int main() { int x[4][5]; return sizeof(x); }" 80
+test_prog_retval "int main() { int *x[4][5]; return sizeof(x); }" 160
+test_prog_retval "int main() { int x[4][5]; return sizeof(x[0]); }" 20
+test_prog_retval "int main() { char x; return sizeof(\"abc\"); }" 4
+test_prog_retval "int main() { char *x; x = \"abc\"; return sizeof(x); }" 8
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

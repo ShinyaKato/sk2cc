@@ -41,7 +41,9 @@ void analyze_expr(Node *node) {
   }
 
   if (node->type == STRING_LITERAL) {
-    node->value_type = type_pointer_to(type_char());
+    String *str = node->string_value;
+    Type *array = type_array_of(type_char(), str->length + 1);
+    node->value_type = type_convert(array);
     node->string_label = string_literals->length;
     vector_push(string_literals, node->string_value);
   }
@@ -173,6 +175,13 @@ void analyze_expr(Node *node) {
     } else {
       error("operand of ! operator should have integer type.");
     }
+  }
+
+  if (node->type == SIZEOF) {
+    analyze_expr(node->expr);
+    node->type = CONST;
+    node->value_type = type_int();
+    node->int_value = node->expr->value_type->original_size;
   }
 
   if (node->type == MUL || node->type == DIV) {

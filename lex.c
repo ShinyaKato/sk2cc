@@ -3,6 +3,7 @@
 char token_type_name[][32] = {
   "tINT",
   "tCHAR",
+  "tSIZEOF",
   "tIF",
   "tELSE",
   "tWHILE",
@@ -106,6 +107,8 @@ Token *lex() {
       token->type = tCHAR;
     } else if (strcmp(identifier->buffer, "int") == 0) {
       token->type = tINT;
+    } else if (strcmp(identifier->buffer, "sizeof") == 0) {
+      token->type = tSIZEOF;
     } else if (strcmp(identifier->buffer, "if") == 0) {
       token->type = tIF;
     } else if (strcmp(identifier->buffer, "else") == 0) {

@@ -126,6 +126,7 @@ Node *unary_expression() {
   else if (read_token(tSUB)) type = UMINUS;
   else if (read_token(tNOT)) type = NOT;
   else if (read_token(tLNOT)) type = LNOT;
+  else if (read_token(tSIZEOF)) type = SIZEOF;
   else return postfix_expression();
 
   Node *node = node_new();
