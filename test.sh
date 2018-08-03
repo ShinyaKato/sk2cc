@@ -195,21 +195,21 @@ test_stmts_retval "int x; int s; x = 1; s = 0; while (x <= 10) { s = s + x; x = 
 test_stmts_retval "int x; int s; x = 1; s = 0; while (x <= 10) { if (x % 2 == 0) s = s + x; x = x + 1; } return s;" 30
 test_stmts_retval "int x; int s; x = 1; s = 0; while (x <= 10) { if (x % 2 == 1) s = s + x; x = x + 1; } return s;" 25
 
-test_stmts_retval "int i; int s; i = 0; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 45
-test_stmts_retval "int i; int s; i = 10; s = 0; do { s = s + i; i = i + 1; } while (i < 10); return s;" 10
+test_stmts_retval "int i; int s; i = 0; s = 0; do { s = s + i; i++; } while (i < 10); return s;" 45
+test_stmts_retval "int i; int s; i = 10; s = 0; do { s = s + i; i++; } while (i < 10); return s;" 10
 
-test_stmts_retval "int s; int i; s = 0; i = 0; for (; i < 10;) { s = s + i; i = i + 1; } return s;" 45
-test_stmts_retval "int s; int i; s = 0; i = 0; for (; i < 10; i = i + 1) { s = s + i; } return s;" 45
-test_stmts_retval "int s; int i; s = 0; for (i = 0; i < 10;) { s = s + i; i = i + 1; } return s;" 45
-test_stmts_retval "int s; int i; s = 0; for (i = 0; i < 10; i = i + 1) { s = s + i; } return s;" 45
+test_stmts_retval "int s; int i; s = 0; i = 0; for (; i < 10;) { s = s + i; i++; } return s;" 45
+test_stmts_retval "int s; int i; s = 0; i = 0; for (; i < 10; i++) { s = s + i; } return s;" 45
+test_stmts_retval "int s; int i; s = 0; for (i = 0; i < 10;) { s = s + i; i++; } return s;" 45
+test_stmts_retval "int s; int i; s = 0; for (i = 0; i < 10; i++) { s = s + i; } return s;" 45
 
-test_stmts_retval "int i; i = 0; for (;; i = i + 1) { if (i < 100) continue; break; } return i;" 100
-test_stmts_retval "int i; i = 0; do { i = i + 1; if (i < 100) continue; break; } while(1); return i;" 100
-test_stmts_retval "int i; i = 0; do { i = i + 1; if (i < 100) continue; } while(i < 50); return i;" 50
-test_stmts_retval "int i; i = 0; while (1) { i = i + 1; if (i < 100) continue; break; } return i;" 100
+test_stmts_retval "int i; i = 0; for (;; i++) { if (i < 100) continue; break; } return i;" 100
+test_stmts_retval "int i; i = 0; do { i++; if (i < 100) continue; break; } while(1); return i;" 100
+test_stmts_retval "int i; i = 0; do { i++; if (i < 100) continue; } while(i < 50); return i;" 50
+test_stmts_retval "int i; i = 0; while (1) { i++; if (i < 100) continue; break; } return i;" 100
 
 test_stmts_retval "int x; x = 0; return x; x = 1; return x;" 0
-test_stmts_retval "int i; for (i = 0; i < 100; i = i + 1) if (i == 42) return i; return 123;" 42
+test_stmts_retval "int i; for (i = 0; i < 100; i++) if (i == 42) return i; return 123;" 42
 
 test_stmts_retval "int x; x = 7; return *&x;" 7
 test_stmts_retval "int x; int y; x = 7; y = 5; return *&x * *&y;" 35
@@ -231,13 +231,13 @@ test_stmts_stdout "int *x; alloc(&x, 53, 29, 64); *(x + 1) = *(x + 2); print_int
 test_stmts_stdout "int *x; alloc(&x, 53, 29, 64); int *y; y = x + 2; print_int(*(y - 1));" "29"
 
 test_stmts_retval "int x, *y; x = 2; *y = x + 3; return *y + 4;" 9
-test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 0);" 0
-test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 2);" 4
-test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i = i + 1) { *(x + i) = i * i; } return *(x + 4);" 16
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i++) { *(x + i) = i * i; } return *(x + 0);" 0
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i++) { *(x + i) = i * i; } return *(x + 2);" 4
+test_stmts_retval "int i, x[5]; for (i = 0; i < 5; i++) { *(x + i) = i * i; } return *(x + 4);" 16
 test_stmts_retval "int a, *x[4]; a = 2; *(x + 3) = &a; return **(x + 3);" 2
 test_stmts_retval "int x[3][4]; **x = 5; return **x;" 5
 test_stmts_retval "int x[3][4]; *(*(x + 2) + 3) = 5; return *(*(x + 2) + 3);" 5
-test_stmts_retval "int x[3][3], i, j; for (i = 0; i < 3; i = i + 1) for (j = 0; j < 3; j = j + 1) *(*(x + i) + j) = i * j; return *(*(x + 2) + 1);" 2
+test_stmts_retval "int x[3][3], i, j; for (i = 0; i < 3; i++) for (j = 0; j < 3; j++) *(*(x + i) + j) = i * j; return *(*(x + 2) + 1);" 2
 
 test_stmts_stdout "
   int A[3][3], B[3][3], C[3][3];
@@ -251,17 +251,17 @@ test_stmts_stdout "
   B[1][0] = 2; B[1][1] = 4; B[1][2] = 6;
   B[2][0] = 3; B[2][1] = 6; B[2][2] = 9;
 
-  for (i = 0; i < 3; i = i + 1) {
-    for (j = 0; j < 3; j = j + 1) {
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
       C[i][j] = 0;
-      for (k = 0; k < 3; k = k + 1) {
+      for (k = 0; k < 3; k++) {
         C[i][j] = C[i][j] + A[i][k] * B[k][j];
       }
     }
   }
 
-  for (i = 0; i < 3; i = i + 1) {
-    for (j = 0; j < 3; j = j + 1) {
+  for (i = 0; i < 3; i++) {
+    for (j = 0; j < 3; j++) {
       print_int(C[i][j]);
     }
   }
@@ -282,10 +282,27 @@ test_prog_retval "char c, s[20]; int main() { return 0; }" 0
 test_prog_retval "int main() { char c, s[20]; return 0; }" 0
 test_prog_retval "int main() { char c1, c2, c3; c1 = 13; c2 = 65; c3 = c1 + c2; return c3; }" 78
 test_prog_stdout "int main() { char s[3]; s[0] = 65; s[1] = 66; s[2] = 67; print_string(s); return 0; }" "ABC"
-test_prog_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i = i + 1) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
+test_prog_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i++) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
 test_prog_stdout "int main() { puts(\"hello world\"); return 0; }" "hello world"
 test_prog_stdout "int main() { char *s; s = \"hello world\"; puts(s); return 0; }" "hello world"
 test_prog_stdout "int main() { char *s; s = \"hello world\"; print_char(s[6]); return 0; }" "w"
+
+test_prog_retval "int main() { int x; x = 1; return x++; }" 1
+test_prog_retval "int main() { int x; x = 1; return ++x; }" 2
+test_prog_retval "int main() { int x; x = 1; x++; return x; }" 2
+test_prog_retval "int main() { int x; x = 1; ++x; return x; }" 2
+test_prog_retval "int main() { int x; x = 1; return x--; }" 1
+test_prog_retval "int main() { int x; x = 1; return --x; }" 0
+test_prog_retval "int main() { int x; x = 1; x--; return x; }" 0
+test_prog_retval "int main() { int x; x = 1; --x; return x; }" 0
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; return *(p++); }" 92
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; return *(++p); }" 93
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; p++; return *p; }" 93
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; ++p; return *p; }" 93
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; return *(p--); }" 92
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; return *(--p); }" 91
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; p--; return *p; }" 91
+test_prog_retval "int main() { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; --p; return *p; }" 91
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
@@ -312,3 +329,4 @@ test_error "int main() { return *123; }" "operand of unary * operator should hav
 test_error "int x, main() { return 0; };" "tSEMICOLON is expected."
 test_error "int main() { return 0; }, x;" "type specifier is expected."
 test_error "int func() { return x; } int x; int main() { func(); }" "undefined identifier."
+test_error "int main() { 1++; }" "operand of postfix increment should be identifier or indirect operator."

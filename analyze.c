@@ -13,6 +13,28 @@ int put_local_variable(int size) {
   return local_vars_size += align_size;
 }
 
+bool check_lvalue(NodeType type) {
+  return type == IDENTIFIER || type == INDIRECT;
+}
+
+Type *value_type_add(Type *left_type, Type *right_type) {
+  if (type_integer(left_type) && type_integer(right_type)) {
+    return type_int();
+  } else if (left_type->type == POINTER && type_integer(right_type)) {
+    return left_type;
+  }
+  return NULL;
+}
+
+Type *value_type_sub(Type *left_type, Type *right_type) {
+  if (type_integer(left_type) && type_integer(right_type)) {
+    return type_int();
+  } else if (left_type->type == POINTER && type_integer(right_type)) {
+    return left_type;
+  }
+  return NULL;
+}
+
 void analyze_expr(Node *node) {
   if (node->type == CONST) {
     node->value_type = type_int();
@@ -52,6 +74,50 @@ void analyze_expr(Node *node) {
       analyze_expr(arg);
     }
     node->value_type = node->expr->value_type;
+  }
+
+  if (node->type == POST_INC) {
+    analyze_expr(node->expr);
+    if (!check_lvalue(node->expr->type)) {
+      error("operand of postfix increment should be identifier or indirect operator.");
+    }
+    node->value_type = value_type_add(node->expr->value_type, type_int());
+    if (!node->value_type) {
+      error("invalid operand types for postfix increment.");
+    }
+  }
+
+  if (node->type == POST_DEC) {
+    analyze_expr(node->expr);
+    if (!check_lvalue(node->expr->type)) {
+      error("operand of postfix decrement should be identifier or indirect operator.");
+    }
+    node->value_type = value_type_sub(node->expr->value_type, type_int());
+    if (!node->value_type) {
+      error("invalid operand types for postfix decrement.");
+    }
+  }
+
+  if (node->type == PRE_INC) {
+    analyze_expr(node->expr);
+    if (!check_lvalue(node->expr->type)) {
+      error("operand of prefix increment should be identifier or indirect operator.");
+    }
+    node->value_type = value_type_add(node->expr->value_type, type_int());
+    if (!node->value_type) {
+      error("invalid operand types for prefix increment.");
+    }
+  }
+
+  if (node->type == PRE_DEC) {
+    analyze_expr(node->expr);
+    if (!check_lvalue(node->expr->type)) {
+      error("operand of prefix decrement should be identifier or indirect operator.");
+    }
+    node->value_type = value_type_add(node->expr->value_type, type_int());
+    if (!node->value_type) {
+      error("invalid operand types for prefix decrement.");
+    }
   }
 
   if (node->type == ADDRESS) {
@@ -133,11 +199,8 @@ void analyze_expr(Node *node) {
   if (node->type == ADD) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else if (node->left->value_type->type == POINTER && type_integer(node->right->value_type)) {
-      node->value_type = node->left->value_type;
-    } else {
+    node->value_type = value_type_add(node->left->value_type, node->right->value_type);
+    if (!node->value_type) {
       error("invalid operand types for binary + operator.");
     }
   }
@@ -145,11 +208,8 @@ void analyze_expr(Node *node) {
   if (node->type == SUB) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else if (node->left->value_type->type == POINTER && type_integer(node->right->value_type)) {
-      node->value_type = node->left->value_type;
-    } else {
+    node->value_type = value_type_sub(node->left->value_type, node->right->value_type);
+    if (!node->value_type) {
       error("invalid operand types for binary - operator.");
     }
   }
@@ -221,7 +281,7 @@ void analyze_expr(Node *node) {
   if (node->type == ASSIGN) {
     analyze_expr(node->left);
     analyze_expr(node->right);
-    if (node->left->type != IDENTIFIER && node->left->type != INDIRECT) {
+    if (!check_lvalue(node->left->type)) {
       error("left side of assignment operator should be identifier or indirect operator.");
     }
     node->value_type = node->left->value_type;

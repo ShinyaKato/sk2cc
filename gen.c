@@ -105,6 +105,72 @@ void gen_expr(Node *node) {
     gen_push("rax");
   }
 
+  if (node->type == POST_INC) {
+    gen_lvalue(node->expr);
+    gen_pop("rcx");
+    if (type_integer(node->expr->value_type)) {
+      printf("  movl (%%rcx), %%eax\n");
+      gen_push("rax");
+      printf("  addl $1, %%eax\n");
+      printf("  movl %%eax, (%%rcx)\n");
+    } else if (node->expr->value_type->type == POINTER) {
+      int size = node->expr->value_type->pointer_to->size;
+      printf("  movq (%%rcx), %%rax\n");
+      gen_push("rax");
+      printf("  addq $%d, %%rax\n", size);
+      printf("  movq %%rax, (%%rcx)\n");
+    }
+  }
+
+  if (node->type == POST_DEC) {
+    gen_lvalue(node->expr);
+    gen_pop("rcx");
+    if (type_integer(node->expr->value_type)) {
+      printf("  movl (%%rcx), %%eax\n");
+      gen_push("rax");
+      printf("  subl $1, %%eax\n");
+      printf("  movl %%eax, (%%rcx)\n");
+    } else if (node->expr->value_type->type == POINTER) {
+      int size = node->expr->value_type->pointer_to->size;
+      printf("  movq (%%rcx), %%rax\n");
+      gen_push("rax");
+      printf("  subq $%d, %%rax\n", size);
+      printf("  movq %%rax, (%%rcx)\n");
+    }
+  }
+
+  if (node->type == PRE_INC) {
+    gen_lvalue(node->expr);
+    gen_pop("rcx");
+    if (type_integer(node->expr->value_type)) {
+      printf("  movl (%%rcx), %%eax\n");
+      printf("  addl $1, %%eax\n");
+      printf("  movl %%eax, (%%rcx)\n");
+    } else if (node->expr->value_type->type == POINTER) {
+      int size = node->expr->value_type->pointer_to->size;
+      printf("  movq (%%rcx), %%rax\n");
+      printf("  addq $%d, %%rax\n", size);
+      printf("  movq %%rax, (%%rcx)\n");
+    }
+    gen_push("rax");
+  }
+
+  if (node->type == PRE_DEC) {
+    gen_lvalue(node->expr);
+    gen_pop("rcx");
+    if (type_integer(node->expr->value_type)) {
+      printf("  movl (%%rcx), %%eax\n");
+      printf("  subl $1, %%eax\n");
+      printf("  movl %%eax, (%%rcx)\n");
+    } else if (node->expr->value_type->type == POINTER) {
+      int size = node->expr->value_type->pointer_to->size;
+      printf("  movq (%%rcx), %%rax\n");
+      printf("  subq $%d, %%rax\n", size);
+      printf("  movq %%rax, (%%rcx)\n");
+    }
+    gen_push("rax");
+  }
+
   if (node->type == ADDRESS) {
     Symbol *symbol = node->expr->symbol;
     if (symbol->type == GLOBAL) {

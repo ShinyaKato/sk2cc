@@ -20,6 +20,8 @@ char token_type_name[][32] = {
   "tRPAREN",
   "tRBRACE",
   "tLBRACE",
+  "tINC",
+  "tDEC",
   "tNOT",
   "tLNOT",
   "tMUL",
@@ -127,9 +129,19 @@ Token *lex() {
   } else if (c == '~') {
     token->type = tNOT;
   } else if (c == '+') {
-    token->type = tADD;
+    if (peek_char() == '+') {
+      token->type = tINC;
+      get_char();
+    } else {
+      token->type = tADD;
+    }
   } else if (c == '-') {
-    token->type = tSUB;
+    if (peek_char() == '-') {
+      token->type = tDEC;
+      get_char();
+    } else {
+      token->type = tSUB;
+    }
   } else if (c == '*') {
     token->type = tMUL;
   } else if (c == '/') {

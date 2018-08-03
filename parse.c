@@ -96,6 +96,18 @@ Node *postfix_expression() {
       node = node_new();
       node->type = INDIRECT;
       node->expr = expr;
+    } else if (read_token(tINC)) {
+      Node *expr = node;
+
+      node = node_new();
+      node->type = POST_INC;
+      node->expr = expr;
+    } else if (read_token(tDEC)) {
+      Node *expr = node;
+
+      node = node_new();
+      node->type = POST_DEC;
+      node->expr = expr;
     } else {
       break;
     }
@@ -106,7 +118,9 @@ Node *postfix_expression() {
 
 Node *unary_expression() {
   NodeType type;
-  if (read_token(tAND)) type = ADDRESS;
+  if (read_token(tINC)) type = PRE_INC;
+  else if (read_token(tDEC)) type = PRE_DEC;
+  else if (read_token(tAND)) type = ADDRESS;
   else if (read_token(tMUL)) type = INDIRECT;
   else if (read_token(tADD)) type = UPLUS;
   else if (read_token(tSUB)) type = UMINUS;
