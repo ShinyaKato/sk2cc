@@ -349,6 +349,11 @@ int main() {
   return 0;
 }" "0\n1\n2\n3\n4\n123\n"
 
+test_prog_retval "int main() { int x = 2; x += 3; return x; }" 5
+test_prog_retval "int main() { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p = A; p += 2; return *p; }" 32
+test_prog_retval "int main() { int x = 5; x -= 3; return x; }" 2
+test_prog_retval "int main() { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p = A + 2; p -= 2; return *p; }" 30
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

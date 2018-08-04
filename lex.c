@@ -47,6 +47,8 @@ char token_type_name[][32] = {
   "tCOLON",
   "tSEMICOLON",
   "tASSIGN",
+  "tADD_ASSIGN",
+  "tSUB_ASSIGN",
   "tCOMMA",
   "tEND"
 };
@@ -135,12 +137,18 @@ Token *lex() {
     if (peek_char() == '+') {
       token->type = tINC;
       get_char();
+    } else if (peek_char() == '=') {
+      token->type = tADD_ASSIGN;
+      get_char();
     } else {
       token->type = tADD;
     }
   } else if (c == '-') {
     if (peek_char() == '-') {
       token->type = tDEC;
+      get_char();
+    } else if (peek_char() == '=') {
+      token->type = tSUB_ASSIGN;
       get_char();
     } else {
       token->type = tSUB;

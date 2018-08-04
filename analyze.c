@@ -320,6 +320,24 @@ void analyze_expr(Node *node) {
     }
     node->value_type = node->left->value_type;
   }
+
+  if (node->type == ADD_ASSIGN) {
+    analyze_expr(node->left);
+    analyze_expr(node->right);
+    node->value_type = value_type_add(node->left->value_type, node->right->value_type);
+    if (!check_lvalue(node->left->type)) {
+      error("left side of assignment operator should be identifier or indirect operator.");
+    }
+  }
+
+  if (node->type == SUB_ASSIGN) {
+    analyze_expr(node->left);
+    analyze_expr(node->right);
+    node->value_type = value_type_sub(node->left->value_type, node->right->value_type);
+    if (!check_lvalue(node->left->type)) {
+      error("left side of assignment operator should be identifier or indirect operator.");
+    }
+  }
 }
 
 void analyze_var_decl(Node *node) {

@@ -344,21 +344,22 @@ Node *conditional_expression(Node *unary_exp) {
 }
 
 Node *assignment_expression() {
-  Node *node;
-
   Node *unary_exp = unary_expression();
-  if (read_token(tASSIGN)) {
-    Node *left = unary_exp;
-    Node *right = assignment_expression();
 
-    node = node_new();
-    node->type = ASSIGN;
-    node->value_type = left->value_type;
-    node->left = left;
-    node->right = right;
-  } else {
-    node = conditional_expression(unary_exp);
-  }
+  NodeType type;
+  if (read_token(tASSIGN)) type = ASSIGN;
+  else if (read_token(tADD_ASSIGN)) type = ADD_ASSIGN;
+  else if (read_token(tSUB_ASSIGN)) type = SUB_ASSIGN;
+  else return conditional_expression(unary_exp);
+
+  Node *left = unary_exp;
+  Node *right = assignment_expression();
+
+  Node *node = node_new();
+  node->type = type;
+  node->value_type = left->value_type;
+  node->left = left;
+  node->right = right;
 
   return node;
 }

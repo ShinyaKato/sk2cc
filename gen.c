@@ -422,6 +422,62 @@ void gen_expr(Node *node) {
     }
     gen_push("rcx");
   }
+
+  if (node->type == ADD_ASSIGN) {
+    Type *left_type = node->left->value_type;
+    Type *right_type = node->right->value_type;
+
+    if (type_integer(left_type) && type_integer(right_type)) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  addl (%%rcx), %%eax\n");
+      if (node->left->value_type->type == CHAR) {
+        printf("  movb %%al, (%%rcx)\n");
+      } else if (node->left->value_type->type == INT) {
+        printf("  movl %%eax, (%%rcx)\n");
+      }
+    } else if (left_type->type == POINTER && type_integer(right_type)) {
+      int size = left_type->pointer_to->size;
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      gen_pop("rcx");
+      printf("  addq (%%rcx), %%rax\n");
+      printf("  movq %%rax, (%%rcx)\n");
+    }
+    gen_push("rax");
+  }
+
+  if (node->type == SUB_ASSIGN) {
+    Type *left_type = node->left->value_type;
+    Type *right_type = node->right->value_type;
+
+    if (type_integer(left_type) && type_integer(right_type)) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  movl (%%rcx), %%edx\n");
+      printf("  subl %%eax, %%edx\n");
+      if (node->left->value_type->type == CHAR) {
+        printf("  movb %%dl, (%%rcx)\n");
+      } else if (node->left->value_type->type == INT) {
+        printf("  movl %%edx, (%%rcx)\n");
+      }
+    } else if (left_type->type == POINTER && type_integer(right_type)) {
+      int size = left_type->pointer_to->size;
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      gen_pop("rcx");
+      printf("  movq (%%rcx), %%rdx\n");
+      printf("  subq %%rax, %%rdx\n");
+      printf("  movq %%rdx, (%%rcx)\n");
+    }
+    gen_push("rdx");
+  }
 }
 
 void gen_var_decl(Node *node) {
