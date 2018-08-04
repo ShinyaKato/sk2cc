@@ -367,6 +367,11 @@ Node *expression() {
   return assignment_expression();
 }
 
+bool check_declaration() {
+  Token *token = peek_token();
+  return token->type == tCHAR || token->type == tINT;
+}
+
 Type *declaration_specifiers() {
   if (read_token(tCHAR)) {
     return type_char();
@@ -454,7 +459,7 @@ Node *compound_statement() {
   while (1) {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
-    if (peek_token()->type == tINT || peek_token()->type == tCHAR) {
+    if (check_declaration()) {
       Type *specifier = declaration_specifiers();
       Node *first = init_declarator(specifier);
       vector_push(node->statements, declaration(specifier, first));
@@ -515,8 +520,14 @@ Node *iteration_statement() {
   } else if (read_token(tFOR)) {
     node->type = FOR_STMT;
     expect_token(tLPAREN);
-    node->init = peek_token()->type != tSEMICOLON ? expression() : NULL;
-    expect_token(tSEMICOLON);
+    if (check_declaration()) {
+      Type *specifier = declaration_specifiers();
+      Node *first = init_declarator(specifier);
+      node->init = declaration(specifier, first);
+    } else {
+      node->init = peek_token()->type != tSEMICOLON ? expression() : NULL;
+      expect_token(tSEMICOLON);
+    }
     node->control = peek_token()->type != tSEMICOLON ? expression() : NULL;
     expect_token(tSEMICOLON);
     node->afterthrough = peek_token()->type != tRPAREN ? expression() : NULL;

@@ -241,7 +241,6 @@ test_stmts_retval "int x[3][3], i, j; for (i = 0; i < 3; i++) for (j = 0; j < 3;
 
 test_stmts_stdout "
   int A[3][3], B[3][3], C[3][3];
-  int i, j, k;
 
   A[0][0] = 2; A[0][1] = 3; A[0][2] = 4;
   A[1][0] = 3; A[1][1] = 4; A[1][2] = 5;
@@ -251,17 +250,17 @@ test_stmts_stdout "
   B[1][0] = 2; B[1][1] = 4; B[1][2] = 6;
   B[2][0] = 3; B[2][1] = 6; B[2][2] = 9;
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
       C[i][j] = 0;
-      for (k = 0; k < 3; k++) {
+      for (int k = 0; k < 3; k++) {
         C[i][j] = C[i][j] + A[i][k] * B[k][j];
       }
     }
   }
 
-  for (i = 0; i < 3; i++) {
-    for (j = 0; j < 3; j++) {
+  for (int i = 0; i < 3; i++) {
+    for (int j = 0; j < 3; j++) {
       print_int(C[i][j]);
     }
   }
@@ -338,6 +337,17 @@ int main() {
   }
   printf(\"%d\n\", x);
 }" "3\n1\n"
+
+test_prog_stdout "
+int main() {
+  int i = 123;
+  for (int i = 0; i < 5; i++) {
+    printf(\"%d\n\", i);
+    int i = 42;
+  }
+  printf(\"%d\n\", i);
+  return 0;
+}" "0\n1\n2\n3\n4\n123\n"
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

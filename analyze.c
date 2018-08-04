@@ -383,10 +383,18 @@ void analyze_stmt(Node *node) {
     continue_level++;
     break_level++;
 
-    if (node->init) analyze_expr(node->init);
+    make_scope();
+    if (node->init) {
+      if (node->init->type == VAR_DECL) {
+        analyze_var_decl(node->init);
+      } else {
+        analyze_expr(node->init);
+      }
+    }
     if (node->control) analyze_expr(node->control);
     if (node->afterthrough) analyze_expr(node->afterthrough);
     analyze_stmt(node->loop_body);
+    remove_scope();
 
     continue_level--;
     break_level--;

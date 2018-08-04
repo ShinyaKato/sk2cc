@@ -522,7 +522,11 @@ void gen_stmt(Node *node) {
     vector_push(break_labels, (void *) &label_end);
 
     if (node->init) {
-      gen_expr(node->init);
+      if (node->init->type == VAR_DECL) {
+        gen_var_decl(node->init);
+      } else {
+        gen_expr(node->init);
+      }
       printf("  addq $8, %%rsp\n");
     }
     gen_label(label_begin);
