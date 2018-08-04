@@ -424,10 +424,24 @@ void gen_expr(Node *node) {
   }
 }
 
+void gen_var_decl(Node *node) {
+  for (int i = 0; i < node->declarations->length; i++) {
+    Node *init_decl = node->declarations->array[i];
+    if (init_decl->initializer) {
+      gen_expr(init_decl->initializer);
+    }
+  }
+}
+
 void gen_stmt(Node *node) {
   if (node->type == COMP_STMT) {
     for (int i = 0; i < node->statements->length; i++) {
-      gen_stmt((Node *) node->statements->array[i]);
+      Node *stmt = node->statements->array[i];
+      if (stmt->type == VAR_DECL) {
+        gen_var_decl(stmt);
+      } else {
+        gen_stmt(stmt);
+      }
     }
   }
 
@@ -547,8 +561,9 @@ void gen_stmt(Node *node) {
 }
 
 void gen_gvar_decl(Node *node) {
-  for (int i = 0; i < node->var_symbols->length; i++) {
-    Symbol *symbol = node->var_symbols->array[i];
+  for (int i = 0; i < node->declarations->length; i++) {
+    Node *init_decl = node->declarations->array[i];
+    Symbol *symbol = init_decl->symbol;
     printf("%s:\n", symbol->identifier);
     printf("  .zero %d\n", symbol->value_type->size);
   }

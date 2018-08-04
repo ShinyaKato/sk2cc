@@ -298,15 +298,19 @@ void analyze_expr(Node *node) {
 }
 
 void analyze_var_decl(Node *node) {
-  for (int i = 0; i < node->var_symbols->length; i++) {
-    Symbol *symbol = node->var_symbols->array[i];
-    symbol->offset = put_local_variable(symbol->value_type->size);
+  for (int i = 0; i < node->declarations->length; i++) {
+    Node *init_decl = node->declarations->array[i];
+    Symbol *symbol = init_decl->symbol;
     if (symbols == NULL) {
       symbol->type = GLOBAL;
       map_put(external_symbols, symbol->identifier, symbol);
     } else {
+      symbol->offset = put_local_variable(symbol->value_type->size);
       symbol->type = LOCAL;
       map_put(symbols, symbol->identifier, symbol);
+      if (init_decl->initializer) {
+        analyze_expr(init_decl->initializer);
+      }
     }
   }
 }

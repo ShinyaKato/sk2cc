@@ -318,6 +318,12 @@ test_prog_retval "int main() { int x[4][5]; return sizeof(x[0]); }" 20
 test_prog_retval "int main() { char x; return sizeof(\"abc\"); }" 4
 test_prog_retval "int main() { char *x; x = \"abc\"; return sizeof(x); }" 8
 
+test_prog_retval "int main() { int x = 5; return x; }" 5
+test_prog_retval "int main() { int x = 5, y = x + 3; return y; }" 8
+test_prog_retval "int main() { int x = 5; int y = x + 3; return y; }" 8
+test_prog_retval "int main() { int x = 3, y = 5, z = x + y * 8; return z; }" 43
+test_prog_retval "int main() { int x = 42, *y = &x; return *y; }" 42
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

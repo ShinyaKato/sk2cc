@@ -401,22 +401,44 @@ Symbol *declarator(Type *type) {
   return symbol;
 }
 
-Symbol *init_declarator(Type *specifier) {
-  return declarator(specifier);
+Node *initializer(Symbol *symbol) {
+  Node *left = node_new();
+  Node *right = assignment_expression();
+
+  left->type = IDENTIFIER;
+  left->identifier = symbol->identifier;
+
+  Node *node = node_new();
+  node->type = ASSIGN;
+  node->left = left;
+  node->right = right;
+
+  return node;
 }
 
-Node *declaration(Type *specifier, Symbol *first) {
-  Vector *var_symbols = vector_new();
-  vector_push(var_symbols, first);
+Node *init_declarator(Type *specifier) {
+  Symbol *symbol = declarator(specifier);
+
+  Node *node = node_new();
+  node->type = VAR_INIT_DECL;
+  node->symbol = symbol;
+  node->initializer = read_token(tASSIGN) ? initializer(symbol) : NULL;
+
+  return node;
+}
+
+Node *declaration(Type *specifier, Node *first) {
+  Vector *declarations = vector_new();
+  vector_push(declarations, first);
   while (read_token(tCOMMA)) {
-    Symbol *symbol = init_declarator(specifier);
-    vector_push(var_symbols, symbol);
+    Node *init_decl = init_declarator(specifier);
+    vector_push(declarations, init_decl);
   }
   expect_token(tSEMICOLON);
 
   Node *node = node_new();
   node->type = VAR_DECL;
-  node->var_symbols = var_symbols;
+  node->declarations = declarations;
 
   return node;
 }
@@ -434,8 +456,8 @@ Node *compound_statement() {
     if (token->type == tRBRACE || token->type == tEND) break;
     if (peek_token()->type == tINT || peek_token()->type == tCHAR) {
       Type *specifier = declaration_specifiers();
-      Symbol *symbol = init_declarator(specifier);
-      vector_push(node->statements, declaration(specifier, symbol));
+      Node *first = init_declarator(specifier);
+      vector_push(node->statements, declaration(specifier, first));
     } else {
       Node *stmt = statement();
       vector_push(node->statements, stmt);
@@ -573,13 +595,13 @@ Node *function_definition(Symbol *func_symbol) {
 
 Node *external_definition() {
   Type *specifier = declaration_specifiers();
-  Symbol *symbol = init_declarator(specifier);
+  Node *first = init_declarator(specifier);
 
   Node *node;
-  if (peek_token()->type == tLPAREN) {
-    node = function_definition(symbol);
+  if (!first->initializer && peek_token()->type == tLPAREN) {
+    node = function_definition(first->symbol);
   } else {
-    node = declaration(specifier, symbol);
+    node = declaration(specifier, first);
   }
 
   return node;

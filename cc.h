@@ -175,6 +175,7 @@ typedef enum node_type {
   LOR,
   CONDITION,
   ASSIGN,
+  VAR_INIT_DECL,
   VAR_DECL,
   COMP_STMT,
   EXPR_STMT,
@@ -200,7 +201,8 @@ typedef struct node {
   Symbol *symbol;
   Vector *args;
   struct node *left, *right, *init, *control, *afterthrough, *expr;
-  Vector *var_symbols;
+  struct node *initializer;
+  Vector *declarations;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
   Vector *param_symbols;
