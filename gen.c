@@ -2,7 +2,7 @@
 
 char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
-int label_no = 0, return_label;
+int label_no, return_label;
 Vector *continue_labels, *break_labels;
 
 void gen_push(char *reg) {
@@ -624,6 +624,8 @@ void gen_trans_unit(Node *node) {
 }
 
 void gen(Node *node) {
+  label_no = 0;
+
   continue_labels = vector_new();
   break_labels = vector_new();
 

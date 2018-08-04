@@ -324,6 +324,21 @@ test_prog_retval "int main() { int x = 5; int y = x + 3; return y; }" 8
 test_prog_retval "int main() { int x = 3, y = 5, z = x + y * 8; return z; }" 43
 test_prog_retval "int main() { int x = 42, *y = &x; return *y; }" 42
 
+test_prog_retval "int main() { int x = 12; if (1) { int x = 34; } return x; }" 12
+test_prog_retval "int main() { int x = 12, y = 14; if (1) { int *x = &y; } return x; }" 12
+test_prog_stdout "
+int x = 0;
+int main() {
+  int x = 1;
+  {
+    int x = 2;
+    { x = 3; }
+    { int x = 4; }
+    printf(\"%d\n\", x);
+  }
+  printf(\"%d\n\", x);
+}" "3\n1\n"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
@@ -335,7 +350,7 @@ test_error "int main() { func_call(1, 2, 3; }" "tRPAREN is expected."
 test_error "int main()" "tLBRACE is expected."
 test_error "int main() { 2;" "tRBRACE is expected."
 test_error "123" "type specifier is expected."
-test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "duplicated function definition."
+test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "duplicated function or variable definition of 'f'."
 test_error "int main(int abc" "tRPAREN is expected."
 test_error "int main(int 123) { 0; }" "tIDENTIFIER is expected."
 test_error "int main(int x, int x) { 0; }" "duplicated parameter declaration."
@@ -350,3 +365,4 @@ test_error "int x, main() { return 0; };" "tSEMICOLON is expected."
 test_error "int main() { return 0; }, x;" "type specifier is expected."
 test_error "int func() { return x; } int x; int main() { func(); }" "undefined identifier."
 test_error "int main() { 1++; }" "operand of postfix increment should be identifier or indirect operator."
+test_error "int f(int x) { int x; }" "duplicated function or variable definition of 'x'."

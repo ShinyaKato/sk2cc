@@ -1,16 +1,45 @@
 #include "cc.h"
 
 Vector *string_literals;
-
-Map *external_symbols, *symbols;
+Vector *scopes;
 int local_vars_size;
+int break_level, continue_level;
 
-int break_level = 0, continue_level = 0;
+Symbol *lookup_symbol(char *identifier) {
+  for (int i = scopes->length - 1; i >= 0; i--) {
+    Map *map = scopes->array[i];
+    Symbol *symbol = map_lookup(map, identifier);
+    if (symbol) return symbol;
+  }
+  return NULL;
+}
 
-int put_local_variable(int size) {
-  int align_size = size / 8 * 8;
-  if (size % 8 != 0) align_size += 8;
-  return local_vars_size += align_size;
+void put_symbol(char *identifier, Symbol *symbol) {
+  Map *map = scopes->array[scopes->length - 1];
+  if (map_lookup(map, identifier)) {
+    error("duplicated function or variable definition of '%s'.", identifier);
+  }
+
+  if (scopes->length == 1) {
+    symbol->type = GLOBAL;
+  } else {
+    int size = symbol->value_type->size;
+    if (size % 8 != 0) size = size / 8 * 8 + 8;
+    local_vars_size += size;
+
+    symbol->type = LOCAL;
+    symbol->offset = local_vars_size;
+  }
+
+  map_put(map, identifier, symbol);
+}
+
+void make_scope() {
+  vector_push(scopes, map_new());
+}
+
+void remove_scope() {
+  vector_pop(scopes);
 }
 
 bool check_lvalue(NodeType type) {
@@ -49,12 +78,8 @@ void analyze_expr(Node *node) {
   }
 
   if (node->type == IDENTIFIER) {
-    if (map_lookup(symbols, node->identifier)) {
-      Symbol *symbol = map_lookup(symbols, node->identifier);
-      node->symbol = symbol;
-      node->value_type = type_convert(symbol->value_type);
-    } else if (map_lookup(external_symbols, node->identifier)) {
-      Symbol *symbol = map_lookup(external_symbols, node->identifier);
+    Symbol *symbol = lookup_symbol(node->identifier);
+    if (symbol) {
       node->symbol = symbol;
       node->value_type = type_convert(symbol->value_type);
     } else {
@@ -301,30 +326,20 @@ void analyze_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
-    if (symbols == NULL) {
-      symbol->type = GLOBAL;
-      map_put(external_symbols, symbol->identifier, symbol);
-    } else {
-      symbol->offset = put_local_variable(symbol->value_type->size);
-      symbol->type = LOCAL;
-      map_put(symbols, symbol->identifier, symbol);
-      if (init_decl->initializer) {
-        analyze_expr(init_decl->initializer);
-      }
+    put_symbol(symbol->identifier, symbol);
+    if (init_decl->initializer) {
+      analyze_expr(init_decl->initializer);
     }
   }
 }
 
+void analyze_comp_stmt(Node *node);
+
 void analyze_stmt(Node *node) {
   if (node->type == COMP_STMT) {
-    for (int i = 0; i < node->statements->length; i++) {
-      Node *stmt = node->statements->array[i];
-      if (stmt->type == VAR_DECL) {
-        analyze_var_decl(stmt);
-      } else {
-        analyze_stmt(stmt);
-      }
-    }
+    make_scope();
+    analyze_comp_stmt(node);
+    remove_scope();
   }
 
   if (node->type == EXPR_STMT) {
@@ -394,33 +409,36 @@ void analyze_stmt(Node *node) {
   }
 }
 
-void analyze_func_def(Node *node) {
-  symbols = map_new();
-  local_vars_size = 0;
-
-  if (map_lookup(external_symbols, node->symbol->identifier)) {
-    error("duplicated function definition.");
+void analyze_comp_stmt(Node *node) {
+  for (int i = 0; i < node->statements->length; i++) {
+    Node *stmt = node->statements->array[i];
+    if (stmt->type == VAR_DECL) {
+      analyze_var_decl(stmt);
+    } else {
+      analyze_stmt(stmt);
+    }
   }
-  map_put(external_symbols, node->symbol->identifier, node->symbol);
+}
 
+void analyze_func_def(Node *node) {
+  put_symbol(node->symbol->identifier, node->symbol);
+
+  local_vars_size = 0;
+  make_scope();
   if (node->param_symbols->length > 6) {
     error("too many parameters.");
   }
   for (int i = 0; i < node->param_symbols->length; i++) {
     Symbol *param = node->param_symbols->array[i];
-    if (map_lookup(symbols, param->identifier)) {
+    if (lookup_symbol(param->identifier)) {
       error("duplicated parameter declaration.");
     }
-    param->offset = put_local_variable(param->value_type->size);
-    param->type = LOCAL;
-    map_put(symbols, param->identifier, param);
+    put_symbol(param->identifier, param);
   }
-
-  analyze_stmt(node->function_body);
+  analyze_comp_stmt(node->function_body);
+  remove_scope();
 
   node->local_vars_size = local_vars_size;
-
-  symbols = NULL;
 }
 
 void analyze_trans_unit(Node *node) {
@@ -437,8 +455,8 @@ void analyze_trans_unit(Node *node) {
 void analyze(Node *node) {
   string_literals = vector_new();
 
-  external_symbols = map_new();
-  symbols = NULL;
+  scopes = vector_new();
+  make_scope();
 
   break_level = 0;
   continue_level = 0;
