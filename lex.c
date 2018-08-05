@@ -62,9 +62,7 @@ Token *token_new() {
 }
 
 Token *lex() {
-  while (1) {
-    char c = peek_char();
-    if (c != ' ' && c != '\n') break;
+  while (peek_char() == ' ' || peek_char() == '\n') {
     get_char();
   }
 
@@ -76,34 +74,26 @@ Token *lex() {
 
   Token *token = token_new();
 
-  char c = get_char();
-  if (isdigit(c)) {
-    int n = c - '0';
-    while (1) {
-      char d = peek_char();
-      if (!isdigit(d)) break;
-      get_char();
-      n = n * 10 + (d - '0');
+  if (isdigit(peek_char())) {
+    int int_value = 0;
+    while (isdigit(peek_char())) {
+      int_value = int_value * 10 + (get_char() - '0');
     }
     token->type = tINT_CONST;
-    token->int_value = n;
-  } else if (c == '"') {
-    String *str = string_new();
-    while (1) {
-      char d = get_char();
-      if (d == '"') break;
-      string_push(str, d);
+    token->int_value = int_value;
+  } else if (read_char('"')) {
+    String *string_value = string_new();
+    while (peek_char() != '"') {
+      string_push(string_value, get_char());
     }
+    get_char();
     token->type = tSTRING_LITERAL;
-    token->string_value = str;
-  } else if (isalpha(c) || c == '_') {
+    token->string_value = string_value;
+  } else if (isalpha(peek_char()) || peek_char() == '_') {
     String *identifier = string_new();
-    string_push(identifier, c);
-    while (1) {
-      char d = peek_char();
-      if (!isalnum(d) && d != '_') break;
-      get_char();
-      string_push(identifier, d);
+    string_push(identifier, get_char());
+    while (isalnum(peek_char()) || peek_char() == '_') {
+      string_push(identifier, get_char());
     }
     if (strcmp(identifier->buffer, "char") == 0) {
       token->type = tCHAR;
@@ -131,105 +121,91 @@ Token *lex() {
       token->type = tIDENTIFIER;
       token->identifier = identifier->buffer;
     }
-  } else if (c == '~') {
+  } else if (read_char('~')) {
     token->type = tNOT;
-  } else if (c == '+') {
-    if (peek_char() == '+') {
+  } else if (read_char('+')) {
+    if (read_char('+')) {
       token->type = tINC;
-      get_char();
-    } else if (peek_char() == '=') {
+    } else if (read_char('=')) {
       token->type = tADD_ASSIGN;
-      get_char();
     } else {
       token->type = tADD;
     }
-  } else if (c == '-') {
-    if (peek_char() == '-') {
+  } else if (read_char('-')) {
+    if (read_char('-')) {
       token->type = tDEC;
-      get_char();
-    } else if (peek_char() == '=') {
+    } else if (read_char('=')) {
       token->type = tSUB_ASSIGN;
-      get_char();
     } else {
       token->type = tSUB;
     }
-  } else if (c == '*') {
+  } else if (read_char('*')) {
     token->type = tMUL;
-  } else if (c == '/') {
+  } else if (read_char('/')) {
     token->type = tDIV;
-  } else if (c == '%') {
+  } else if (read_char('%')) {
     token->type = tMOD;
-  } else if (c == '<') {
-    char d = peek_char();
-    if (d == '=') {
+  } else if (read_char('<')) {
+    if (read_char('=')) {
       token->type = tLTE;
-      get_char();
-    } else if (d == '<') {
+    } else if (read_char('<')) {
       token->type = tLSHIFT;
-      get_char();
     } else {
       token->type = tLT;
     }
-  } else if (c == '>') {
-    char d = peek_char();
-    if (d == '=') {
+  } else if (read_char('>')) {
+    if (read_char('=')) {
       token->type = tGTE;
-      get_char();
-    } else if (d == '>') {
+    } else if (read_char('>')) {
       token->type = tRSHIFT;
-      get_char();
     } else {
       token->type = tGT;
     }
-  } else if (c == '=') {
-    if (peek_char() == '=') {
+  } else if (read_char('=')) {
+    if (read_char('=')) {
       token->type = tEQ;
-      get_char();
     } else {
       token->type = tASSIGN;
     }
-  } else if (c == '!') {
-    if (peek_char() == '=') {
+  } else if (read_char('!')) {
+    if (read_char('=')) {
       token->type = tNEQ;
-      get_char();
     } else {
       token->type = tLNOT;
     }
-  } else if (c == '&') {
-    if (peek_char() == '&') {
+  } else if (read_char('&')) {
+    if (read_char('&')) {
       token->type = tLAND;
-      get_char();
     } else {
       token->type = tAND;
     }
-  } else if (c == '|') {
-    if (peek_char() == '|') {
+  } else if (read_char('|')) {
+    if (read_char('|')) {
       token->type = tLOR;
-      get_char();
     } else {
       token->type = tOR;
     }
-  } else if (c == '^') {
+  } else if (read_char('^')) {
     token->type = tXOR;
-  } else if (c == '?') {
+  } else if (read_char('?')) {
     token->type = tQUESTION;
-  } else if (c == ':') {
+  } else if (read_char(':')) {
     token->type = tCOLON;
-  } else if (c == ';') {
+  } else if (read_char(';')) {
     token->type = tSEMICOLON;
-  } else if (c == '[') {
+  } else if (read_char('[')) {
     token->type = tLBRACKET;
-  } else if (c == ']') {
+  } else if (read_char(']')) {
     token->type = tRBRACKET;
-  } else if (c == '(') {
+  } else if (read_char('(')) {
     token->type = tLPAREN;
-  } else if (c == ')') {
+  } else if (read_char(')')) {
     token->type = tRPAREN;
-  } else if (c == '{') {
+  } else if (read_char('{')) {
     token->type = tLBRACE;
-  } else if (c == '}') {
+  } else if (read_char('}')) {
     token->type = tRBRACE;
-  } else if (c == ',') {
+  } else if (read_char(',')) {
     token->type = tCOMMA;
   } else {
     error("unexpected character.");

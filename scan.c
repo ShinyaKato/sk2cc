@@ -9,3 +9,11 @@ char peek_char() {
 char get_char() {
   return fgetc(stdin);
 }
+
+bool read_char(char c) {
+  if (peek_char() == c) {
+    get_char();
+    return true;
+  }
+  return false;
+}
