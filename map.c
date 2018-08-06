@@ -1,7 +1,7 @@
 #include "cc.h"
 
 Map *map_new() {
-  Map *map = (Map *) malloc(sizeof(Map));
+  Map *map = (Map *) calloc(1, sizeof(Map));
 
   map->count = 0;
 

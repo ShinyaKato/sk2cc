@@ -1,12 +1,12 @@
 #include "cc.h"
 
 Vector *vector_new() {
-  Vector *vector = (Vector *) malloc(sizeof(Vector));
+  Vector *vector = (Vector *) calloc(1, sizeof(Vector));
 
   int init_size = 64;
   vector->size = init_size;
   vector->length = 0;
-  vector->array = (void **) malloc(sizeof(void *) * init_size);
+  vector->array = (void **) calloc(init_size, sizeof(void *));
   vector->array[0] = NULL;
 
   return vector;

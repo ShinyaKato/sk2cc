@@ -57,7 +57,7 @@ bool has_next_token = false;
 Token *next_token;
 
 Token *token_new() {
-  Token *token = (Token *) malloc(sizeof(Token));
+  Token *token = (Token *) calloc(1, sizeof(Token));
   return token;
 }
 

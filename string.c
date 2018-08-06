@@ -1,12 +1,12 @@
 #include "cc.h"
 
 String *string_new() {
-  String *string = (String *) malloc(sizeof(String));
+  String *string = (String *) calloc(1, sizeof(String));
 
   int init_size = 64;
   string->size = init_size;
   string->length = 0;
-  string->buffer = (char *) malloc(sizeof(char) * init_size);
+  string->buffer = (char *) calloc(init_size, sizeof(char));
   string->buffer[0] = '\0';
 
   return string;

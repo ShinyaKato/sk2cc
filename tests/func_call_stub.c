@@ -54,7 +54,7 @@ void print_string(char *s) {
 }
 
 int *alloc(int **buf, int a, int b, int c) {
-  *buf = (int *) malloc(sizeof(int) * 3);
+  *buf = (int *) calloc(3, sizeof(int));
   (*buf)[0] = a;
   (*buf)[1] = b;
   (*buf)[2] = c;

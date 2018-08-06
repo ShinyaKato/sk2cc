@@ -1,7 +1,7 @@
 #include "cc.h"
 
 Type *type_new() {
-  Type *type = (Type *) malloc(sizeof(Type));
+  Type *type = (Type *) calloc(1, sizeof(Type));
   return type;
 }
 

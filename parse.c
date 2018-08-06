@@ -1,31 +1,12 @@
 #include "cc.h"
 
 Symbol *symbol_new() {
-  Symbol *symbol = (Symbol *) malloc(sizeof(Symbol));
+  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   return symbol;
 }
 
 Node *node_new() {
-  Node *node = (Node *) malloc(sizeof(Node));
-
-  node->identifier = NULL;
-  node->symbol = NULL;
-  node->args = NULL;
-  node->left = NULL;
-  node->right = NULL;
-  node->init = NULL;
-  node->control = NULL;
-  node->afterthrough = NULL;
-  node->expr = NULL;
-  node->statements = NULL;
-  node->if_body = NULL;
-  node->else_body = NULL;
-  node->loop_body = NULL;
-  node->function_body = NULL;
-  node->param_symbols = NULL;
-  node->string_literals = NULL;
-  node->definitions = NULL;
-
+  Node *node = (Node *) calloc(1, sizeof(Node));
   return node;
 }
 
