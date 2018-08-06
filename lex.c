@@ -81,6 +81,26 @@ Token *lex() {
     }
     token->type = tINT_CONST;
     token->int_value = int_value;
+  } else if (read_char('\'')) {
+    int int_value;
+    if (read_char('\\')) {
+      if (read_char('\'')) int_value = '\'';
+      else if (read_char('"')) int_value = '"';
+      else if (read_char('?')) int_value = '?';
+      else if (read_char('\\')) int_value = '\\';
+      else if (read_char('a')) int_value = '\a';
+      else if (read_char('b')) int_value = '\b';
+      else if (read_char('f')) int_value = '\f';
+      else if (read_char('n')) int_value = '\n';
+      else if (read_char('r')) int_value = '\r';
+      else if (read_char('v')) int_value = '\v';
+      else error("invalid escape sequence.");
+    } else {
+      int_value = get_char();
+    }
+    expect_char('\'');
+    token->type = tINT_CONST;
+    token->int_value = int_value;
   } else if (read_char('"')) {
     String *string_value = string_new();
     while (peek_char() != '"') {

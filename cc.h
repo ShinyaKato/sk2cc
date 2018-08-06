@@ -42,6 +42,7 @@ extern noreturn void error(char *format, ...);
 
 extern char peek_char();
 extern char get_char();
+extern void expect_char(char c);
 extern bool read_char(char c);
 
 typedef enum token_type {

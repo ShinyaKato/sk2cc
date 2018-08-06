@@ -354,6 +354,10 @@ test_prog_retval "int main() { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p
 test_prog_retval "int main() { int x = 5; x -= 3; return x; }" 2
 test_prog_retval "int main() { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p = A + 2; p -= 2; return *p; }" 30
 
+test_prog_retval "int main() { return 'A'; }" 65
+test_prog_retval "int main() { return '\\n'; }" 10
+test_prog_retval "int main() { return '\\''; }" 39
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
