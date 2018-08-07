@@ -509,7 +509,11 @@ void gen_condition(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  printf("  cmpl $0, %%eax\n");
+  if (type_integer(node->control->value_type)) {
+    printf("  cmpl $0, %%eax\n");
+  } else if (type_pointer(node->control->value_type)) {
+    printf("  cmpq $0, %%rax\n");
+  }
   gen_jump("je", label_false);
   gen_expr(node->left);
   gen_jump("jmp", label_end);
@@ -692,7 +696,11 @@ void gen_if_stmt(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  printf("  cmpl $0, %%eax\n");
+  if (type_integer(node->control->value_type)) {
+    printf("  cmpl $0, %%eax\n");
+  } else if (type_pointer(node->control->value_type)) {
+    printf("  cmpq $0, %%rax\n");
+  }
   gen_jump("je", label_end);
   gen_stmt(node->if_body);
   gen_label(label_end);
@@ -703,7 +711,11 @@ void gen_if_else_stmt(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  printf("  cmpl $0, %%eax\n");
+  if (type_integer(node->control->value_type)) {
+    printf("  cmpl $0, %%eax\n");
+  } else if (type_pointer(node->control->value_type)) {
+    printf("  cmpq $0, %%rax\n");
+  }
   gen_jump("je", label_else);
   gen_stmt(node->if_body);
   gen_jump("jmp", label_end);
@@ -721,7 +733,11 @@ void gen_while_stmt(Node *node) {
 
   gen_label(label_begin);
   gen_operand(node->control, "rax");
-  printf("  cmpl $0, %%eax\n");
+  if (type_integer(node->control->value_type)) {
+    printf("  cmpl $0, %%eax\n");
+  } else if (type_pointer(node->control->value_type)) {
+    printf("  cmpq $0, %%rax\n");
+  }
   gen_jump("je", label_end);
   gen_stmt(node->loop_body);
   gen_jump("jmp", label_begin);
@@ -743,7 +759,11 @@ void gen_do_while_stmt(Node *node) {
   gen_stmt(node->loop_body);
   gen_label(label_control);
   gen_operand(node->control, "rax");
-  printf("  cmpl $0, %%eax\n");
+  if (type_integer(node->control->value_type)) {
+    printf("  cmpl $0, %%eax\n");
+  } else if (type_pointer(node->control->value_type)) {
+    printf("  cmpq $0, %%rax\n");
+  }
   gen_jump("jne", label_begin);
   gen_label(label_end);
 
@@ -770,7 +790,11 @@ void gen_for_stmt(Node *node) {
   gen_label(label_begin);
   if (node->control) {
     gen_operand(node->control, "rax");
-    printf("  cmpl $0, %%eax\n");
+    if (type_integer(node->control->value_type)) {
+      printf("  cmpl $0, %%eax\n");
+    } else if (type_pointer(node->control->value_type)) {
+      printf("  cmpq $0, %%rax\n");
+    }
     gen_jump("je", label_end);
   }
   gen_stmt(node->loop_body);

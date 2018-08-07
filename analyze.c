@@ -323,9 +323,6 @@ void analyze_condition(Node *node) {
   analyze_expr(node->control);
   analyze_expr(node->left);
   analyze_expr(node->right);
-  if (!type_integer(node->control->value_type)) {
-    error("first expression of ?: operator should have integer type.");
-  }
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
   } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
