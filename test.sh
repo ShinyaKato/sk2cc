@@ -360,6 +360,11 @@ test_prog_retval "int main() { return 'A'; }" 65
 test_prog_retval "int main() { return '\\n'; }" 10
 test_prog_retval "int main() { return '\\''; }" 39
 
+test_prog_retval "int main() { int a, b, *p = &a, *q = &b; return p == q; }" 0
+test_prog_retval "int main() { int a, b, *p = &a, *q = &b; return p != q; }" 1
+test_prog_retval "int main() { int a, *p = &a, *q = &a; return p == q; }" 1
+test_prog_retval "int main() { int a, *p = &a, *q = &a; return p != q; }" 0
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
