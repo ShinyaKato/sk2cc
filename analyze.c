@@ -328,6 +328,8 @@ void analyze_condition(Node *node) {
   }
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
+    node->value_type = node->left->value_type;
   } else {
     error("second and third operands of ?: operator should be integer type.");
   }

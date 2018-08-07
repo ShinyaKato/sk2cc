@@ -378,6 +378,9 @@ test_prog_retval "int main() { int a[3], *p = &a + 1, *q = &a + 0; return p >= q
 test_prog_retval "int main() { int a[3], *p = &a + 1, *q = &a + 1; return p >= q; }" 1
 test_prog_retval "int main() { int a[3], *p = &a + 1, *q = &a + 2; return p >= q; }" 0
 
+test_prog_retval "int main() { int a = 34, b = 58, *p = &a, *q = &b; return *(1 ? p : q); }" 34
+test_prog_retval "int main() { int a = 34, b = 58, *p = &a, *q = &b; return *(0 ? p : q); }" 58
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
