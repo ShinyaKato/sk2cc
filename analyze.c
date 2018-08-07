@@ -46,297 +46,378 @@ bool check_lvalue(NodeType type) {
   return type == IDENTIFIER || type == INDIRECT;
 }
 
-Type *value_type_add(Type *left_type, Type *right_type) {
-  if (type_integer(left_type) && type_integer(right_type)) {
-    return type_int();
-  } else if (left_type->type == POINTER && type_integer(right_type)) {
-    return left_type;
-  }
-  return NULL;
+void analyze_expr(Node *node);
+
+void analyze_const(Node *node) {
+  node->value_type = type_int();
 }
 
-Type *value_type_sub(Type *left_type, Type *right_type) {
-  if (type_integer(left_type) && type_integer(right_type)) {
-    return type_int();
-  } else if (left_type->type == POINTER && type_integer(right_type)) {
-    return left_type;
-  }
-  return NULL;
+void analyze_string_literal(Node *node) {
+  String *string_value = node->string_value;
+  Type *type = type_array_of(type_char(), string_value->length + 1);
+  node->value_type = type_convert(type);
+  node->string_label = string_literals->length;
+  vector_push(string_literals, node->string_value);
 }
 
-void analyze_expr(Node *node) {
-  if (node->type == CONST) {
+void analyze_identifier(Node *node) {
+  Symbol *symbol = lookup_symbol(node->identifier);
+  if (symbol) {
+    node->symbol = symbol;
+    node->value_type = type_convert(symbol->value_type);
+  } else {
+    node->symbol = NULL;
     node->value_type = type_int();
   }
+}
 
-  if (node->type == STRING_LITERAL) {
-    String *str = node->string_value;
-    Type *array = type_array_of(type_char(), str->length + 1);
-    node->value_type = type_convert(array);
-    node->string_label = string_literals->length;
-    vector_push(string_literals, node->string_value);
+void analyze_func_call(Node *node) {
+  analyze_expr(node->expr);
+  for (int i = 0; i < node->args->length; i++) {
+    Node *arg = node->args->array[i];
+    analyze_expr(arg);
   }
+  node->value_type = node->expr->value_type;
 
-  if (node->type == IDENTIFIER) {
-    Symbol *symbol = lookup_symbol(node->identifier);
-    if (symbol) {
-      node->symbol = symbol;
-      node->value_type = type_convert(symbol->value_type);
-    } else {
-      node->symbol = NULL;
-      node->value_type = type_int();
+  if (node->expr->type != IDENTIFIER) {
+    error("invalid function call.");
+  }
+  if (node->args->length > 6) {
+    error("too many arguments.");
+  }
+}
+
+void analyze_increment_operator(Node *node) {
+  analyze_expr(node->expr);
+  if (!check_lvalue(node->expr->type)) {
+    if (node->type == POST_INC) {
+      error("operand of postfix ++ operator should be lvalue.");
+    }
+    if (node->type == PRE_INC) {
+      error("operand of prefix ++ operator should be lvalue.");
     }
   }
-
-  if (node->type == FUNC_CALL) {
-    analyze_expr(node->expr);
-    if (node->expr->type != IDENTIFIER) {
-      error("invalid function call.");
-    }
-    if (node->args->length > 6) {
-      error("too many arguments.");
-    }
-    for (int i = 0; i < node->args->length; i++) {
-      Node *arg = node->args->array[i];
-      analyze_expr(arg);
-    }
+  if (type_integer(node->expr->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->expr->value_type)) {
     node->value_type = node->expr->value_type;
-  }
-
-  if (node->type == POST_INC) {
-    analyze_expr(node->expr);
-    if (!check_lvalue(node->expr->type)) {
-      error("operand of postfix increment should be identifier or indirect operator.");
+  } else {
+    if (node->type == POST_INC) {
+      error("invalid operand type for postfix ++ operator.");
     }
-    node->value_type = value_type_add(node->expr->value_type, type_int());
-    if (!node->value_type) {
-      error("invalid operand types for postfix increment.");
+    if (node->type == PRE_INC) {
+      error("invalid operand type for prefix ++ operator.");
     }
   }
+}
 
-  if (node->type == POST_DEC) {
-    analyze_expr(node->expr);
-    if (!check_lvalue(node->expr->type)) {
-      error("operand of postfix decrement should be identifier or indirect operator.");
+void analyze_decrement_operator(Node *node) {
+  analyze_expr(node->expr);
+  if (!check_lvalue(node->expr->type)) {
+    if (node->type == POST_DEC) {
+      error("operand of postfix -- operator should be lvalue.");
     }
-    node->value_type = value_type_sub(node->expr->value_type, type_int());
-    if (!node->value_type) {
-      error("invalid operand types for postfix decrement.");
+    if (node->type == PRE_DEC) {
+      error("operand of prefix -- operator should be lvalue.");
     }
   }
-
-  if (node->type == PRE_INC) {
-    analyze_expr(node->expr);
-    if (!check_lvalue(node->expr->type)) {
-      error("operand of prefix increment should be identifier or indirect operator.");
+  if (type_integer(node->expr->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->expr->value_type)) {
+    node->value_type = node->expr->value_type;
+  } else {
+    if (node->type == POST_DEC) {
+      error("invalid operand type for postfix -- operator.");
     }
-    node->value_type = value_type_add(node->expr->value_type, type_int());
-    if (!node->value_type) {
-      error("invalid operand types for prefix increment.");
-    }
-  }
-
-  if (node->type == PRE_DEC) {
-    analyze_expr(node->expr);
-    if (!check_lvalue(node->expr->type)) {
-      error("operand of prefix decrement should be identifier or indirect operator.");
-    }
-    node->value_type = value_type_add(node->expr->value_type, type_int());
-    if (!node->value_type) {
-      error("invalid operand types for prefix decrement.");
+    if (node->type == PRE_DEC) {
+      error("invalid operand type for prefix -- operator.");
     }
   }
+}
 
-  if (node->type == ADDRESS) {
-    analyze_expr(node->expr);
-    if (node->expr->type == IDENTIFIER) {
-      node->value_type = type_pointer_to(node->expr->value_type);
-    } else {
-      error("operand of unary & operator should be identifier.");
-    }
+void analyze_address(Node *node) {
+  analyze_expr(node->expr);
+  node->value_type = type_pointer_to(node->expr->value_type);
+  if (node->expr->type != IDENTIFIER) {
+    error("operand of unary & operator should be identifier.");
   }
+}
 
-  if (node->type == INDIRECT) {
-    analyze_expr(node->expr);
-    if (node->expr->value_type->type == POINTER) {
-      node->value_type = type_convert(node->expr->value_type->pointer_to);
-    } else {
-      error("operand of unary * operator should have pointer type.");
-    }
+void analyze_indirect(Node *node) {
+  analyze_expr(node->expr);
+  if (type_pointer(node->expr->value_type)) {
+    node->value_type = type_convert(node->expr->value_type->pointer_to);
+  } else {
+    error("operand of unary * operator should have pointer type.");
   }
+}
 
-  if (node->type == UPLUS) {
-    analyze_expr(node->expr);
-    if (type_integer(node->expr->value_type)) {
-      node->value_type = node->expr->value_type;
-    } else {
+void analyze_uarithmetic_operator(Node *node) {
+  analyze_expr(node->expr);
+  if (type_integer(node->expr->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == UPLUS) {
       error("operand of unary + operator should have integer type.");
     }
-  }
-
-  if (node->type == UMINUS) {
-    analyze_expr(node->expr);
-    if (type_integer(node->expr->value_type)) {
-      node->value_type = node->expr->value_type;
-    } else {
+    if (node->type == UMINUS) {
       error("operand of unary - operator should have integer type.");
     }
   }
+}
 
-  if (node->type == NOT) {
-    analyze_expr(node->expr);
-    if (type_integer(node->expr->value_type)) {
-      node->value_type = node->expr->value_type;
-    } else {
-      error("operand of ~ operator should have integer type.");
-    }
-  }
-
-  if (node->type == LNOT) {
-    analyze_expr(node->expr);
-    node->value_type = node->expr->value_type;
-    if (type_integer(node->expr->value_type)) {
-      node->value_type = node->expr->value_type;
-    } else {
-      error("operand of ! operator should have integer type.");
-    }
-  }
-
-  if (node->type == SIZEOF) {
-    analyze_expr(node->expr);
-    node->type = CONST;
+void analyze_not(Node *node) {
+  analyze_expr(node->expr);
+  if (type_integer(node->expr->value_type)) {
     node->value_type = type_int();
-    node->int_value = node->expr->value_type->original_size;
+  } else  {
+    error("operand of ~ operator should have integer type.");
   }
+}
 
-  if (node->type == MUL || node->type == DIV) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      if (node->type == MUL) error("operands of binary * should have integer type.");
-      if (node->type == DIV) error("operands of / should have integer type.");
+void analyze_lnot(Node *node) {
+  analyze_expr(node->expr);
+  if (type_integer(node->expr->value_type)) {
+    node->value_type = type_int();
+  } else {
+    error("operand of ! operator should have integer type.");
+  }
+}
+
+void analyze_sizeof(Node *node) {
+  analyze_expr(node->expr);
+  node->type = CONST;
+  node->value_type = type_int();
+  node->int_value = node->expr->value_type->original_size;
+}
+
+void analyze_multiprecative_operator(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == MUL) {
+      error("operands of binary * should have integer type.");
     }
-  }
-
-  if (node->type == MOD) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of %% operator should have integer type.");
-    }
-  }
-
-  if (node->type == ADD) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    node->value_type = value_type_add(node->left->value_type, node->right->value_type);
-    if (!node->value_type) {
-      error("invalid operand types for binary + operator.");
-    }
-  }
-
-  if (node->type == SUB) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    node->value_type = value_type_sub(node->left->value_type, node->right->value_type);
-    if (!node->value_type) {
-      error("invalid operand types for binary - operator.");
+    if (node->type == DIV) {
+    error("operands of / should have integer type.");
     }
   }
+}
 
-  if (node->type == LSHIFT || node->type == RSHIFT) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of shift operators should be integer type.");
-    }
+void analyze_mod(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    error("operands of %% operator should have integer type.");
   }
+}
 
-  if (node->type == LT || node->type == GT || node->type == LTE || node->type == GTE) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of relational operators should be integer type.");
-    }
-  }
-
-  if (node->type == EQ || node->type == NEQ) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of equality operators should be integer type.");
-    }
-  }
-
-  if (node->type == AND || node->type == XOR || node->type == OR) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of bit operators should be integer type.");
-    }
-  }
-
-  if (node->type == LAND || node->type == LOR) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of logical and/or operators should be integer type.");
-    }
-  }
-
-  if (node->type == CONDITION) {
-    analyze_expr(node->control);
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (!type_integer(node->control->value_type)) {
-      error("control expression of conditional-expression should have integer type.");
-    }
-    if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-      node->value_type = type_int();
-    } else {
-      error("operands of conditional-expression should be integer type.");
-    }
-  }
-
-  if (node->type == ASSIGN) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    if (!check_lvalue(node->left->type)) {
-      error("left side of assignment operator should be identifier or indirect operator.");
-    }
+void analyze_add(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = node->left->value_type;
+  } else {
+    error("invalid operand types for binary + operator.");
   }
+}
 
-  if (node->type == ADD_ASSIGN) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    node->value_type = value_type_add(node->left->value_type, node->right->value_type);
-    if (!check_lvalue(node->left->type)) {
-      error("left side of assignment operator should be identifier or indirect operator.");
+void analyze_sub(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = node->left->value_type;
+  } else {
+    error("invalid operand types for binary - operator.");
+  }
+}
+
+void analyze_bitwise_operator(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == LSHIFT) {
+      error("operands of << operator should be integer type.");
+    }
+    if (node->type == RSHIFT) {
+      error("operands of >> operator should be integer type.");
+    }
+    if (node->type == AND) {
+      error("operands of binary & operator should be integer type.");
+    }
+    if (node->type == XOR) {
+      error("operands of ^ operator should be integer type.");
+    }
+    if (node->type == OR) {
+      error("operands of | operator should be integer type.");
     }
   }
+}
 
-  if (node->type == SUB_ASSIGN) {
-    analyze_expr(node->left);
-    analyze_expr(node->right);
-    node->value_type = value_type_sub(node->left->value_type, node->right->value_type);
-    if (!check_lvalue(node->left->type)) {
-      error("left side of assignment operator should be identifier or indirect operator.");
+void analyze_relational_operator(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == LT) {
+      error("operands of < operator should be integer type.");
     }
+    if (node->type == GT) {
+      error("operands of > operator should be integer type.");
+    }
+    if (node->type == LTE) {
+      error("operands of <= operator should be integer type.");
+    }
+    if (node->type == GTE) {
+      error("operands of >= operator should be integer type.");
+    }
+  }
+}
+
+void analyze_equality_operator(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == EQ) {
+      error("operands of == operator should be integer type.");
+    }
+    if (node->type == NEQ) {
+      error("operands of != operator should be integer type.");
+    }
+  }
+}
+
+void analyze_logical_operator(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    if (node->type == LAND) {
+      error("operands of && operator should be integer type.");
+    }
+    if (node->type == LOR) {
+      error("operands of || operator should be integer type.");
+    }
+  }
+}
+
+void analyze_condition(Node *node) {
+  analyze_expr(node->control);
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (!type_integer(node->control->value_type)) {
+    error("first expression of ?: operator should have integer type.");
+  }
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    error("second and third operands of ?: operator should be integer type.");
+  }
+}
+
+void analyze_assign(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  node->value_type = node->left->value_type;
+  if (!check_lvalue(node->left->type)) {
+    error("left side of = operator should be lvalue.");
+  }
+}
+
+void analyze_add_assign(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (!check_lvalue(node->left->type)) {
+    error("left side of += operator should be lvalue.");
+  }
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = node->left->value_type;
+  } else {
+    error("invalid operand types for += operator.");
+  }
+}
+
+void analyze_sub_assign(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (!check_lvalue(node->left->type)) {
+    error("left side of -= operator should be lvalue.");
+  }
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = node->left->value_type;
+  } else {
+    error("invalid operand types for -= operator.");
+  }
+}
+
+void analyze_expr(Node *node) {
+  NodeType type = node->type;
+  if (type == CONST) {
+    analyze_const(node);
+  } else if (type == STRING_LITERAL) {
+    analyze_string_literal(node);
+  } else if (type == IDENTIFIER) {
+    analyze_identifier(node);
+  } else if (type == FUNC_CALL) {
+    analyze_func_call(node);
+  } else if (type == POST_INC || type == PRE_INC) {
+    analyze_increment_operator(node);
+  } else if (type == POST_DEC || type == PRE_DEC) {
+    analyze_decrement_operator(node);
+  } else if (type == ADDRESS) {
+    analyze_address(node);
+  } else if (type == INDIRECT) {
+    analyze_indirect(node);
+  } else if (type == UPLUS || type == UMINUS) {
+    analyze_uarithmetic_operator(node);
+  } else if (type == NOT) {
+    analyze_not(node);
+  } else if (type == LNOT) {
+    analyze_lnot(node);
+  } else if (type == SIZEOF) {
+    analyze_sizeof(node);
+  } else if (type == MUL || type == DIV) {
+    analyze_multiprecative_operator(node);
+  } else if (type == MOD) {
+    analyze_mod(node);
+  } else if (type == ADD) {
+    analyze_add(node);
+  } else if (type == SUB) {
+    analyze_sub(node);
+  } else if (type == LSHIFT || type == RSHIFT || type == AND || type == XOR || type == OR) {
+    analyze_bitwise_operator(node);
+  } else if (type == LT || type == GT || type == LTE || type == GTE) {
+    analyze_relational_operator(node);
+  } else if (type == EQ || type == NEQ) {
+    analyze_equality_operator(node);
+  } else if (type == LAND || type == LOR) {
+    analyze_logical_operator(node);
+  } else if (type == CONDITION) {
+    analyze_condition(node);
+  } else if (type == ASSIGN) {
+    analyze_assign(node);
+  } else if (type == ADD_ASSIGN) {
+    analyze_add_assign(node);
+  } else if (type == SUB_ASSIGN) {
+    analyze_sub_assign(node);
   }
 }
 

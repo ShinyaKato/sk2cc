@@ -50,5 +50,9 @@ Type *type_convert(Type *type) {
 }
 
 bool type_integer(Type *type) {
-  return type->type == INT || type->type == CHAR;
+  return type->type == CHAR || type->type == INT;
+}
+
+bool type_pointer(Type *type) {
+  return type->type == POINTER;
 }
