@@ -54,7 +54,7 @@ void analyze_const(Node *node) {
 
 void analyze_string_literal(Node *node) {
   String *string_value = node->string_value;
-  Type *type = type_array_of(type_char(), string_value->length + 1);
+  Type *type = type_array_of(type_char(), string_value->length);
   node->value_type = type_convert(type);
   node->string_label = string_literals->length;
   vector_push(string_literals, node->string_value);

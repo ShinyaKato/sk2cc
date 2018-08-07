@@ -315,6 +315,8 @@ test_prog_retval "int main() { int x[4][5]; return sizeof(x); }" 80
 test_prog_retval "int main() { int *x[4][5]; return sizeof(x); }" 160
 test_prog_retval "int main() { int x[4][5]; return sizeof(x[0]); }" 20
 test_prog_retval "int main() { char x; return sizeof(\"abc\"); }" 4
+test_prog_retval "int main() { char x; return sizeof(\"abc\n\"); }" 5
+test_prog_retval "int main() { char x; return sizeof(\"abc\0abc\n\"); }" 9
 test_prog_retval "int main() { char *x; x = \"abc\"; return sizeof(x); }" 8
 
 test_prog_retval "int main() { int x = 5; return x; }" 5

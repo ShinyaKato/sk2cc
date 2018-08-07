@@ -61,6 +61,22 @@ Token *token_new() {
   return token;
 }
 
+char get_escape_sequence() {
+  if (read_char('\'')) return '\'';
+  if (read_char('"')) return '"';
+  if (read_char('?')) return '?';
+  if (read_char('\\')) return '\\';
+  if (read_char('a')) return '\a';
+  if (read_char('b')) return '\b';
+  if (read_char('f')) return '\f';
+  if (read_char('n')) return '\n';
+  if (read_char('r')) return '\r';
+  if (read_char('v')) return '\v';
+  if (read_char('t')) return '\t';
+  if (read_char('0')) return '\0';
+  error("invalid escape sequence.");
+}
+
 Token *lex() {
   while (peek_char() == ' ' || peek_char() == '\n') {
     get_char();
@@ -84,17 +100,7 @@ Token *lex() {
   } else if (read_char('\'')) {
     int int_value;
     if (read_char('\\')) {
-      if (read_char('\'')) int_value = '\'';
-      else if (read_char('"')) int_value = '"';
-      else if (read_char('?')) int_value = '?';
-      else if (read_char('\\')) int_value = '\\';
-      else if (read_char('a')) int_value = '\a';
-      else if (read_char('b')) int_value = '\b';
-      else if (read_char('f')) int_value = '\f';
-      else if (read_char('n')) int_value = '\n';
-      else if (read_char('r')) int_value = '\r';
-      else if (read_char('v')) int_value = '\v';
-      else error("invalid escape sequence.");
+      int_value = get_escape_sequence();
     } else {
       int_value = get_char();
     }
@@ -104,9 +110,12 @@ Token *lex() {
   } else if (read_char('"')) {
     String *string_value = string_new();
     while (peek_char() != '"') {
-      string_push(string_value, get_char());
+      char c = get_char();
+      if (c == '\\') c = get_escape_sequence();
+      string_push(string_value, c);
     }
     get_char();
+    string_push(string_value, '\0');
     token->type = tSTRING_LITERAL;
     token->string_value = string_value;
   } else if (isalpha(peek_char()) || peek_char() == '_') {
