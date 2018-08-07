@@ -269,6 +269,8 @@ void analyze_relational_operator(Node *node) {
   analyze_expr(node->right);
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
+  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
+    node->value_type = type_int();
   } else {
     if (node->type == LT) {
       error("operands of < operator should be integer type.");
