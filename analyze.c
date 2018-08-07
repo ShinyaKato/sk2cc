@@ -223,6 +223,11 @@ void analyze_add(Node *node) {
     node->value_type = type_int();
   } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = node->left->value_type;
+  } else if (type_integer(node->left->value_type) && type_pointer(node->right->value_type)) {
+    Node *left = node->left;
+    node->left = node->right;
+    node->right = left;
+    node->value_type = node->left->value_type;
   } else {
     error("invalid operand types for binary + operator.");
   }
