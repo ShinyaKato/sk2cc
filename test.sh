@@ -392,6 +392,8 @@ test_prog_retval "int main() { int *p = 0; for (; p;) return 123; return 231; }"
 
 test_prog_retval "int main() { int a[3]; a[0] = 0; a[1] = 1; a[2] = 2; return 1[a]; }" 1
 
+test_prog_retval "char f(char c) { return c; } int main() { return f('A'); }" 65
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
@@ -406,9 +408,9 @@ test_error "123" "type specifier is expected."
 test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "duplicated function or variable definition of 'f'."
 test_error "int main(int abc" "tRPAREN is expected."
 test_error "int main(int 123) { 0; }" "tIDENTIFIER is expected."
-test_error "int main(int x, int x) { 0; }" "duplicated parameter declaration."
+test_error "int main(int x, int x) { 0; }" "duplicated function or variable definition of 'x'."
 test_error "int main(int a, int b, int c, int d, int e, int f, int g) { 0; }" "too many parameters."
-test_error "int main(x) { return x; }" "tINT is expected."
+test_error "int main(x) { return x; }" "type specifier is expected."
 test_error "int main() { x; }" "undefined identifier."
 test_error "int main() { continue; }" "continue statement should appear in loops."
 test_error "int main() { break; }" "break statement should appear in loops."
@@ -419,3 +421,5 @@ test_error "int main() { return 0; }, x;" "type specifier is expected."
 test_error "int func() { return x; } int x; int main() { func(); }" "undefined identifier."
 test_error "int main() { 1++; }" "operand of postfix ++ operator should be lvalue."
 test_error "int f(int x) { int x; }" "duplicated function or variable definition of 'x'."
+test_error "int f[4](int x) { int a[4]; return a; }" "returning type of function should not be array type."
+test_error "int f(int x[4]) { return 0; }" "type of function parameter should not be array type."

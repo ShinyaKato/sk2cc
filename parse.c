@@ -562,16 +562,9 @@ Node *function_definition(Symbol *func_symbol) {
   expect_token(tLPAREN);
   if (peek_token()->type != tRPAREN) {
     do {
-      expect_token(tINT);
-      Type *param_type = type_int();
-      while (read_token(tMUL)) {
-        param_type = type_pointer_to(param_type);
-      }
-      Token *token = expect_token(tIDENTIFIER);
-      Symbol *symbol = symbol_new();
-      symbol->identifier = token->identifier;
-      symbol->value_type = param_type;
-      vector_push(param_symbols, symbol);
+      Type *specifier = declaration_specifiers();
+      Symbol *param = declarator(specifier);
+      vector_push(param_symbols, param);
     } while (read_token(tCOMMA));
   }
   expect_token(tRPAREN);

@@ -536,6 +536,9 @@ void analyze_comp_stmt(Node *node) {
 }
 
 void analyze_func_def(Node *node) {
+  if (node->symbol->value_type->type == ARRAY) {
+    error("returning type of function should not be array type.");
+  }
   put_symbol(node->symbol->identifier, node->symbol);
 
   local_vars_size = 0;
@@ -545,8 +548,8 @@ void analyze_func_def(Node *node) {
   }
   for (int i = 0; i < node->param_symbols->length; i++) {
     Symbol *param = node->param_symbols->array[i];
-    if (lookup_symbol(param->identifier)) {
-      error("duplicated parameter declaration.");
+    if (param->value_type->type == ARRAY) {
+      error("type of function parameter should not be array type.");
     }
     put_symbol(param->identifier, param);
   }
