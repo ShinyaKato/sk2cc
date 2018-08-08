@@ -225,31 +225,29 @@ void gen_address(Node *node) {
 }
 
 void gen_indirect(Node *node) {
-  if (node->expr->value_type->pointer_to->type == ARRAY) {
+  if (node->expr->value_type->pointer_to->type == CHAR) {
     gen_expr(node->expr);
+    gen_pop("rax");
+    printf("  movsbl (%%rax), %%ecx\n");
+    gen_push("rcx");
   }
 
-  if (node->expr->value_type->pointer_to->type != ARRAY) {
-    if (node->expr->value_type->type == CHAR) {
-      gen_expr(node->expr);
-      gen_pop("rax");
-      printf("  mobsbl (%%rax), %%ecx\n");
-      gen_push("rcx");
-    }
+  if (node->expr->value_type->pointer_to->type == INT) {
+    gen_expr(node->expr);
+    gen_pop("rax");
+    printf("  movl (%%rax), %%ecx\n");
+    gen_push("rcx");
+  }
 
-    if (node->expr->value_type->type == INT) {
-      gen_expr(node->expr);
-      gen_pop("rax");
-      printf("  movl (%%rax), %%ecx\n");
-      gen_push("rcx");
-    }
+  if (node->expr->value_type->pointer_to->type == POINTER) {
+    gen_expr(node->expr);
+    gen_pop("rax");
+    printf("  movq (%%rax), %%rcx\n");
+    gen_push("rcx");
+  }
 
-    if (node->expr->value_type->type == POINTER) {
-      gen_expr(node->expr);
-      gen_pop("rax");
-      printf("  movq (%%rax), %%rcx\n");
-      gen_push("rcx");
-    }
+  if (node->expr->value_type->pointer_to->type == ARRAY) {
+    gen_expr(node->expr);
   }
 }
 
