@@ -56,3 +56,7 @@ bool type_integer(Type *type) {
 bool type_pointer(Type *type) {
   return type->type == POINTER;
 }
+
+bool type_scalar(Type *type) {
+  return type_integer(type) || type_pointer(type);
+}

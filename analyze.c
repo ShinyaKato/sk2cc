@@ -177,7 +177,7 @@ void analyze_not(Node *node) {
 
 void analyze_lnot(Node *node) {
   analyze_expr(node->expr);
-  if (type_integer(node->expr->value_type)) {
+  if (type_scalar(node->expr->value_type)) {
     node->value_type = type_int();
   } else {
     error("operand of ! operator should have integer type.");
@@ -312,7 +312,7 @@ void analyze_equality_operator(Node *node) {
 void analyze_logical_operator(Node *node) {
   analyze_expr(node->left);
   analyze_expr(node->right);
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+  if (type_scalar(node->left->value_type) && type_scalar(node->right->value_type)) {
     node->value_type = type_int();
   } else {
     if (node->type == LAND) {

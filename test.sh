@@ -394,6 +394,9 @@ test_prog_retval "int main() { int a[3]; a[0] = 0; a[1] = 1; a[2] = 2; return 1[
 
 test_prog_retval "char f(char c) { return c; } int main() { return f('A'); }" 65
 
+test_prog_retval "int main() { int a, *p = &a; return !p; }" 0
+test_prog_retval "int main() { int *p = 0; return !p; }" 1
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

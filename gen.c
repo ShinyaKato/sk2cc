@@ -270,7 +270,7 @@ void gen_not(Node *node) {
 
 void gen_lnot(Node *node) {
   gen_operand(node->expr, "rax");
-  printf("  cmpl $0, %%eax\n");
+  printf("  cmpq $0, %%rax\n");
   printf("  sete %%al\n");
   printf("  movzbl %%al, %%eax\n");
   gen_push("rax");
@@ -353,99 +353,51 @@ void gen_rshift(Node *node) {
 }
 
 void gen_lt(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setl %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setl %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  setl %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_gt(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setg %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setg %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  setg %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_lte(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setle %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setle %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  setle %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_gte(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setge %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setge %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  setge %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_eq(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  sete %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  sete %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  sete %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_neq(Node *node) {
-  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setne %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
-    gen_operands(node->left, node->right, "rax", "rcx");
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setne %%al\n");
-    printf("  movzbl %%al, %%eax\n");
-    gen_push("rax");
-  }
+  gen_operands(node->left, node->right, "rax", "rcx");
+  printf("  cmpq %%rcx, %%rax\n");
+  printf("  setne %%al\n");
+  printf("  movzbl %%al, %%eax\n");
+  gen_push("rax");
 }
 
 void gen_and(Node *node) {
@@ -471,10 +423,10 @@ void gen_land(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->left, "rax");
-  printf("  cmpl $0, %%eax\n");
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_false);
   gen_operand(node->right, "rax");
-  printf("  cmpl $0, %%eax\n");
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_false);
   printf("  movl $1, %%eax\n");
   gen_jump("jmp", label_end);
@@ -489,10 +441,10 @@ void gen_lor(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->left, "rax");
-  printf("  cmpl $0, %%eax\n");
+  printf("  cmpq $0, %%rax\n");
   gen_jump("jne", label_true);
   gen_operand(node->right, "rax");
-  printf("  cmpl $0, %%eax\n");
+  printf("  cmpq $0, %%rax\n");
   gen_jump("jne", label_true);
   printf("  movl $0, %%eax\n");
   gen_jump("jmp", label_end);
@@ -507,11 +459,7 @@ void gen_condition(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  if (type_integer(node->control->value_type)) {
-    printf("  cmpl $0, %%eax\n");
-  } else if (type_pointer(node->control->value_type)) {
-    printf("  cmpq $0, %%rax\n");
-  }
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_false);
   gen_expr(node->left);
   gen_jump("jmp", label_end);
@@ -694,11 +642,7 @@ void gen_if_stmt(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  if (type_integer(node->control->value_type)) {
-    printf("  cmpl $0, %%eax\n");
-  } else if (type_pointer(node->control->value_type)) {
-    printf("  cmpq $0, %%rax\n");
-  }
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_end);
   gen_stmt(node->if_body);
   gen_label(label_end);
@@ -709,11 +653,7 @@ void gen_if_else_stmt(Node *node) {
   int label_end = label_no++;
 
   gen_operand(node->control, "rax");
-  if (type_integer(node->control->value_type)) {
-    printf("  cmpl $0, %%eax\n");
-  } else if (type_pointer(node->control->value_type)) {
-    printf("  cmpq $0, %%rax\n");
-  }
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_else);
   gen_stmt(node->if_body);
   gen_jump("jmp", label_end);
@@ -731,11 +671,7 @@ void gen_while_stmt(Node *node) {
 
   gen_label(label_begin);
   gen_operand(node->control, "rax");
-  if (type_integer(node->control->value_type)) {
-    printf("  cmpl $0, %%eax\n");
-  } else if (type_pointer(node->control->value_type)) {
-    printf("  cmpq $0, %%rax\n");
-  }
+  printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_end);
   gen_stmt(node->loop_body);
   gen_jump("jmp", label_begin);
@@ -757,11 +693,7 @@ void gen_do_while_stmt(Node *node) {
   gen_stmt(node->loop_body);
   gen_label(label_control);
   gen_operand(node->control, "rax");
-  if (type_integer(node->control->value_type)) {
-    printf("  cmpl $0, %%eax\n");
-  } else if (type_pointer(node->control->value_type)) {
-    printf("  cmpq $0, %%rax\n");
-  }
+  printf("  cmpq $0, %%rax\n");
   gen_jump("jne", label_begin);
   gen_label(label_end);
 
@@ -788,11 +720,7 @@ void gen_for_stmt(Node *node) {
   gen_label(label_begin);
   if (node->control) {
     gen_operand(node->control, "rax");
-    if (type_integer(node->control->value_type)) {
-      printf("  cmpl $0, %%eax\n");
-    } else if (type_pointer(node->control->value_type)) {
-      printf("  cmpq $0, %%rax\n");
-    }
+    printf("  cmpq $0, %%rax\n");
     gen_jump("je", label_end);
   }
   gen_stmt(node->loop_body);
