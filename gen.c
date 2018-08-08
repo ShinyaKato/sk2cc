@@ -886,14 +886,13 @@ void gen_trans_unit(Node *node) {
   for (int i = 0; i < node->string_literals->length; i++) {
     String *string_value = node->string_literals->array[i];
     printf(".LC%d:\n", i);
-    if (string_value->length > 0) {
-      printf("  .byte ");
-      for (int j = 0; j < string_value->length; j++) {
-        printf("%d", string_value->buffer[j]);
-        if (j + 1 != string_value->length) printf(", ");
-      }
-      printf("\n");
+    printf("  .string \"");
+    for (int j = 0; j < string_value->length; j++) {
+      char c = string_value->buffer[j];
+      if (isalnum(c)) printf("%c", c);
+      else printf("\\%03o", c);
     }
+    printf("\"\n");
   }
 
   printf("  .data\n");
