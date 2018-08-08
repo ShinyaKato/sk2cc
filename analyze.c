@@ -440,89 +440,7 @@ void analyze_var_decl(Node *node) {
   }
 }
 
-void analyze_comp_stmt(Node *node);
-
-void analyze_stmt(Node *node) {
-  if (node->type == COMP_STMT) {
-    make_scope();
-    analyze_comp_stmt(node);
-    remove_scope();
-  }
-
-  if (node->type == EXPR_STMT) {
-    analyze_expr(node->expr);
-  }
-
-  if (node->type == IF_STMT) {
-    analyze_expr(node->control);
-    analyze_stmt(node->if_body);
-  }
-
-  if (node->type == IF_ELSE_STMT) {
-    analyze_expr(node->control);
-    analyze_stmt(node->if_body);
-    analyze_stmt(node->else_body);
-  }
-
-  if (node->type == WHILE_STMT) {
-    continue_level++;
-    break_level++;
-
-    analyze_expr(node->control);
-    analyze_stmt(node->loop_body);
-
-    continue_level--;
-    break_level--;
-  }
-
-  if (node->type == DO_WHILE_STMT) {
-    continue_level++;
-    break_level++;
-
-    analyze_expr(node->control);
-    analyze_stmt(node->loop_body);
-
-    continue_level--;
-    break_level--;
-  }
-
-  if (node->type == FOR_STMT) {
-    continue_level++;
-    break_level++;
-
-    make_scope();
-    if (node->init) {
-      if (node->init->type == VAR_DECL) {
-        analyze_var_decl(node->init);
-      } else {
-        analyze_expr(node->init);
-      }
-    }
-    if (node->control) analyze_expr(node->control);
-    if (node->afterthrough) analyze_expr(node->afterthrough);
-    analyze_stmt(node->loop_body);
-    remove_scope();
-
-    continue_level--;
-    break_level--;
-  }
-
-  if (node->type == CONTINUE_STMT) {
-    if (continue_level == 0) {
-      error("continue statement should appear in loops.");
-    }
-  }
-
-  if (node->type == BREAK_STMT) {
-    if (break_level == 0) {
-      error("break statement should appear in loops.");
-    }
-  }
-
-  if (node->type == RETURN_STMT) {
-    if (node->expr) analyze_expr(node->expr);
-  }
-}
+void analyze_stmt(Node *node);
 
 void analyze_comp_stmt(Node *node) {
   for (int i = 0; i < node->statements->length; i++) {
@@ -532,6 +450,106 @@ void analyze_comp_stmt(Node *node) {
     } else {
       analyze_stmt(stmt);
     }
+  }
+}
+
+void analyze_expr_stmt(Node *node) {
+  analyze_expr(node->expr);
+}
+
+void analyze_if_stmt(Node *node) {
+  analyze_expr(node->control);
+  analyze_stmt(node->if_body);
+}
+
+void analyze_if_else_stmt(Node *node) {
+  analyze_expr(node->control);
+  analyze_stmt(node->if_body);
+  analyze_stmt(node->else_body);
+}
+
+void analyze_while_stmt(Node *node) {
+  continue_level++;
+  break_level++;
+
+  analyze_expr(node->control);
+  analyze_stmt(node->loop_body);
+
+  continue_level--;
+  break_level--;
+}
+
+void analyze_do_while_stmt(Node *node) {
+  continue_level++;
+  break_level++;
+
+  analyze_expr(node->control);
+  analyze_stmt(node->loop_body);
+
+  continue_level--;
+  break_level--;
+}
+
+void analyze_for_stmt(Node *node) {
+  continue_level++;
+  break_level++;
+
+  make_scope();
+  if (node->init) {
+    if (node->init->type == VAR_DECL) {
+      analyze_var_decl(node->init);
+    } else {
+      analyze_expr(node->init);
+    }
+  }
+  if (node->control) analyze_expr(node->control);
+  if (node->afterthrough) analyze_expr(node->afterthrough);
+  analyze_stmt(node->loop_body);
+  remove_scope();
+
+  continue_level--;
+  break_level--;
+}
+
+void analyze_continue_stmt(Node *node) {
+  if (continue_level == 0) {
+    error("continue statement should appear in loops.");
+  }
+}
+
+void analyze_break_stmt(Node *node) {
+  if (break_level == 0) {
+    error("break statement should appear in loops.");
+  }
+}
+
+void analyze_return_stmt(Node *node) {
+  if (node->expr) analyze_expr(node->expr);
+}
+
+void analyze_stmt(Node *node) {
+  if (node->type == COMP_STMT) {
+    make_scope();
+    analyze_comp_stmt(node);
+    remove_scope();
+  } else if (node->type == EXPR_STMT) {
+    analyze_expr_stmt(node);
+  } else if (node->type == IF_STMT) {
+    analyze_if_stmt(node);
+  } else if (node->type == IF_ELSE_STMT) {
+    analyze_if_else_stmt(node);
+  } else if (node->type == WHILE_STMT) {
+    analyze_while_stmt(node);
+  } else if (node->type == DO_WHILE_STMT) {
+    analyze_do_while_stmt(node);
+  } else if (node->type == FOR_STMT) {
+    analyze_for_stmt(node);
+  } else if (node->type == CONTINUE_STMT) {
+    analyze_continue_stmt(node);
+  } else if (node->type == BREAK_STMT) {
+    analyze_break_stmt(node);
+  } else if (node->type == RETURN_STMT) {
+    analyze_return_stmt(node);
   }
 }
 
