@@ -12,7 +12,7 @@ char get_char() {
 
 void expect_char(char c) {
   if (peek_char() != c) {
-    error("'%c' is expected.");
+    error("'%c' is expected.", c);
   }
   get_char();
 }
