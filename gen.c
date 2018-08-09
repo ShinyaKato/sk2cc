@@ -26,16 +26,38 @@ void gen_expr(Node *node);
 void gen_lvalue(Node *node) {
   if (node->type == IDENTIFIER) {
     Symbol *symbol = node->symbol;
+    if (!symbol) {
+      error("undefined identifier.");
+    }
     if (symbol->type == GLOBAL) {
       printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
     } else if (symbol->type == LOCAL) {
       printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
     }
     gen_push("rax");
-  }
-
-  if (node->type == INDIRECT) {
+  } else if (node->type == INDIRECT) {
     gen_expr(node->expr);
+  }
+}
+
+void gen_load_lvalue(Node *node, Type *type) {
+  if (type->type == CHAR) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movsbl (%%rcx), %%eax\n");
+    gen_push("rax");
+  } else if (type->type == INT) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movl (%%rcx), %%eax\n");
+    gen_push("rax");
+  } else if (type->type == POINTER) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movq (%%rcx), %%rax\n");
+    gen_push("rax");
+  } else if (type->type == ARRAY) {
+    gen_lvalue(node);
   }
 }
 
@@ -62,54 +84,10 @@ void gen_string_literal(Node *node) {
 }
 
 void gen_identifier(Node *node) {
-  Symbol *symbol = node->symbol;
-  if (!symbol) {
+  if (!node->symbol) {
     error("undefined identifier.");
   }
-
-  if (symbol->type == GLOBAL) {
-    if (symbol->value_type->type == CHAR) {
-      printf("  movsbl %s(%%rip), %%eax\n", symbol->identifier);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == INT) {
-      printf("  movl %s(%%rip), %%eax\n", symbol->identifier);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == POINTER) {
-      printf("  movq %s(%%rip), %%rax\n", symbol->identifier);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == ARRAY) {
-      printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
-      gen_push("rax");
-    }
-  }
-
-  if (symbol->type == LOCAL) {
-    if (symbol->value_type->type == CHAR) {
-      printf("  movsbl %d(%%rbp), %%eax\n", -symbol->offset);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == INT) {
-      printf("  movl %d(%%rbp), %%eax\n", -symbol->offset);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == POINTER) {
-      printf("  movq %d(%%rbp), %%rax\n", -symbol->offset);
-      gen_push("rax");
-    }
-
-    if (symbol->value_type->type == ARRAY) {
-      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
-      gen_push("rax");
-    }
-  }
+  gen_load_lvalue(node, node->symbol->value_type);
 }
 
 void gen_func_call(Node *node) {
@@ -225,30 +203,7 @@ void gen_address(Node *node) {
 }
 
 void gen_indirect(Node *node) {
-  if (node->expr->value_type->pointer_to->type == CHAR) {
-    gen_expr(node->expr);
-    gen_pop("rax");
-    printf("  movsbl (%%rax), %%ecx\n");
-    gen_push("rcx");
-  }
-
-  if (node->expr->value_type->pointer_to->type == INT) {
-    gen_expr(node->expr);
-    gen_pop("rax");
-    printf("  movl (%%rax), %%ecx\n");
-    gen_push("rcx");
-  }
-
-  if (node->expr->value_type->pointer_to->type == POINTER) {
-    gen_expr(node->expr);
-    gen_pop("rax");
-    printf("  movq (%%rax), %%rcx\n");
-    gen_push("rcx");
-  }
-
-  if (node->expr->value_type->pointer_to->type == ARRAY) {
-    gen_expr(node->expr);
-  }
+  gen_load_lvalue(node, node->expr->value_type->pointer_to);
 }
 
 void gen_uplus(Node *node) {
