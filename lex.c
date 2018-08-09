@@ -1,6 +1,6 @@
 #include "cc.h"
 
-char token_type_name[][32] = {
+char *token_type_name[] = {
   "tINT",
   "tCHAR",
   "tSIZEOF",

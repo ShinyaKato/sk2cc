@@ -1,6 +1,6 @@
 #include "cc.h"
 
-char arg_reg[6][4] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
 int label_no, return_label;
 Vector *continue_labels, *break_labels;
