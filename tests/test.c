@@ -1,11 +1,11 @@
 #define test(expr, expected) \
   do { \
-  int actual = (expr); \
-  if (actual != (expected)) { \
-    printf("\"%s\" should be %d, but got %d.\n", #expr, (expected), actual); \
-    return 1; \
-  } \
-} while (0)
+    int actual = (expr); \
+    if (actual != (expected)) { \
+      printf("\"%s\" should be %d, but got %d.\n", #expr, (expected), actual); \
+      return 1; \
+    } \
+  } while (0)
 
 int main() {
   test(2 + 3, 5);
