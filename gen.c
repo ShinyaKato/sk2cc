@@ -5,11 +5,15 @@ char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 int label_no, return_label;
 Vector *continue_labels, *break_labels;
 
+int stack_depth;
+
 void gen_push(char *reg) {
+  stack_depth += 8;
   printf("  pushq %%%s\n", reg);
 }
 
 void gen_pop(char *reg) {
+  stack_depth -= 8;
   printf("  popq %%%s\n", reg);
 }
 
@@ -99,8 +103,16 @@ void gen_func_call(Node *node) {
       gen_pop(arg_reg[i]);
     }
   }
+
+  int top = stack_depth % 16;
+  if (top > 0) {
+    printf("  subq $%d, %%rsp\n", 16 - top);
+  }
   printf("  movl $0, %%eax\n");
   printf("  call %s\n", node->expr->identifier);
+  if (top > 0) {
+    printf("  addq $%d, %%rsp\n", 16 - top);
+  }
   gen_push("rax");
 }
 
@@ -531,7 +543,7 @@ void gen_var_decl(Node *node) {
     Node *init_decl = node->declarations->array[i];
     if (init_decl->initializer) {
       gen_expr(init_decl->initializer);
-      printf("  addq $8, %%rsp\n");
+      gen_pop("rax");
     }
   }
 }
@@ -551,7 +563,7 @@ void gen_comp_stmt(Node *node) {
 
 void gen_expr_stmt(Node *node) {
   gen_expr(node->expr);
-  printf("  addq $8, %%rsp\n");
+  gen_pop("rax");
 }
 
 void gen_if_stmt(Node *node) {
@@ -630,7 +642,7 @@ void gen_for_stmt(Node *node) {
       gen_var_decl(node->init);
     } else {
       gen_expr(node->init);
-      printf("  addq $8, %%rsp\n");
+      gen_pop("rax");
     }
   }
   gen_label(label_begin);
@@ -643,7 +655,7 @@ void gen_for_stmt(Node *node) {
   gen_label(label_afterthrough);
   if (node->afterthrough) {
     gen_expr(node->afterthrough);
-    printf("  addq $8, %%rsp\n");
+    gen_pop("rax");
   }
   gen_jump("jmp", label_begin);
   gen_label(label_end);
@@ -693,14 +705,17 @@ void gen_gvar_decl(Node *node) {
 
 void gen_func_def(Node *node) {
   return_label = label_no++;
+  stack_depth = 8;
 
   if (strcmp(node->identifier, "main") == 0) {
     printf("  .global main\n");
   }
   printf("%s:\n", node->identifier);
+
   gen_push("rbp");
   printf("  movq %%rsp, %%rbp\n");
   printf("  subq $%d, %%rsp\n", node->local_vars_size);
+  stack_depth += node->local_vars_size;
 
   for (int i = 0; i < node->param_symbols->length; i++) {
     Symbol *symbol = (Symbol *) node->param_symbols->array[i];
