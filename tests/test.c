@@ -211,18 +211,18 @@ int main() {
   { int a, *p = &a, *q = &a; test(p == q, 1); }
   { int a, *p = &a, *q = &a; test(p != q, 0); }
 
-  { int a[3], *p = &a + 1, *q = &a + 0; test(p < q, 0); }
-  { int a[3], *p = &a + 1, *q = &a + 1; test(p < q, 0); }
-  { int a[3], *p = &a + 1, *q = &a + 2; test(p < q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 0; test(p > q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 1; test(p < q, 0); }
-  { int a[3], *p = &a + 1, *q = &a + 2; test(p > q, 0); }
-  { int a[3], *p = &a + 1, *q = &a + 0; test(p <= q, 0); }
-  { int a[3], *p = &a + 1, *q = &a + 1; test(p <= q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 2; test(p <= q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 0; test(p >= q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 1; test(p >= q, 1); }
-  { int a[3], *p = &a + 1, *q = &a + 2; test(p >= q, 0); }
+  { int a[3], *p = a + 1, *q = a + 0; test(p < q, 0); }
+  { int a[3], *p = a + 1, *q = a + 1; test(p < q, 0); }
+  { int a[3], *p = a + 1, *q = a + 2; test(p < q, 1); }
+  { int a[3], *p = a + 1, *q = a + 0; test(p > q, 1); }
+  { int a[3], *p = a + 1, *q = a + 1; test(p < q, 0); }
+  { int a[3], *p = a + 1, *q = a + 2; test(p > q, 0); }
+  { int a[3], *p = a + 1, *q = a + 0; test(p <= q, 0); }
+  { int a[3], *p = a + 1, *q = a + 1; test(p <= q, 1); }
+  { int a[3], *p = a + 1, *q = a + 2; test(p <= q, 1); }
+  { int a[3], *p = a + 1, *q = a + 0; test(p >= q, 1); }
+  { int a[3], *p = a + 1, *q = a + 1; test(p >= q, 1); }
+  { int a[3], *p = a + 1, *q = a + 2; test(p >= q, 0); }
 
   { int a = 34, b = 58, *p = &a, *q = &b; test(*(1 ? p : q), 34); }
   { int a = 34, b = 58, *p = &a, *q = &b; test(*(0 ? p : q), 58); }
