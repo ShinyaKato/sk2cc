@@ -112,9 +112,7 @@ void gen_post_inc(Node *node) {
     gen_push("rax");
     printf("  addl $1, %%eax\n");
     printf("  movl %%eax, (%%rcx)\n");
-  }
-
-  if (node->expr->value_type->type == POINTER) {
+  } else if (type_pointer(node->expr->value_type)) {
     int size = node->expr->value_type->pointer_to->size;
     gen_lvalue(node->expr);
     gen_pop("rcx");
@@ -133,9 +131,7 @@ void gen_post_dec(Node *node) {
     gen_push("rax");
     printf("  subl $1, %%eax\n");
     printf("  movl %%eax, (%%rcx)\n");
-  }
-
-  if (node->expr->value_type->type == POINTER) {
+  } else if (type_pointer(node->expr->value_type)) {
     int size = node->expr->value_type->pointer_to->size;
     gen_lvalue(node->expr);
     gen_pop("rcx");
@@ -154,9 +150,7 @@ void gen_pre_inc(Node *node) {
     printf("  addl $1, %%eax\n");
     printf("  movl %%eax, (%%rcx)\n");
     gen_push("rax");
-  }
-
-  if (node->expr->value_type->type == POINTER) {
+  } else if (type_pointer(node->expr->value_type)) {
     int size = node->expr->value_type->pointer_to->size;
     gen_lvalue(node->expr);
     gen_pop("rcx");
@@ -175,9 +169,7 @@ void gen_pre_dec(Node *node) {
     printf("  subl $1, %%eax\n");
     printf("  movl %%eax, (%%rcx)\n");
     gen_push("rax");
-  }
-
-  if (node->expr->value_type->type == POINTER) {
+  } else if (type_pointer(node->expr->value_type)) {
     int size = node->expr->value_type->pointer_to->size;
     gen_lvalue(node->expr);
     gen_pop("rcx");
@@ -190,13 +182,10 @@ void gen_pre_dec(Node *node) {
 
 void gen_address(Node *node) {
   Symbol *symbol = node->expr->symbol;
-
   if (symbol->type == GLOBAL) {
     printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
     gen_push("rax");
-  }
-
-  if (symbol->type == LOCAL) {
+  } else if (symbol->type == LOCAL) {
     printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
     gen_push("rax");
   }
@@ -252,17 +241,12 @@ void gen_mod(Node *node) {
 }
 
 void gen_add(Node *node) {
-  Type *left_type = node->left->value_type;
-  Type *right_type = node->right->value_type;
-
-  if (type_integer(left_type) && type_integer(right_type)) {
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     gen_operands(node->left, node->right, "rax", "rcx");
     printf("  addl %%ecx, %%eax\n");
     gen_push("rax");
-  }
-
-  if (left_type->type == POINTER && type_integer(right_type)) {
-    int size = left_type->pointer_to->size;
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    int size = node->left->value_type->pointer_to->size;
     gen_expr(node->left);
     gen_operand(node->right, "rax");
     printf("  movq $%d, %%rcx\n", size);
@@ -274,17 +258,12 @@ void gen_add(Node *node) {
 }
 
 void gen_sub(Node *node) {
-  Type *left_type = node->left->value_type;
-  Type *right_type = node->right->value_type;
-
-  if (type_integer(left_type) && type_integer(right_type)) {
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     gen_operands(node->left, node->right, "rax", "rcx");
     printf("  subl %%ecx, %%eax\n");
     gen_push("rax");
-  }
-
-  if (left_type->type == POINTER && type_integer(right_type)) {
-    int size = left_type->pointer_to->size;
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    int size = node->left->value_type->pointer_to->size;
     gen_expr(node->left);
     gen_operand(node->right, "rax");
     printf("  movq $%d, %%rcx\n", size);
@@ -430,17 +409,13 @@ void gen_assign(Node *node) {
     gen_pop("rax");
     printf("  movb %%cl, (%%rax)\n");
     gen_push("rcx");
-  }
-
-  if (node->left->value_type->type == INT) {
+  } else if (node->left->value_type->type == INT) {
     gen_lvalue(node->left);
     gen_operand(node->right, "rcx");
     gen_pop("rax");
     printf("  movl %%ecx, (%%rax)\n");
     gen_push("rcx");
-  }
-
-  if (node->left->value_type->type == POINTER) {
+  } else if (node->left->value_type->type == POINTER) {
     gen_lvalue(node->left);
     gen_operand(node->right, "rcx");
     gen_pop("rax");
@@ -450,10 +425,7 @@ void gen_assign(Node *node) {
 }
 
 void gen_add_assign(Node *node) {
-  Type *left_type = node->left->value_type;
-  Type *right_type = node->right->value_type;
-
-  if (type_integer(left_type) && type_integer(right_type)) {
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     if (node->left->value_type->type == CHAR) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
@@ -461,9 +433,7 @@ void gen_add_assign(Node *node) {
       printf("  addl (%%rcx), %%eax\n");
       printf("  movb %%al, (%%rcx)\n");
       gen_push("rax");
-    }
-
-    if (node->left->value_type->type == INT) {
+    } else if (node->left->value_type->type == INT) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
       gen_pop("rcx");
@@ -471,10 +441,8 @@ void gen_add_assign(Node *node) {
       printf("  movl %%eax, (%%rcx)\n");
       gen_push("rax");
     }
-  }
-
-  if (left_type->type == POINTER && type_integer(right_type)) {
-    int size = left_type->pointer_to->size;
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    int size = node->left->value_type->pointer_to->size;
     gen_lvalue(node->left);
     gen_operand(node->right, "rax");
     printf("  movq $%d, %%rcx\n", size);
@@ -487,10 +455,7 @@ void gen_add_assign(Node *node) {
 }
 
 void gen_sub_assign(Node *node) {
-  Type *left_type = node->left->value_type;
-  Type *right_type = node->right->value_type;
-
-  if (type_integer(left_type) && type_integer(right_type)) {
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     if (node->left->value_type->type == CHAR) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
@@ -499,9 +464,7 @@ void gen_sub_assign(Node *node) {
       printf("  subl %%eax, %%edx\n");
       printf("  movb %%dl, (%%rcx)\n");
       gen_push("rdx");
-    }
-
-    if (node->left->value_type->type == INT) {
+    } else if (node->left->value_type->type == INT) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
       gen_pop("rcx");
@@ -510,10 +473,8 @@ void gen_sub_assign(Node *node) {
       printf("  movl %%edx, (%%rcx)\n");
       gen_push("rdx");
     }
-  }
-
-  if (left_type->type == POINTER && type_integer(right_type)) {
-    int size = left_type->pointer_to->size;
+  } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
+    int size = node->left->value_type->pointer_to->size;
     gen_lvalue(node->left);
     gen_operand(node->right, "rax");
     printf("  movq $%d, %%rcx\n", size);
