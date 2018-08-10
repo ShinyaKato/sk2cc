@@ -246,5 +246,31 @@ int main() {
   test(100 >= -1, 1);
   test(-1 <= 100, 1);
 
+  {
+    struct { char c; int n; int a[4]; struct { int x, y, z; } v; } s;
+
+    s.c = 'A';
+    s.n = 45;
+    s.a[0] = 5;
+    s.a[1] = 3;
+    s.a[2] = 8;
+    s.a[3] = 7;
+    s.v.x = 67;
+    s.v.y = 1;
+    s.v.z = -41;
+
+    test(test_struct(&s), 0);
+
+    test(s.c, 'Z');
+    test(s.n, 82);
+    test(s.a[0], 4);
+    test(s.a[1], 4);
+    test(s.a[2], 1234);
+    test(s.a[3], -571);
+    test(s.v.x, 98);
+    test(s.v.y, 12);
+    test(s.v.z, 1);
+  }
+
   return 0;
 }

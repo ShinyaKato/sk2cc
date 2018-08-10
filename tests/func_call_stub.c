@@ -31,3 +31,36 @@ void alloc(int **p) {
   (*p)[1] = 29;
   (*p)[2] = 64;
 }
+
+struct test_struct {
+  char c;
+  int n;
+  int a[4];
+  struct {
+    int x, y, z;
+  } v;
+};
+
+int test_struct(struct test_struct *s) {
+  if (s->c != 'A') return 1;
+  if (s->n != 45) return 1;
+  if (s->a[0] != 5) return 1;
+  if (s->a[1] != 3) return 1;
+  if (s->a[2] != 8) return 1;
+  if (s->a[3] != 7) return 1;
+  if (s->v.x != 67) return 1;
+  if (s->v.y != 1) return 1;
+  if (s->v.z != -41) return 1;
+
+  s->c = 'Z';
+  s->n = 82;
+  s->a[0] = 4;
+  s->a[1] = 4;
+  s->a[2] = 1234;
+  s->a[3] = -571;
+  s->v.x = 98;
+  s->v.y = 12;
+  s->v.z = 1;
+
+  return 0;
+}

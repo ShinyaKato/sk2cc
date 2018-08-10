@@ -77,6 +77,14 @@ Node *postfix_expression() {
       node = node_new();
       node->type = INDIRECT;
       node->expr = expr;
+    } else if (read_token(tDOT)) {
+      Node *expr = node;
+      Token *token = expect_token(tIDENTIFIER);
+
+      node = node_new();
+      node->type = DOT;
+      node->expr = expr;
+      node->identifier = token->identifier;
     } else if (read_token(tINC)) {
       Node *expr = node;
 
@@ -349,18 +357,51 @@ Node *expression() {
   return assignment_expression();
 }
 
+Type *type_specifier();
+Symbol *declarator(Type *type);
+
 bool check_declaration() {
-  Token *token = peek_token();
-  return token->type == tCHAR || token->type == tINT;
+  TokenType type = peek_token()->type;
+  return type == tCHAR || type == tINT || type == tSTRUCT;
 }
 
-Type *declaration_specifiers() {
+Type *specifier_qualifier_list() {
+  return type_specifier();
+}
+
+Type *struct_or_union_specifier() {
+  expect_token(tSTRUCT);
+
+  Vector *identifiers = vector_new();
+  Map *members = map_new();
+  expect_token(tLBRACE);
+  do {
+    Type *specifier = specifier_qualifier_list();
+    do {
+      Symbol *symbol = declarator(specifier);
+      vector_push(identifiers, symbol->identifier);
+      map_put(members, symbol->identifier, symbol->value_type);
+    } while (read_token(tCOMMA));
+    expect_token(tSEMICOLON);
+  } while (peek_token()->type != tRBRACE && peek_token()->type != tEND);
+  expect_token(tRBRACE);
+
+  return type_struct(identifiers, members);
+}
+
+Type *type_specifier() {
   if (read_token(tCHAR)) {
     return type_char();
   } else if (read_token(tINT)) {
     return type_int();
+  } else if (peek_token()->type == tSTRUCT) {
+    return struct_or_union_specifier();
   }
   error("type specifier is expected.");
+}
+
+Type *declaration_specifiers() {
+  return type_specifier();
 }
 
 Type *direct_declarator(Type *type) {

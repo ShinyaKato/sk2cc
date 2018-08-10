@@ -41,27 +41,32 @@ void gen_lvalue(Node *node) {
     gen_push("rax");
   } else if (node->type == INDIRECT) {
     gen_expr(node->expr);
+  } else if (node->type == DOT) {
+    gen_lvalue(node->expr);
+    gen_pop("rax");
+    printf("  leaq %d(%%rax), %%rax\n", node->member_offset);
+    gen_push("rax");
   }
 }
 
-void gen_load_lvalue(Node *node, Type *type) {
-  if (type->type == CHAR) {
+void gen_load_lvalue(Node *node) {
+  if (node->value_type->type == CHAR) {
     gen_lvalue(node);
     gen_pop("rcx");
     printf("  movsbl (%%rcx), %%eax\n");
     gen_push("rax");
-  } else if (type->type == INT) {
+  } else if (node->value_type->type == INT) {
     gen_lvalue(node);
     gen_pop("rcx");
     printf("  movl (%%rcx), %%eax\n");
     gen_push("rax");
-  } else if (type->type == POINTER) {
+  } else if (node->value_type->type == POINTER) {
     gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movq (%%rcx), %%rax\n");
-    gen_push("rax");
-  } else if (type->type == ARRAY) {
-    gen_lvalue(node);
+    if (!node->value_type->array_pointer) {
+      gen_pop("rcx");
+      printf("  movq (%%rcx), %%rax\n");
+      gen_push("rax");
+    }
   }
 }
 
@@ -91,7 +96,7 @@ void gen_identifier(Node *node) {
   if (!node->symbol) {
     error("undefined identifier.");
   }
-  gen_load_lvalue(node, node->symbol->value_type);
+  gen_load_lvalue(node);
 }
 
 void gen_func_call(Node *node) {
@@ -114,6 +119,10 @@ void gen_func_call(Node *node) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
   gen_push("rax");
+}
+
+void gen_dot(Node *node) {
+  gen_load_lvalue(node);
 }
 
 void gen_post_inc(Node *node) {
@@ -204,7 +213,7 @@ void gen_address(Node *node) {
 }
 
 void gen_indirect(Node *node) {
-  gen_load_lvalue(node, node->expr->value_type->pointer_to);
+  gen_load_lvalue(node);
 }
 
 void gen_uplus(Node *node) {
@@ -528,6 +537,7 @@ void gen_expr(Node *node) {
   else if (node->type == STRING_LITERAL) gen_string_literal(node);
   else if (node->type == IDENTIFIER) gen_identifier(node);
   else if (node->type == FUNC_CALL) gen_func_call(node);
+  else if (node->type == DOT) gen_dot(node);
   else if (node->type == POST_INC) gen_post_inc(node);
   else if (node->type == POST_DEC) gen_post_dec(node);
   else if (node->type == PRE_INC) gen_pre_inc(node);

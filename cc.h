@@ -48,6 +48,7 @@ extern bool read_char(char c);
 typedef enum token_type {
   tINT,
   tCHAR,
+  tSTRUCT,
   tSIZEOF,
   tIF,
   tELSE,
@@ -66,6 +67,7 @@ typedef enum token_type {
   tRPAREN,
   tRBRACE,
   tLBRACE,
+  tDOT,
   tINC,
   tDEC,
   tNOT,
@@ -114,13 +116,19 @@ typedef enum type_type {
   CHAR,
   INT,
   POINTER,
-  ARRAY
+  ARRAY,
+  STRUCT
 } TypeType;
 
 typedef struct type {
   TypeType type;
-  struct type *pointer_to, *array_of;
-  int array_size, size, original_size;
+  int size, align;
+  struct type *pointer_to;
+  struct type *array_of;
+  int array_size;
+  Map *members, *offsets;
+  int original_size;
+  bool array_pointer;
 } Type;
 
 extern Type *type_new();
@@ -129,6 +137,7 @@ extern Type *type_int();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_convert(Type *type);
+extern Type *type_struct(Vector *identifiers, Map *members);
 extern bool type_integer(Type *type);
 extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
@@ -150,6 +159,7 @@ typedef enum node_type {
   STRING_LITERAL,
   IDENTIFIER,
   FUNC_CALL,
+  DOT,
   POST_INC,
   POST_DEC,
   PRE_INC,
@@ -208,6 +218,7 @@ typedef struct node {
   char *identifier;
   Symbol *symbol;
   Vector *args;
+  int member_offset;
   struct node *left, *right, *init, *control, *afterthrough, *expr;
   struct node *initializer;
   Vector *declarations;

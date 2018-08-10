@@ -43,7 +43,7 @@ void remove_scope() {
 }
 
 bool check_lvalue(NodeType type) {
-  return type == IDENTIFIER || type == INDIRECT;
+  return type == IDENTIFIER || type == INDIRECT || type == DOT;
 }
 
 void analyze_expr(Node *node);
@@ -85,6 +85,20 @@ void analyze_func_call(Node *node) {
   if (node->args->length > 6) {
     error("too many arguments.");
   }
+}
+
+void analyze_dot(Node *node) {
+  analyze_expr(node->expr);
+  if (node->expr->value_type->type != STRUCT) {
+    error("operand of . operator should have struct type.");
+  }
+  node->value_type = map_lookup(node->expr->value_type->members, node->identifier);
+  node->value_type = type_convert(node->value_type);
+  if (node->value_type == NULL) {
+    error("undefined struct member.");
+  }
+  int *offset = map_lookup(node->expr->value_type->offsets, node->identifier);
+  node->member_offset = *offset;
 }
 
 void analyze_increment_operator(Node *node) {
@@ -386,6 +400,8 @@ void analyze_expr(Node *node) {
     analyze_identifier(node);
   } else if (type == FUNC_CALL) {
     analyze_func_call(node);
+  } else if (type == DOT) {
+    analyze_dot(node);
   } else if (type == POST_INC || type == PRE_INC) {
     analyze_increment_operator(node);
   } else if (type == POST_DEC || type == PRE_DEC) {

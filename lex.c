@@ -3,6 +3,7 @@
 char *token_type_name[] = {
   "tINT",
   "tCHAR",
+  "tSTRUCT",
   "tSIZEOF",
   "tIF",
   "tELSE",
@@ -21,6 +22,7 @@ char *token_type_name[] = {
   "tRPAREN",
   "tRBRACE",
   "tLBRACE",
+  "tDOT",
   "tINC",
   "tDEC",
   "tNOT",
@@ -128,6 +130,8 @@ Token *lex() {
       token->type = tCHAR;
     } else if (strcmp(identifier->buffer, "int") == 0) {
       token->type = tINT;
+    } else if (strcmp(identifier->buffer, "struct") == 0) {
+      token->type = tSTRUCT;
     } else if (strcmp(identifier->buffer, "sizeof") == 0) {
       token->type = tSIZEOF;
     } else if (strcmp(identifier->buffer, "if") == 0) {
@@ -236,6 +240,8 @@ Token *lex() {
     token->type = tRBRACE;
   } else if (read_char(',')) {
     token->type = tCOMMA;
+  } else if (read_char('.')) {
+    token->type = tDOT;
   } else {
     error("unexpected character.");
   }
