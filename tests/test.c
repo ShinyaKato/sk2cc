@@ -40,6 +40,7 @@ int main() {
   test(5 * 7 <= 34, 0);
   test(5 * 7 >= 36, 0);
   test(5 * 7 >= 35, 1);
+  test(12 > -1, 1);
 
   test(1 && 1, 1);
   test(0 && 1, 0);
@@ -239,6 +240,11 @@ int main() {
 
   { int a, *p = &a; test(!p, 0); }
   { int *p = 0; test(!p, 1); }
+
+  test(100 > -1, 1);
+  test(-1 < 100, 1);
+  test(100 >= -1, 1);
+  test(-1 <= 100, 1);
 
   return 0;
 }
