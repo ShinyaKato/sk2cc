@@ -1,62 +1,33 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int func_call(void) {
-  printf("in func_call function.\n");
-  return 0;
+int func_arg1(int a) {
+  return a * a;
 }
 
-int func_arg_1(int a) {
-  printf("%d\n", a);
-  return 0;
+int func_arg2(int a, int b) {
+  return a * a + b * b;
 }
 
-int func_arg_2(int a, int b) {
-  printf("%d %d\n", a, b);
-  return 0;
+int func_arg3(int a, int b, int c) {
+  return a * a + b * b + c * c;
 }
 
-int func_arg_3(int a, int b, int c) {
-  printf("%d %d %d\n", a, b, c);
-  return 0;
+int func_arg4(int a, int b, int c, int d) {
+  return a * a + b * b + c * c + d * d;
 }
 
-int func_arg_4(int a, int b, int c, int d) {
-  printf("%d %d %d %d\n", a, b, c, d);
-  return 0;
+int func_arg5(int a, int b, int c, int d, int e) {
+  return a * a + b * b + c * c + d * d + e * e;
 }
 
-int func_arg_5(int a, int b, int c, int d, int e) {
-  printf("%d %d %d %d %d\n", a, b, c, d, e);
-  return 0;
+int func_arg6(int a, int b, int c, int d, int e, int f) {
+  return a * a + b * b + c * c + d * d + e * e + f * f;
 }
 
-int func_arg_6(int a, int b, int c, int d, int e, int f) {
-  printf("%d %d %d %d %d %d\n", a, b, c, d, e, f);
-  return 0;
-}
-
-int func_retval(int x) {
-  return x * x;
-}
-
-int print_int(int n) {
-  printf("%d\n", n);
-  return 0;
-}
-
-void print_char(char c) {
-  printf("%c\n", c);
-}
-
-void print_string(char *s) {
-  printf("%s\n", s);
-}
-
-int *alloc(int **buf, int a, int b, int c) {
-  *buf = (int *) calloc(3, sizeof(int));
-  (*buf)[0] = a;
-  (*buf)[1] = b;
-  (*buf)[2] = c;
-  return 0;
+void alloc(int **p) {
+  *p = (int *) calloc(3, sizeof(int));
+  (*p)[0] = 53;
+  (*p)[1] = 29;
+  (*p)[2] = 64;
 }
