@@ -16,7 +16,8 @@ Symbol *lookup_symbol(char *identifier) {
 
 void put_symbol(char *identifier, Symbol *symbol) {
   Map *map = scopes->array[scopes->length - 1];
-  if (map_lookup(map, identifier)) {
+  Symbol *previous = map_lookup(map, identifier);
+  if (previous && !previous->declaration) {
     error("duplicated function or variable definition of '%s'.", identifier);
   }
 
@@ -464,7 +465,7 @@ void analyze_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
-    if (symbol->value_type->type == FUNCTION) continue;
+    if (symbol->value_type->type == FUNCTION) symbol->declaration = true;
     put_symbol(symbol->identifier, symbol);
     if (init_decl->initializer) {
       analyze_expr(init_decl->initializer);

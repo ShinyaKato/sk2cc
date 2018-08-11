@@ -163,6 +163,7 @@ typedef struct symbol {
   char *identifier;
   Type *value_type;
   int offset;
+  bool declaration;
 } Symbol;
 
 typedef enum node_type {
