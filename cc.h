@@ -49,6 +49,7 @@ typedef enum token_type {
   tINT,
   tCHAR,
   tSTRUCT,
+  tTYPEDEF,
   tSIZEOF,
   tIF,
   tELSE,
@@ -131,6 +132,7 @@ typedef struct type {
   Map *members, *offsets;
   int original_size;
   bool array_pointer;
+  bool definition;
 } Type;
 
 extern Type *type_new();

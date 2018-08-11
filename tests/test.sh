@@ -88,6 +88,9 @@ test_return "struct object { int x, y; }; int main() { struct object p; p.x = 56
 test_return "int main() { struct object { int x, y; }; struct object p; p.x = 56; return p.x; }" 56
 test_return "struct object { int x, y; } q; int main() { struct object p; p.x = 56; q.y = 97; return p.x; }" 56
 test_return "int main() { struct object { int x, y; } q; struct object p; p.x = 56; q.y = 97; return p.x; }" 56
+test_return "typedef int MyInt; int main() { MyInt x = 55; return x; }" 55
+test_return "int main() { typedef int MyInt; MyInt x = 55; return x; }" 55
+test_return "typedef struct { int x, y; } Vector2; int main() { Vector2 p; p.x = 5; p.y = 3; return p.x * p.y; }" 15
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

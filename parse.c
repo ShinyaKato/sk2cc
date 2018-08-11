@@ -1,6 +1,6 @@
 #include "cc.h"
 
-Map *struct_tags;
+Map *struct_tags, *typedef_names;
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
@@ -373,8 +373,13 @@ Type *type_specifier();
 Symbol *declarator(Type *type);
 
 bool check_declaration() {
-  TokenType type = peek_token()->type;
-  return type == tCHAR || type == tINT || type == tSTRUCT;
+  Token *token = peek_token();
+  if (token->type == tCHAR) return true;
+  if (token->type == tINT) return true;
+  if (token->type == tSTRUCT) return true;
+  if (token->type == tTYPEDEF) return true;
+  if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
+  return false;
 }
 
 Type *specifier_qualifier_list() {
@@ -420,12 +425,21 @@ Type *type_specifier() {
     return type_int();
   } else if (peek_token()->type == tSTRUCT) {
     return struct_or_union_specifier();
+  } else if (peek_token()->type == tIDENTIFIER) {
+    Token *token = get_token();
+    Type *type = map_lookup(typedef_names, token->identifier);
+    if (type) return type;
   }
   error("type specifier is expected.");
 }
 
 Type *declaration_specifiers() {
-  return type_specifier();
+  bool definition = read_token(tTYPEDEF);
+
+  Type *specifier = type_specifier();
+  specifier->definition = definition;
+
+  return specifier;
 }
 
 Type *direct_declarator(Type *type) {
@@ -437,7 +451,8 @@ Type *direct_declarator(Type *type) {
   return type;
 }
 
-Symbol *declarator(Type *type) {
+Symbol *declarator(Type *specifier) {
+  Type *type = specifier;
   while (read_token(tMUL)) {
     type = type_pointer_to(type);
   }
@@ -449,6 +464,10 @@ Symbol *declarator(Type *type) {
   Symbol *symbol = symbol_new();
   symbol->identifier = token->identifier;
   symbol->value_type = type;
+
+  if (specifier->definition) {
+    map_put(typedef_names, token->identifier, type);
+  }
 
   return symbol;
 }
@@ -510,7 +529,10 @@ Node *compound_statement() {
       Type *specifier = declaration_specifiers();
       if (read_token(tSEMICOLON)) continue;
       Node *first = init_declarator(specifier);
-      vector_push(node->statements, declaration(specifier, first));
+      Node *decl = declaration(specifier, first);
+      if (!specifier->definition) {
+        vector_push(node->statements, decl);
+      }
     } else {
       Node *stmt = statement();
       vector_push(node->statements, stmt);
@@ -571,7 +593,10 @@ Node *iteration_statement() {
     if (check_declaration()) {
       Type *specifier = declaration_specifiers();
       Node *first = init_declarator(specifier);
-      node->init = declaration(specifier, first);
+      Node *decl = declaration(specifier, first);
+      if (!specifier->definition) {
+        node->init = decl;
+      }
     } else {
       node->init = peek_token()->type != tSEMICOLON ? expression() : NULL;
       expect_token(tSEMICOLON);
@@ -657,6 +682,9 @@ Node *external_definition() {
     node = function_definition(first->symbol);
   } else {
     node = declaration(specifier, first);
+    if (specifier->definition) {
+      return NULL;
+    }
   }
 
   return node;
@@ -677,6 +705,7 @@ Node *translate_unit() {
 
 Node *parse() {
   struct_tags = map_new();
+  typedef_names = map_new();
 
   return translate_unit();
 }

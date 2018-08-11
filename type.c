@@ -12,6 +12,7 @@ Type *type_char() {
   char_type->align = 1;
   char_type->original_size = 1;
   char_type->array_pointer = false;
+  char_type->definition = false;
   return char_type;
 }
 
@@ -22,6 +23,7 @@ Type *type_int() {
   int_type->align = 4;
   int_type->original_size = 4;
   int_type->array_pointer = false;
+  int_type->definition = false;
   return int_type;
 }
 
@@ -33,6 +35,7 @@ Type *type_pointer_to(Type *type) {
   pointer->pointer_to = type;
   pointer->original_size = 8;
   pointer->array_pointer = false;
+  pointer->definition = false;
   return pointer;
 }
 
@@ -45,6 +48,7 @@ Type *type_array_of(Type *type, int array_size) {
   array->array_size = array_size;
   array->original_size = array->size;
   array->array_pointer = false;
+  array->definition = false;
   return array;
 }
 
@@ -82,6 +86,7 @@ Type *type_struct(Vector *identifiers, Map *members) {
   struct_type->offsets = offsets;
   struct_type->original_size = size;
   struct_type->array_pointer = false;
+  struct_type->definition = false;
   return struct_type;
 }
 
