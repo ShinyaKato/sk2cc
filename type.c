@@ -13,6 +13,7 @@ Type *type_char() {
   char_type->original_size = 1;
   char_type->array_pointer = false;
   char_type->definition = false;
+  char_type->incomplete = false;
   return char_type;
 }
 
@@ -24,6 +25,7 @@ Type *type_int() {
   int_type->original_size = 4;
   int_type->array_pointer = false;
   int_type->definition = false;
+  int_type->incomplete = false;
   return int_type;
 }
 
@@ -36,6 +38,7 @@ Type *type_pointer_to(Type *type) {
   pointer->original_size = 8;
   pointer->array_pointer = false;
   pointer->definition = false;
+  pointer->incomplete = false;
   return pointer;
 }
 
@@ -49,6 +52,7 @@ Type *type_array_of(Type *type, int array_size) {
   array->original_size = array->size;
   array->array_pointer = false;
   array->definition = false;
+  array->incomplete = false;
   return array;
 }
 
@@ -87,6 +91,7 @@ Type *type_struct(Vector *identifiers, Map *members) {
   struct_type->original_size = size;
   struct_type->array_pointer = false;
   struct_type->definition = false;
+  struct_type->incomplete = false;
   return struct_type;
 }
 
@@ -98,6 +103,21 @@ Type *type_convert(Type *type) {
     return pointer;
   }
   return type;
+}
+
+void type_copy(Type *dest, Type *src) {
+  dest->type = src->type;
+  dest->size = src->size;
+  dest->align = src->align;
+  dest->pointer_to = src->pointer_to;
+  dest->array_of = src->array_of;
+  dest->array_size = src->array_size;
+  dest->members = src->members;
+  dest->offsets = src->offsets;
+  dest->original_size = src->original_size;
+  dest->array_pointer = src->array_pointer;
+  dest->definition = src->definition;
+  dest->incomplete = src->incomplete;
 }
 
 bool type_integer(Type *type) {

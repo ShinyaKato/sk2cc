@@ -388,7 +388,14 @@ Type *specifier_qualifier_list() {
 
 Type *struct_or_union_specifier() {
   expect_token(tSTRUCT);
+
   Token *token = optional_token(tIDENTIFIER);
+  if (token && !map_lookup(struct_tags, token->identifier)) {
+    Type *incomplete_type = type_new();
+    incomplete_type->type = STRUCT;
+    incomplete_type->incomplete = true;
+    map_put(struct_tags, token->identifier, incomplete_type);
+  }
 
   if (!read_token(tLBRACE)) {
     if (!token) error("invalid struct type specifier.");
@@ -413,9 +420,11 @@ Type *struct_or_union_specifier() {
   expect_token(tRBRACE);
 
   Type *type = type_struct(identifiers, members);
-  if (token) map_put(struct_tags, token->identifier, type);
+  if (!token) return type;
 
-  return type;
+  Type *dest = map_lookup(struct_tags, token->identifier);
+  type_copy(dest, type);
+  return dest;
 }
 
 Type *type_specifier() {
@@ -460,6 +469,10 @@ Symbol *declarator(Type *specifier) {
   Token *token = expect_token(tIDENTIFIER);
 
   type = direct_declarator(type);
+
+  if (type->incomplete) {
+    error("declaration with incomplete type.");
+  }
 
   Symbol *symbol = symbol_new();
   symbol->identifier = token->identifier;

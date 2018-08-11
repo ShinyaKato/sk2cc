@@ -91,6 +91,7 @@ test_return "int main() { struct object { int x, y; } q; struct object p; p.x = 
 test_return "typedef int MyInt; int main() { MyInt x = 55; return x; }" 55
 test_return "int main() { typedef int MyInt; MyInt x = 55; return x; }" 55
 test_return "typedef struct { int x, y; } Vector2; int main() { Vector2 p; p.x = 5; p.y = 3; return p.x * p.y; }" 15
+test_return "struct abc { struct abc *p; int v; }; int main() { struct abc x, y; x.p = &y; y.v = 18; return x.p->v; }" 18
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
@@ -121,3 +122,4 @@ test_error "int main() { 1++; }" "operand of postfix ++ operator should be lvalu
 test_error "int f(int x) { int x; }" "duplicated function or variable definition of 'x'."
 test_error "int f[4](int x) { int a[4]; return a; }" "returning type of function should not be array type."
 test_error "int f(int x[4]) { return 0; }" "type of function parameter should not be array type."
+test_error "struct abc { struct abc p; }; int main() { return 0; }" "declaration with incomplete type."

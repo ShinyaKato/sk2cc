@@ -133,6 +133,7 @@ typedef struct type {
   int original_size;
   bool array_pointer;
   bool definition;
+  bool incomplete;
 } Type;
 
 extern Type *type_new();
@@ -142,6 +143,7 @@ extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_convert(Type *type);
 extern Type *type_struct(Vector *identifiers, Map *members);
+extern void type_copy(Type *dest, Type *src);
 extern bool type_integer(Type *type);
 extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
