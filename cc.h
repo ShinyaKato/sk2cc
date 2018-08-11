@@ -68,6 +68,7 @@ typedef enum token_type {
   tRBRACE,
   tLBRACE,
   tDOT,
+  tARROW,
   tINC,
   tDEC,
   tNOT,

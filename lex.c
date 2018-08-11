@@ -23,6 +23,7 @@ char *token_type_name[] = {
   "tRBRACE",
   "tLBRACE",
   "tDOT",
+  "tARROW",
   "tINC",
   "tDEC",
   "tNOT",
@@ -165,7 +166,9 @@ Token *lex() {
       token->type = tADD;
     }
   } else if (read_char('-')) {
-    if (read_char('-')) {
+    if (read_char('>')) {
+      token->type = tARROW;
+    } else if (read_char('-')) {
       token->type = tDEC;
     } else if (read_char('=')) {
       token->type = tSUB_ASSIGN;

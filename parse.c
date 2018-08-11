@@ -85,6 +85,16 @@ Node *postfix_expression() {
       node->type = DOT;
       node->expr = expr;
       node->identifier = token->identifier;
+    } else if (read_token(tARROW)) {
+      Node *expr = node_new();
+      expr->type = INDIRECT;
+      expr->expr = node;
+      Token *token = expect_token(tIDENTIFIER);
+
+      node = node_new();
+      node->type = DOT;
+      node->expr = expr;
+      node->identifier = token->identifier;
     } else if (read_token(tINC)) {
       Node *expr = node;
 

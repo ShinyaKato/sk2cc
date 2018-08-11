@@ -271,6 +271,7 @@ int main() {
     test(s.v.y, 12);
     test(s.v.z, 1);
   }
+  { struct { int x, y; } a, *p; p = &a; p->x = 12; a.y = 7; test(a.x == 12 && p->y == 7, 1); }
 
   return 0;
 }
