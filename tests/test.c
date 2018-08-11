@@ -1,3 +1,21 @@
+struct test_struct {
+  char c;
+  int n;
+  int a[4];
+  struct {
+    int x, y, z;
+  } v;
+};
+
+int func_arg1(int a);
+int func_arg2(int a, int b);
+int func_arg3(int a, int b, int c);
+int func_arg4(int a, int b, int c, int d);
+int func_arg5(int a, int b, int c, int d, int e);
+int func_arg6(int a, int b, int c, int d, int e, int f);
+int *alloc();
+int test_struct(struct test_struct *s);
+
 #define test(expr, expected) \
   do { \
     int actual = (expr); \
@@ -135,12 +153,12 @@ int main() {
   { int i; i = 0; do { i++; if (i < 100) continue; } while (i < 50); test(i, 50); }
   { int i; i = 0; while (1) { i++; if (i < 100) continue; break; } test(i, 100); }
 
-  { int *x; alloc(&x); test(*x, 53); }
-  { int *x; alloc(&x); test(*(x + 1), 29); }
-  { int *x; alloc(&x); test(*(x + 2), 64); }
-  { int *x; alloc(&x); *(x + 1) = 5; test(*(x + 1), 5); }
-  { int *x; alloc(&x); *(x + 1) = *(x + 2); test(*(x + 1), 64); }
-  { int *x; alloc(&x); int *y; y = x + 2; test(*(y - 1), 29); }
+  { int *x = alloc(); test(*x, 53); }
+  { int *x = alloc(); test(*(x + 1), 29); }
+  { int *x = alloc(); test(*(x + 2), 64); }
+  { int *x = alloc(); *(x + 1) = 5; test(*(x + 1), 5); }
+  { int *x = alloc(); *(x + 1) = *(x + 2); test(*(x + 1), 64); }
+  { int *x = alloc(); int *y; y = x + 2; test(*(y - 1), 29); }
 
   { int x = 7; test(*&x, 7); }
   { int x = 7, y = 5; test(*&x * *&y, 35); }
@@ -247,8 +265,7 @@ int main() {
   test(-1 <= 100, 1);
 
   {
-    struct { char c; int n; int a[4]; struct { int x, y, z; } v; } s;
-
+    struct test_struct s;
     s.c = 'A';
     s.n = 45;
     s.a[0] = 5;

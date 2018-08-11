@@ -66,7 +66,6 @@ void analyze_identifier(Node *node) {
     node->symbol = symbol;
     node->value_type = type_convert(symbol->value_type);
   } else {
-    node->symbol = NULL;
     node->value_type = type_int();
   }
 }
@@ -77,13 +76,29 @@ void analyze_func_call(Node *node) {
     Node *arg = node->args->array[i];
     analyze_expr(arg);
   }
-  node->value_type = node->expr->value_type;
-
   if (node->expr->type != IDENTIFIER) {
     error("invalid function call.");
   }
   if (node->args->length > 6) {
     error("too many arguments.");
+  }
+  if (node->expr->symbol) {
+    if (node->expr->value_type->type != FUNCTION) {
+      error("operand of function call should have function type.");
+    }
+    if (node->args->length != node->expr->value_type->params->length) {
+      error("number of parameters and arguments should be the same.");
+    }
+    for (int i = 0; i < node->args->length; i++) {
+      Node *arg = node->args->array[i];
+      Symbol *param = node->expr->value_type->params->array[i];
+      if (!type_same(arg->value_type, param->value_type)) {
+        error("parameter types and argument types should be the same.");
+      }
+    }
+    node->value_type = node->expr->value_type->function_returning;
+  } else {
+    node->value_type = node->expr->value_type;
   }
 }
 
@@ -449,6 +464,7 @@ void analyze_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
+    if (symbol->value_type->type == FUNCTION) continue;
     put_symbol(symbol->identifier, symbol);
     if (init_decl->initializer) {
       analyze_expr(init_decl->initializer);
@@ -577,11 +593,12 @@ void analyze_func_def(Node *node) {
 
   local_vars_size = 0;
   make_scope();
-  if (node->param_symbols->length > 6) {
+  Type *type = node->symbol->value_type;
+  if (type->params->length > 6) {
     error("too many parameters.");
   }
-  for (int i = 0; i < node->param_symbols->length; i++) {
-    Symbol *param = node->param_symbols->array[i];
+  for (int i = 0; i < type->params->length; i++) {
+    Symbol *param = type->params->array[i];
     if (param->value_type->type == ARRAY) {
       error("type of function parameter should not be array type.");
     }

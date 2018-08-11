@@ -120,7 +120,8 @@ typedef enum type_type {
   INT,
   POINTER,
   ARRAY,
-  STRUCT
+  STRUCT,
+  FUNCTION
 } TypeType;
 
 typedef struct type {
@@ -130,6 +131,8 @@ typedef struct type {
   struct type *array_of;
   int array_size;
   Map *members, *offsets;
+  struct type *function_returning;
+  Vector *params;
   int original_size;
   bool array_pointer;
   bool definition;
@@ -141,12 +144,14 @@ extern Type *type_char();
 extern Type *type_int();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
-extern Type *type_convert(Type *type);
 extern Type *type_struct(Vector *identifiers, Map *members);
+extern Type *type_function_returning(Type *returning, Vector *params);
+extern Type *type_convert(Type *type);
 extern void type_copy(Type *dest, Type *src);
 extern bool type_integer(Type *type);
 extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
+extern bool type_same(Type *type1, Type *type2);
 
 typedef enum symbol_type {
   GLOBAL,
@@ -230,7 +235,6 @@ typedef struct node {
   Vector *declarations;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
-  Vector *param_symbols;
   int local_vars_size;
   Vector *string_literals, *definitions;
 } Node;

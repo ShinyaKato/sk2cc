@@ -575,6 +575,8 @@ void gen_expr(Node *node) {
 void gen_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
+    Symbol *symbol = init_decl->symbol;
+    if (symbol->value_type->type == FUNCTION) continue;
     if (init_decl->initializer) {
       gen_expr(init_decl->initializer);
       gen_pop("rax");
@@ -732,6 +734,7 @@ void gen_gvar_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
+    if (symbol->value_type->type == FUNCTION) continue;
     printf("%s:\n", symbol->identifier);
     printf("  .zero %d\n", symbol->value_type->size);
   }
@@ -751,8 +754,9 @@ void gen_func_def(Node *node) {
   printf("  subq $%d, %%rsp\n", node->local_vars_size);
   stack_depth += node->local_vars_size;
 
-  for (int i = 0; i < node->param_symbols->length; i++) {
-    Symbol *symbol = (Symbol *) node->param_symbols->array[i];
+  Type *type = node->symbol->value_type;
+  for (int i = 0; i < type->params->length; i++) {
+    Symbol *symbol = (Symbol *) type->params->array[i];
     if (symbol->value_type->type == CHAR) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);

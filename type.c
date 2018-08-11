@@ -95,6 +95,17 @@ Type *type_struct(Vector *identifiers, Map *members) {
   return struct_type;
 }
 
+Type *type_function_returning(Type *returning, Vector *params) {
+  Type *function_type = type_new();
+  function_type->type = FUNCTION;
+  function_type->function_returning = returning;
+  function_type->params = params;
+  function_type->array_pointer = false;
+  function_type->definition = false;
+  function_type->incomplete = false;
+  return function_type;
+}
+
 Type *type_convert(Type *type) {
   if (type->type == ARRAY) {
     Type *pointer = type_pointer_to(type->array_of);
@@ -130,4 +141,10 @@ bool type_pointer(Type *type) {
 
 bool type_scalar(Type *type) {
   return type_integer(type) || type_pointer(type);
+}
+
+bool type_same(Type *type1, Type *type2) {
+  if (type_integer(type1) && type_integer(type2)) return true;
+  if (type_pointer(type1) && type_pointer(type2)) return true;
+  return false;
 }

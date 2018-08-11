@@ -93,6 +93,10 @@ test_return "int main() { typedef int MyInt; MyInt x = 55; return x; }" 55
 test_return "typedef struct { int x, y; } Vector2; int main() { Vector2 p; p.x = 5; p.y = 3; return p.x * p.y; }" 15
 test_return "struct abc { struct abc *p; int v; }; int main() { struct abc x, y; x.p = &y; y.v = 18; return x.p->v; }" 18
 
+test_return "char f(char c, int a); int main() { return f('A', 3); } char f(char c, int a)  { return c + a; }" 68
+test_return "int f(), g(int x); int main() { return g(f()); } int f() { return 2; } int g(int x) { return x * x; }" 4
+test_stdout "int puts(char *s); int main() { puts(\"123abc\"); }" "123abc"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
@@ -101,7 +105,7 @@ test_error "int main() { 1 ? 2; }" "tCOLON is expected."
 test_error "int main() { 1 = 2 + 3; }" "left side of = operator should be lvalue."
 test_error "int main() { func_call(1, 2, 3, 4, 5, 6, 7); }" "too many arguments."
 test_error "int main() { func_call(1, 2, 3; }" "tRPAREN is expected."
-test_error "int main()" "tLBRACE is expected."
+test_error "int main()" "tSEMICOLON is expected."
 test_error "int main() { 2;" "tRBRACE is expected."
 test_error "123" "type specifier is expected."
 test_error "int f() { 1; } int f() { 2; } int main() { 1; }" "duplicated function or variable definition of 'f'."

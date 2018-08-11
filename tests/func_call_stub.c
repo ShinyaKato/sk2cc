@@ -25,11 +25,12 @@ int func_arg6(int a, int b, int c, int d, int e, int f) {
   return a * a + b * b + c * c + d * d + e * e + f * f;
 }
 
-void alloc(int **p) {
-  *p = (int *) calloc(3, sizeof(int));
-  (*p)[0] = 53;
-  (*p)[1] = 29;
-  (*p)[2] = 64;
+int* alloc() {
+  int *p = (int *) calloc(3, sizeof(int));
+  p[0] = 53;
+  p[1] = 29;
+  p[2] = 64;
+  return p;
 }
 
 struct test_struct {
