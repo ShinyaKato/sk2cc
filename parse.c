@@ -1,5 +1,7 @@
 #include "cc.h"
 
+Map *struct_tags;
+
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   return symbol;
@@ -381,10 +383,19 @@ Type *specifier_qualifier_list() {
 
 Type *struct_or_union_specifier() {
   expect_token(tSTRUCT);
+  Token *token = optional_token(tIDENTIFIER);
+
+  if (!read_token(tLBRACE)) {
+    if (!token) error("invalid struct type specifier.");
+
+    Type *type = map_lookup(struct_tags, token->identifier);
+    if (!type) error("undefined struct tag.");
+
+    return type;
+  }
 
   Vector *identifiers = vector_new();
   Map *members = map_new();
-  expect_token(tLBRACE);
   do {
     Type *specifier = specifier_qualifier_list();
     do {
@@ -396,7 +407,10 @@ Type *struct_or_union_specifier() {
   } while (peek_token()->type != tRBRACE && peek_token()->type != tEND);
   expect_token(tRBRACE);
 
-  return type_struct(identifiers, members);
+  Type *type = type_struct(identifiers, members);
+  if (token) map_put(struct_tags, token->identifier, type);
+
+  return type;
 }
 
 Type *type_specifier() {
@@ -494,6 +508,7 @@ Node *compound_statement() {
     if (token->type == tRBRACE || token->type == tEND) break;
     if (check_declaration()) {
       Type *specifier = declaration_specifiers();
+      if (read_token(tSEMICOLON)) continue;
       Node *first = init_declarator(specifier);
       vector_push(node->statements, declaration(specifier, first));
     } else {
@@ -632,6 +647,9 @@ Node *function_definition(Symbol *func_symbol) {
 
 Node *external_definition() {
   Type *specifier = declaration_specifiers();
+  if (read_token(tSEMICOLON)) {
+    return NULL;
+  }
   Node *first = init_declarator(specifier);
 
   Node *node;
@@ -651,12 +669,14 @@ Node *translate_unit() {
 
   while (peek_token()->type != tEND) {
     Node *def = external_definition();
-    vector_push(node->definitions, def);
+    if (def) vector_push(node->definitions, def);
   }
 
   return node;
 }
 
 Node *parse() {
+  struct_tags = map_new();
+
   return translate_unit();
 }

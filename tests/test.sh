@@ -84,6 +84,11 @@ test_return "int main() { int x = 12, y = 14; if (1) { int *x = &y; } return x; 
 test_stdout "int x = 0; int main() { int x = 1; { int x = 2; { x = 3; } { int x = 4; } printf(\"%d\n\", x); } printf(\"%d\n\", x); }" "3\n1\n"
 test_stdout "int main() { int i = 123; for (int i = 0; i < 5; i++) { printf(\"%d\n\", i); int i = 42; } printf(\"%d\n\", i); return 0; }" "0\n1\n2\n3\n4\n123\n"
 
+test_return "struct object { int x, y; }; int main() { struct object p; p.x = 56; return p.x; }" 56
+test_return "int main() { struct object { int x, y; }; struct object p; p.x = 56; return p.x; }" 56
+test_return "struct object { int x, y; } q; int main() { struct object p; p.x = 56; q.y = 97; return p.x; }" 56
+test_return "int main() { struct object { int x, y; } q; struct object p; p.x = 56; q.y = 97; return p.x; }" 56
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

@@ -111,6 +111,7 @@ typedef struct token {
 extern Token *peek_token();
 extern Token *get_token();
 extern Token *expect_token(TokenType type);
+extern Token *optional_token(TokenType type);
 extern bool read_token(TokenType type);
 
 typedef enum type_type {

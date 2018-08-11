@@ -276,6 +276,13 @@ Token *expect_token(TokenType type) {
   return token;
 }
 
+Token *optional_token(TokenType type) {
+  if (peek_token()->type == type) {
+    return get_token();
+  }
+  return NULL;
+}
+
 bool read_token(TokenType type) {
   bool equal = peek_token()->type == type;
   if (equal) get_token();
