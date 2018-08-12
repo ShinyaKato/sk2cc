@@ -7,6 +7,7 @@ char *token_type_name[] = {
   "tSTRUCT",
   "tTYPEDEF",
   "tSIZEOF",
+  "tALIGNOF",
   "tIF",
   "tELSE",
   "tWHILE",
@@ -141,6 +142,8 @@ Token *lex() {
       token->type = tTYPEDEF;
     } else if (strcmp(identifier->buffer, "sizeof") == 0) {
       token->type = tSIZEOF;
+    } else if (strcmp(identifier->buffer, "_Alignof") == 0) {
+      token->type = tALIGNOF;
     } else if (strcmp(identifier->buffer, "if") == 0) {
       token->type = tIF;
     } else if (strcmp(identifier->buffer, "else") == 0) {

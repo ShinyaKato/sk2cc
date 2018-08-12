@@ -52,6 +52,7 @@ typedef enum token_type {
   tSTRUCT,
   tTYPEDEF,
   tSIZEOF,
+  tALIGNOF,
   tIF,
   tELSE,
   tWHILE,

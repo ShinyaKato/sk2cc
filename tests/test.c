@@ -208,6 +208,29 @@ int main() {
   { char x; test(sizeof("abc\n"), 5); }
   { char x; test(sizeof("abc\0abc\n"), 9); }
   { char *x; x = "abc"; test(sizeof(x), 8); }
+  test(sizeof(char), 1);
+  test(sizeof(int), 4);
+  test(sizeof(void *), 8);
+  test(sizeof(char *), 8);
+  test(sizeof(int *), 8);
+  test(sizeof(int **), 8);
+  test(sizeof(struct { char c1, c2; }), 2);
+  test(sizeof(struct { char c1; int n; char c2; }), 12);
+  test(sizeof(struct { char c1, c2; int n; }), 8);
+  test(sizeof(struct { char c1, c2; int *p, n; }), 24);
+  test(sizeof(struct { char c1, c2; int n, *p; }), 16);
+
+  test(_Alignof(char), 1);
+  test(_Alignof(int), 4);
+  test(_Alignof(void *), 8);
+  test(_Alignof(char *), 8);
+  test(_Alignof(int *), 8);
+  test(_Alignof(int **), 8);
+  test(_Alignof(struct { char c1, c2; }), 1);
+  test(_Alignof(struct { char c1; int n; char c2; }), 4);
+  test(_Alignof(struct { char c1, c2; int n; }), 4);
+  test(_Alignof(struct { char c1, c2; int *p, n; }), 8);
+  test(_Alignof(struct { char c1, c2; int n, *p; }), 8);
 
   { int x = 5; test(x, 5); }
   { int x = 5, y = x + 3; test(y, 8); }

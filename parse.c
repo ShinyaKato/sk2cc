@@ -12,8 +12,29 @@ Node *node_new() {
   return node;
 }
 
+bool check_strage_class_specifier() {
+  Token *token = peek_token();
+  if (token->type == tTYPEDEF) return true;
+  return false;
+}
+
+bool check_type_specifier() {
+  Token *token = peek_token();
+  if (token->type == tVOID) return true;
+  if (token->type == tCHAR) return true;
+  if (token->type == tINT) return true;
+  if (token->type == tSTRUCT) return true;
+  if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
+  return false;
+}
+
+bool check_declaration_specifier() {
+  return check_strage_class_specifier() || check_type_specifier();
+}
+
 Node *assignment_expression();
 Node *expression();
+Type *type_name();
 
 Node *primary_expression() {
   Token *token = get_token();
@@ -118,6 +139,35 @@ Node *postfix_expression() {
 }
 
 Node *unary_expression() {
+  if (read_token(tSIZEOF)) {
+    Node *node = node_new();
+    if (read_token(tLPAREN)) {
+      if (check_type_specifier()) {
+        Type *type = type_name();
+        node->type = CONST;
+        node->int_value = type->size;
+      } else {
+        node->type = SIZEOF;
+        node->expr = expression();
+      }
+      expect_token(tRPAREN);
+    } else {
+      node->type = SIZEOF;
+      node->expr = unary_expression();
+    }
+    return node;
+  }
+
+  if (read_token(tALIGNOF)) {
+    expect_token(tLPAREN);
+    Type *type = type_name();
+    expect_token(tRPAREN);
+    Node *node = node_new();
+    node->type = CONST;
+    node->int_value = type->align;
+    return node;
+  }
+
   NodeType type;
   if (read_token(tINC)) type = PRE_INC;
   else if (read_token(tDEC)) type = PRE_DEC;
@@ -127,7 +177,6 @@ Node *unary_expression() {
   else if (read_token(tSUB)) type = UMINUS;
   else if (read_token(tNOT)) type = NOT;
   else if (read_token(tLNOT)) type = LNOT;
-  else if (read_token(tSIZEOF)) type = SIZEOF;
   else return postfix_expression();
 
   Node *node = node_new();
@@ -372,24 +421,17 @@ Node *expression() {
 Type *type_specifier();
 Symbol *declarator(Type *type);
 
-bool check_strage_class_specifier() {
-  Token *token = peek_token();
-  if (token->type == tTYPEDEF) return true;
-  return false;
+Type *abstract_declarator(Type *specifier) {
+  Type *type = specifier;
+  while (read_token(tMUL)) {
+    type = type_pointer_to(type);
+  }
+  return type;
 }
 
-bool check_type_specifier() {
-  Token *token = peek_token();
-  if (token->type == tVOID) return true;
-  if (token->type == tCHAR) return true;
-  if (token->type == tINT) return true;
-  if (token->type == tSTRUCT) return true;
-  if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
-  return false;
-}
-
-bool check_declaration_specifier() {
-  return check_strage_class_specifier() || check_type_specifier();
+Type *type_name() {
+  Type *specifier = type_specifier();
+  return abstract_declarator(specifier);
 }
 
 Type *struct_or_union_specifier() {
