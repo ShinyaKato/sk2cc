@@ -749,9 +749,7 @@ void gen_func_def(Node *node) {
   return_label = label_no++;
   stack_depth = 8;
 
-  if (strcmp(node->identifier, "main") == 0) {
-    printf("  .global main\n");
-  }
+  printf("  .global %s\n", node->identifier);
   printf("%s:\n", node->identifier);
 
   gen_push("rbp");
