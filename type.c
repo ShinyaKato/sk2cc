@@ -5,6 +5,15 @@ Type *type_new() {
   return type;
 }
 
+Type *type_void() {
+  Type *void_type = type_new();
+  void_type->type = VOID;
+  void_type->array_pointer = false;
+  void_type->definition = false;
+  void_type->incomplete = true;
+  return void_type;
+}
+
 Type *type_char() {
   Type *char_type = type_new();
   char_type->type = CHAR;

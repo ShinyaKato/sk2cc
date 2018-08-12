@@ -46,6 +46,7 @@ extern void expect_char(char c);
 extern bool read_char(char c);
 
 typedef enum token_type {
+  tVOID,
   tINT,
   tCHAR,
   tSTRUCT,
@@ -116,6 +117,7 @@ extern Token *optional_token(TokenType type);
 extern bool read_token(TokenType type);
 
 typedef enum type_type {
+  VOID,
   CHAR,
   INT,
   POINTER,
@@ -140,6 +142,7 @@ typedef struct type {
 } Type;
 
 extern Type *type_new();
+extern Type *type_void();
 extern Type *type_char();
 extern Type *type_int();
 extern Type *type_pointer_to(Type *type);

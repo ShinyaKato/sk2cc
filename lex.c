@@ -1,6 +1,7 @@
 #include "cc.h"
 
 char *token_type_name[] = {
+  "tVOID",
   "tINT",
   "tCHAR",
   "tSTRUCT",
@@ -128,7 +129,9 @@ Token *lex() {
     while (isalnum(peek_char()) || peek_char() == '_') {
       string_push(identifier, get_char());
     }
-    if (strcmp(identifier->buffer, "char") == 0) {
+    if (strcmp(identifier->buffer, "void") == 0) {
+      token->type = tVOID;
+    } else if (strcmp(identifier->buffer, "char") == 0) {
       token->type = tCHAR;
     } else if (strcmp(identifier->buffer, "int") == 0) {
       token->type = tINT;

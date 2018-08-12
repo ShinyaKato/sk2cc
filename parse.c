@@ -374,6 +374,7 @@ Symbol *declarator(Type *type);
 
 bool check_declaration() {
   Token *token = peek_token();
+  if (token->type == tVOID) return true;
   if (token->type == tCHAR) return true;
   if (token->type == tINT) return true;
   if (token->type == tSTRUCT) return true;
@@ -428,7 +429,9 @@ Type *struct_or_union_specifier() {
 }
 
 Type *type_specifier() {
-  if (read_token(tCHAR)) {
+  if (read_token(tVOID)) {
+    return type_void();
+  } else if (read_token(tCHAR)) {
     return type_char();
   } else if (read_token(tINT)) {
     return type_int();
