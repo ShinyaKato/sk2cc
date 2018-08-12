@@ -241,6 +241,10 @@ void gen_lnot(Node *node) {
   gen_push("rax");
 }
 
+void gen_cast(Node *node) {
+  gen_expr(node->expr);
+}
+
 void gen_mul(Node *node) {
   gen_operands(node->left, node->right, "rax", "rcx");
   printf("  imull %%ecx\n");
@@ -548,6 +552,7 @@ void gen_expr(Node *node) {
   else if (node->type == UMINUS) gen_uminus(node);
   else if (node->type == NOT) gen_not(node);
   else if (node->type == LNOT) gen_lnot(node);
+  else if (node->type == CAST) gen_cast(node);
   else if (node->type == MUL) gen_mul(node);
   else if (node->type == DIV) gen_div(node);
   else if (node->type == MOD) gen_mod(node);

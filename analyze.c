@@ -221,6 +221,10 @@ void analyze_sizeof(Node *node) {
   node->int_value = node->expr->value_type->original_size;
 }
 
+void analyze_cast(Node *node) {
+  analyze_expr(node->expr);
+}
+
 void analyze_multiprecative_operator(Node *node) {
   analyze_expr(node->left);
   analyze_expr(node->right);
@@ -434,6 +438,8 @@ void analyze_expr(Node *node) {
     analyze_lnot(node);
   } else if (type == SIZEOF) {
     analyze_sizeof(node);
+  } else if (type == CAST) {
+    analyze_cast(node);
   } else if (type == MUL || type == DIV) {
     analyze_multiprecative_operator(node);
   } else if (type == MOD) {

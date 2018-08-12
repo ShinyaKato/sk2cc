@@ -187,6 +187,7 @@ typedef enum node_type {
   NOT,
   LNOT,
   SIZEOF,
+  CAST,
   MUL,
   DIV,
   MOD,

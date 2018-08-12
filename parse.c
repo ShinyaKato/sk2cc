@@ -186,8 +186,28 @@ Node *unary_expression() {
   return node;
 }
 
-Node *multiplicative_expression(Node *unary_exp) {
-  Node *node = unary_exp;
+Node *cast_expression() {
+  if (!read_token(tLPAREN)) {
+    return unary_expression();
+  }
+  if (!check_type_specifier()) {
+    Node *node = expression();
+    expect_token(tRPAREN);
+    return node;
+  }
+  Type *type = type_name();
+  expect_token(tRPAREN);
+
+  Node *node = node_new();
+  node->type = CAST;
+  node->value_type = type;
+  node->expr = cast_expression();
+
+  return node;
+}
+
+Node *multiplicative_expression(Node *cast_expr) {
+  Node *node = cast_expr;
 
   while (1) {
     NodeType type;
@@ -197,7 +217,7 @@ Node *multiplicative_expression(Node *unary_exp) {
     else break;
 
     Node *left = node;
-    Node *right = unary_expression();
+    Node *right = cast_expression();
 
     node = node_new();
     node->type = type;
@@ -208,8 +228,8 @@ Node *multiplicative_expression(Node *unary_exp) {
   return node;
 }
 
-Node *additive_expression(Node *unary_exp) {
-  Node *node = multiplicative_expression(unary_exp);
+Node *additive_expression(Node *cast_expr) {
+  Node *node = multiplicative_expression(cast_expr);
 
   while (1) {
     NodeType type;
@@ -218,7 +238,7 @@ Node *additive_expression(Node *unary_exp) {
     else break;
 
     Node *left = node;
-    Node *right = multiplicative_expression(unary_expression());
+    Node *right = multiplicative_expression(cast_expression());
 
     node = node_new();
     node->type = type;
@@ -229,8 +249,8 @@ Node *additive_expression(Node *unary_exp) {
   return node;
 }
 
-Node *shift_expression(Node *unary_exp) {
-  Node *node = additive_expression(unary_exp);
+Node *shift_expression(Node *cast_expr) {
+  Node *node = additive_expression(cast_expr);
 
   while (1) {
     NodeType type;
@@ -239,7 +259,7 @@ Node *shift_expression(Node *unary_exp) {
     else break;
 
     Node *left = node;
-    Node *right = additive_expression(unary_expression());
+    Node *right = additive_expression(cast_expression());
 
     node = node_new();
     node->type = type;
@@ -250,8 +270,8 @@ Node *shift_expression(Node *unary_exp) {
   return node;
 }
 
-Node *relational_expression(Node *unary_exp) {
-  Node *node = shift_expression(unary_exp);
+Node *relational_expression(Node *cast_expr) {
+  Node *node = shift_expression(cast_expr);
 
   while (1) {
     NodeType type;
@@ -262,7 +282,7 @@ Node *relational_expression(Node *unary_exp) {
     else break;
 
     Node *left = node;
-    Node *right = shift_expression(unary_expression());
+    Node *right = shift_expression(cast_expression());
 
     node = node_new();
     node->type = type;
@@ -273,8 +293,8 @@ Node *relational_expression(Node *unary_exp) {
   return node;
 }
 
-Node *equality_expression(Node *unary_exp) {
-  Node *node = relational_expression(unary_exp);
+Node *equality_expression(Node *cast_expr) {
+  Node *node = relational_expression(cast_expr);
 
   while (1) {
     NodeType type;
@@ -283,7 +303,7 @@ Node *equality_expression(Node *unary_exp) {
     else break;
 
     Node *left = node;
-    Node *right = relational_expression(unary_expression());
+    Node *right = relational_expression(cast_expression());
 
     node = node_new();
     node->type = type;
@@ -294,12 +314,12 @@ Node *equality_expression(Node *unary_exp) {
   return node;
 }
 
-Node *and_expression(Node *unary_exp) {
-  Node *node = equality_expression(unary_exp);
+Node *and_expression(Node *cast_expr) {
+  Node *node = equality_expression(cast_expr);
 
   while (read_token(tAND)) {
     Node *left = node;
-    Node *right = equality_expression(unary_expression());
+    Node *right = equality_expression(cast_expression());
 
     node = node_new();
     node->type = AND;
@@ -310,12 +330,12 @@ Node *and_expression(Node *unary_exp) {
   return node;
 }
 
-Node *exclusive_or_expression(Node *unary_exp) {
-  Node *node = and_expression(unary_exp);
+Node *exclusive_or_expression(Node *cast_expr) {
+  Node *node = and_expression(cast_expr);
 
   while (read_token(tXOR)) {
     Node *left = node;
-    Node *right = and_expression(unary_expression());
+    Node *right = and_expression(cast_expression());
 
     node = node_new();
     node->type = XOR;
@@ -326,12 +346,12 @@ Node *exclusive_or_expression(Node *unary_exp) {
   return node;
 }
 
-Node *inclusive_or_expression(Node *unary_exp) {
-  Node *node = exclusive_or_expression(unary_exp);
+Node *inclusive_or_expression(Node *cast_expr) {
+  Node *node = exclusive_or_expression(cast_expr);
 
   while (read_token(tOR)) {
     Node *left = node;
-    Node *right = exclusive_or_expression(unary_expression());
+    Node *right = exclusive_or_expression(cast_expression());
 
     node = node_new();
     node->type = OR;
@@ -342,12 +362,12 @@ Node *inclusive_or_expression(Node *unary_exp) {
   return node;
 }
 
-Node *logical_and_expression(Node *unary_exp) {
-  Node *node = inclusive_or_expression(unary_exp);
+Node *logical_and_expression(Node *cast_expr) {
+  Node *node = inclusive_or_expression(cast_expr);
 
   while (read_token(tLAND)) {
     Node *left = node;
-    Node *right = inclusive_or_expression(unary_expression());
+    Node *right = inclusive_or_expression(cast_expression());
 
     node = node_new();
     node->type = LAND;
@@ -358,12 +378,12 @@ Node *logical_and_expression(Node *unary_exp) {
   return node;
 }
 
-Node *logical_or_expression(Node *unary_exp) {
-  Node *node = logical_and_expression(unary_exp);
+Node *logical_or_expression(Node *cast_expr) {
+  Node *node = logical_and_expression(cast_expr);
 
   while (read_token(tLOR)) {
     Node *left = node;
-    Node *right = logical_and_expression(unary_expression());
+    Node *right = logical_and_expression(cast_expression());
 
     node = node_new();
     node->type = LOR;
@@ -374,14 +394,14 @@ Node *logical_or_expression(Node *unary_exp) {
   return node;
 }
 
-Node *conditional_expression(Node *unary_exp) {
-  Node *node = logical_or_expression(unary_exp);
+Node *conditional_expression(Node *cast_expr) {
+  Node *node = logical_or_expression(cast_expr);
 
   if (read_token(tQUESTION)) {
     Node *control = node;
     Node *left = expression();
     expect_token(tCOLON);
-    Node *right = conditional_expression(unary_expression());
+    Node *right = conditional_expression(cast_expression());
 
     node = node_new();
     node->type = CONDITION;
@@ -394,15 +414,15 @@ Node *conditional_expression(Node *unary_exp) {
 }
 
 Node *assignment_expression() {
-  Node *unary_exp = unary_expression();
+  Node *cast_expr = cast_expression();
 
   NodeType type;
   if (read_token(tASSIGN)) type = ASSIGN;
   else if (read_token(tADD_ASSIGN)) type = ADD_ASSIGN;
   else if (read_token(tSUB_ASSIGN)) type = SUB_ASSIGN;
-  else return conditional_expression(unary_exp);
+  else return conditional_expression(cast_expr);
 
-  Node *left = unary_exp;
+  Node *left = cast_expr;
   Node *right = assignment_expression();
 
   Node *node = node_new();
