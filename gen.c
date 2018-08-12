@@ -50,7 +50,12 @@ void gen_lvalue(Node *node) {
 }
 
 void gen_load_lvalue(Node *node) {
-  if (node->value_type->type == CHAR) {
+  if (node->value_type->type == BOOL) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movsbl (%%rcx), %%eax\n");
+    gen_push("rax");
+  } else if (node->value_type->type == CHAR) {
     gen_lvalue(node);
     gen_pop("rcx");
     printf("  movsbl (%%rcx), %%eax\n");
@@ -117,6 +122,9 @@ void gen_func_call(Node *node) {
   printf("  call %s\n", node->expr->identifier);
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
+  }
+  if (node->value_type->type == BOOL) {
+    printf("  movsbl %%al, %%eax\n");
   }
   gen_push("rax");
 }
@@ -452,7 +460,15 @@ void gen_condition(Node *node) {
 }
 
 void gen_assign(Node *node) {
-  if (node->left->value_type->type == CHAR) {
+  if (node->left->value_type->type == BOOL) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rcx");
+    gen_pop("rax");
+    printf("  cmpl $0, %%ecx\n");
+    printf("  setne %%cl\n");
+    printf("  movb %%cl, (%%rax)\n");
+    gen_push("rcx");
+  } else if (node->left->value_type->type == CHAR) {
     gen_lvalue(node->left);
     gen_operand(node->right, "rcx");
     gen_pop("rax");
@@ -475,7 +491,16 @@ void gen_assign(Node *node) {
 
 void gen_add_assign(Node *node) {
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    if (node->left->value_type->type == CHAR) {
+    if (node->left->value_type->type == BOOL) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  addl (%%rcx), %%eax\n");
+      printf("  cmpl $0, %%eax\n");
+      printf("  setne %%al\n");
+      printf("  movb %%al, (%%rcx)\n");
+      gen_push("rax");
+    } else if (node->left->value_type->type == CHAR) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
       gen_pop("rcx");
@@ -505,7 +530,17 @@ void gen_add_assign(Node *node) {
 
 void gen_sub_assign(Node *node) {
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
-    if (node->left->value_type->type == CHAR) {
+    if (node->left->value_type->type == BOOL) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  movl (%%rcx), %%edx\n");
+      printf("  subl %%eax, %%edx\n");
+      printf("  cmpl $0, %%edx\n");
+      printf("  setne %%dl\n");
+      printf("  movb %%dl, (%%rcx)\n");
+      gen_push("rdx");
+    } else if (node->left->value_type->type == CHAR) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
       gen_pop("rcx");
@@ -777,6 +812,10 @@ void gen_func_def(Node *node) {
   gen_stmt(node->function_body);
 
   gen_label(return_label);
+  if (type->function_returning->type == BOOL) {
+    printf("  cmpl $0, %%eax\n");
+    printf("  setne %%al\n");
+  }
   printf("  leave\n");
   printf("  ret\n");
 }

@@ -2,8 +2,9 @@
 
 char *token_type_name[] = {
   "tVOID",
-  "tINT",
+  "tBOOL",
   "tCHAR",
+  "tINT",
   "tSTRUCT",
   "tTYPEDEF",
   "tSIZEOF",
@@ -132,6 +133,8 @@ Token *lex() {
     }
     if (strcmp(identifier->buffer, "void") == 0) {
       token->type = tVOID;
+    } else if (strcmp(identifier->buffer, "_Bool") == 0) {
+      token->type = tBOOL;
     } else if (strcmp(identifier->buffer, "char") == 0) {
       token->type = tCHAR;
     } else if (strcmp(identifier->buffer, "int") == 0) {

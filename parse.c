@@ -21,6 +21,7 @@ bool check_strage_class_specifier() {
 bool check_type_specifier() {
   Token *token = peek_token();
   if (token->type == tVOID) return true;
+  if (token->type == tBOOL) return true;
   if (token->type == tCHAR) return true;
   if (token->type == tINT) return true;
   if (token->type == tSTRUCT) return true;
@@ -498,6 +499,8 @@ Type *struct_or_union_specifier() {
 Type *type_specifier() {
   if (read_token(tVOID)) {
     return type_void();
+  } else if (read_token(tBOOL)) {
+    return type_bool();
   } else if (read_token(tCHAR)) {
     return type_char();
   } else if (read_token(tINT)) {

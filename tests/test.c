@@ -15,6 +15,7 @@ int func_arg5(int a, int b, int c, int d, int e);
 int func_arg6(int a, int b, int c, int d, int e, int f);
 int *alloc();
 int test_struct(struct test_struct *s);
+_Bool bool_ret(int b);
 
 #define test(expr, expected) \
   do { \
@@ -312,6 +313,16 @@ int main() {
     test(s.v.z, 1);
   }
   { struct { int x, y; } a, *p; p = &a; p->x = 12; a.y = 7; test(a.x == 12 && p->y == 7, 1); }
+
+  { test(bool_ret(0), 0); }
+  { test(bool_ret(1048576), 1); }
+  { test(bool_ret(1048577), 1); }
+  { _Bool b = 0; test(b, 0); }
+  { _Bool b = 1; test(b, 1); }
+  { _Bool b = 8; test(b, 1); }
+  { _Bool b1 = 0, b2 = !b1; test(b2, 1); }
+  { _Bool b1 = 1, b2 = !b1; test(b2, 0); }
+  { _Bool b1 = 0, b2 = b1 + 50; test(b2, 1); }
 
   return 0;
 }

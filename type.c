@@ -14,6 +14,18 @@ Type *type_void() {
   return void_type;
 }
 
+Type *type_bool() {
+  Type *bool_type = type_new();
+  bool_type->type = BOOL;
+  bool_type->size = 1;
+  bool_type->align = 1;
+  bool_type->original_size = 1;
+  bool_type->array_pointer = false;
+  bool_type->definition = false;
+  bool_type->incomplete = false;
+  return bool_type;
+}
+
 Type *type_char() {
   Type *char_type = type_new();
   char_type->type = CHAR;
@@ -141,7 +153,7 @@ void type_copy(Type *dest, Type *src) {
 }
 
 bool type_integer(Type *type) {
-  return type->type == CHAR || type->type == INT;
+  return type->type == CHAR || type->type == INT || type->type == BOOL;
 }
 
 bool type_pointer(Type *type) {

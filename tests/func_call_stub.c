@@ -65,3 +65,7 @@ int test_struct(struct test_struct *s) {
 
   return 0;
 }
+
+_Bool bool_ret(int b) {
+  return b;
+}
