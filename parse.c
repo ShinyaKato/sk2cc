@@ -372,19 +372,24 @@ Node *expression() {
 Type *type_specifier();
 Symbol *declarator(Type *type);
 
-bool check_declaration() {
+bool check_strage_class_specifier() {
+  Token *token = peek_token();
+  if (token->type == tTYPEDEF) return true;
+  return false;
+}
+
+bool check_type_specifier() {
   Token *token = peek_token();
   if (token->type == tVOID) return true;
   if (token->type == tCHAR) return true;
   if (token->type == tINT) return true;
   if (token->type == tSTRUCT) return true;
-  if (token->type == tTYPEDEF) return true;
   if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
   return false;
 }
 
-Type *specifier_qualifier_list() {
-  return type_specifier();
+bool check_declaration_specifier() {
+  return check_strage_class_specifier() || check_type_specifier();
 }
 
 Type *struct_or_union_specifier() {
@@ -410,7 +415,7 @@ Type *struct_or_union_specifier() {
   Vector *identifiers = vector_new();
   Map *members = map_new();
   do {
-    Type *specifier = specifier_qualifier_list();
+    Type *specifier = type_specifier();
     do {
       Symbol *symbol = declarator(specifier);
       vector_push(identifiers, symbol->identifier);
@@ -564,7 +569,7 @@ Node *compound_statement() {
   while (1) {
     Token *token = peek_token();
     if (token->type == tRBRACE || token->type == tEND) break;
-    if (check_declaration()) {
+    if (check_declaration_specifier()) {
       Node *decl = declaration(declaration_specifiers(), NULL);
       vector_push(node->statements, decl);
     } else {
@@ -624,7 +629,7 @@ Node *iteration_statement() {
   } else if (read_token(tFOR)) {
     node->type = FOR_STMT;
     expect_token(tLPAREN);
-    if (check_declaration()) {
+    if (check_declaration_specifier()) {
       node->init = declaration(declaration_specifiers(), NULL);
     } else {
       node->init = peek_token()->type != tSEMICOLON ? expression() : NULL;
