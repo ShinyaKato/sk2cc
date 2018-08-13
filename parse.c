@@ -596,7 +596,7 @@ Symbol *declarator(Type *specifier) {
   Token *token = expect_token(tIDENTIFIER);
   type = direct_declarator(type);
 
-  if (type->incomplete) {
+  if (!specifier->definition && type->incomplete) {
     error("declaration with incomplete type.");
   }
 
