@@ -604,10 +604,6 @@ Symbol *declarator(Type *specifier) {
   symbol->identifier = token->identifier;
   symbol->value_type = type;
 
-  if (specifier->definition) {
-    map_put(typedef_names, token->identifier, type);
-  }
-
   return symbol;
 }
 
@@ -642,15 +638,19 @@ Node *declaration(Type *specifier, Symbol *first_decl) {
 
   if (first_decl || !read_token(tSEMICOLON)) {
     if (!first_decl) first_decl = declarator(specifier);
-    Node *first_init_decl = init_declarator(specifier, first_decl);
-    if (!specifier->definition) {
+    if (specifier->definition) {
+      map_put(typedef_names, first_decl->identifier, first_decl->value_type);
+    } else {
+      Node *first_init_decl = init_declarator(specifier, first_decl);
       vector_push(declarations, first_init_decl);
     }
 
     while (read_token(tCOMMA)) {
       Symbol *decl = declarator(specifier);
-      Node *init_decl = init_declarator(specifier, decl);
-      if (!specifier->definition) {
+      if (specifier->definition) {
+        map_put(typedef_names, decl->identifier, decl->value_type);
+      } else {
+        Node *init_decl = init_declarator(specifier, decl);
         vector_push(declarations, init_decl);
       }
     }
