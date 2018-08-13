@@ -1,6 +1,6 @@
 #include "cc.h"
 
-Map *struct_tags, *typedef_names;
+Map *tags, *typedef_names, *enum_constants;
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
@@ -25,6 +25,7 @@ bool check_type_specifier() {
   if (token->type == tCHAR) return true;
   if (token->type == tINT) return true;
   if (token->type == tSTRUCT) return true;
+  if (token->type == tENUM) return true;
   if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
   return false;
 }
@@ -55,10 +56,18 @@ Node *primary_expression() {
   }
 
   if (token->type == tIDENTIFIER) {
-    Node *node = node_new();
-    node->type = IDENTIFIER;
-    node->identifier = token->identifier;
-    return node;
+    int *enum_value = map_lookup(enum_constants, token->identifier);
+    if (enum_value) {
+      Node *node = node_new();
+      node->type = CONST;
+      node->int_value = *enum_value;
+      return node;
+    } else {
+      Node *node = node_new();
+      node->type = IDENTIFIER;
+      node->identifier = token->identifier;
+      return node;
+    }
   }
 
   if (token->type == tLPAREN) {
@@ -459,17 +468,17 @@ Type *struct_or_union_specifier() {
   expect_token(tSTRUCT);
 
   Token *token = optional_token(tIDENTIFIER);
-  if (token && !map_lookup(struct_tags, token->identifier)) {
+  if (token && !map_lookup(tags, token->identifier)) {
     Type *incomplete_type = type_new();
     incomplete_type->type = STRUCT;
     incomplete_type->incomplete = true;
-    map_put(struct_tags, token->identifier, incomplete_type);
+    map_put(tags, token->identifier, incomplete_type);
   }
 
   if (!read_token(tLBRACE)) {
     if (!token) error("invalid struct type specifier.");
 
-    Type *type = map_lookup(struct_tags, token->identifier);
+    Type *type = map_lookup(tags, token->identifier);
     if (!type) error("undefined struct tag.");
 
     return type;
@@ -491,9 +500,39 @@ Type *struct_or_union_specifier() {
   Type *type = type_struct(identifiers, members);
   if (!token) return type;
 
-  Type *dest = map_lookup(struct_tags, token->identifier);
+  Type *dest = map_lookup(tags, token->identifier);
   type_copy(dest, type);
   return dest;
+}
+
+Type *enum_specifier() {
+  expect_token(tENUM);
+
+  Token *token = optional_token(tIDENTIFIER);
+
+  if (!read_token(tLBRACE)) {
+    if (!token) error("invalid enum type spcifier.");
+
+    Type *type = map_lookup(tags, token->identifier);
+    if (!type) error("undefined enum tag.");
+
+    return type;
+  }
+
+  int enum_value = 0;
+  do {
+    Token *token = expect_token(tIDENTIFIER);
+    int *enum_const = calloc(1, sizeof(int));
+    *enum_const = enum_value++;
+    map_put(enum_constants, token->identifier, enum_const);
+  } while (read_token(tCOMMA));
+  expect_token(tRBRACE);
+
+  Type *type = type_int();
+  if (!token) return type;
+
+  map_put(tags, token->identifier, type);
+  return type;
 }
 
 Type *type_specifier() {
@@ -507,6 +546,8 @@ Type *type_specifier() {
     return type_int();
   } else if (peek_token()->type == tSTRUCT) {
     return struct_or_union_specifier();
+  } else if (peek_token()->type == tENUM) {
+    return enum_specifier();
   } else if (peek_token()->type == tIDENTIFIER) {
     Token *token = get_token();
     Type *type = map_lookup(typedef_names, token->identifier);
@@ -762,15 +803,18 @@ Node *translate_unit() {
 
   while (peek_token()->type != tEND) {
     Type *specifier = declaration_specifiers();
-    if (read_token(tSEMICOLON)) continue;
-
-    Symbol *first_decl = declarator(specifier);
-    if (peek_token()->type == tLBRACE) {
-      Node *node = function_definition(first_decl);
+    if (peek_token()->type == tSEMICOLON) {
+      Node *node = declaration(specifier, NULL);
       vector_push(definitions, node);
     } else {
-      Node *node = declaration(specifier, first_decl);
-      vector_push(definitions, node);
+      Symbol *first_decl = declarator(specifier);
+      if (peek_token()->type == tLBRACE) {
+        Node *node = function_definition(first_decl);
+        vector_push(definitions, node);
+      } else {
+        Node *node = declaration(specifier, first_decl);
+        vector_push(definitions, node);
+      }
     }
   }
 
@@ -782,8 +826,9 @@ Node *translate_unit() {
 }
 
 Node *parse() {
-  struct_tags = map_new();
+  tags = map_new();
   typedef_names = map_new();
+  enum_constants = map_new();
 
   return translate_unit();
 }

@@ -97,6 +97,17 @@ test_return "char f(char c, int a); int main() { return f('A', 3); } char f(char
 test_return "int f(), g(int x); int main() { return g(f()); } int f() { return 2; } int g(int x) { return x * x; }" 4
 test_stdout "int puts(char *s); int main() { puts(\"123abc\"); }" "123abc"
 
+test_return "enum { U, L, D, R }; int main() { return U; }" 0
+test_return "enum { U, L, D, R }; int main() { return L; }" 1
+test_return "enum { U, L, D, R }; int main() { return D; }" 2
+test_return "enum { U, L, D, R }; int main() { return R; }" 3
+test_return "enum { U, L, D, R } d; int main() { d = U; return d; }" 0
+test_return "enum { U, L, D, R } d; int main() { d = L; return d; }" 1
+test_return "enum { U, L, D, R } d; int main() { d = D; return d; }" 2
+test_return "enum { U, L, D, R } d; int main() { d = R; return d; }" 3
+test_return "typedef enum { U, L, D, R } Dir; Dir d; int main() { d = D; return d; }" 2
+test_return "typedef enum node_type { CONST, MUL, DIV, ADD, SUB } NodeType; int main() { NodeType type = ADD; return ADD; }" 3
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

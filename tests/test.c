@@ -324,5 +324,14 @@ int main() {
   { _Bool b1 = 1, b2 = !b1; test(b2, 0); }
   { _Bool b1 = 0, b2 = b1 + 50; test(b2, 1); }
 
+  { enum { U, L, D, R }; test(U, 0); }
+  { enum { U, L, D, R }; test(L, 1); }
+  { enum { U, L, D, R }; test(D, 2); }
+  { enum { U, L, D, R }; test(R, 3); }
+  { enum { U, L, D, R } d; d = U; test(d, 0); }
+  { enum { U, L, D, R } d; d = L; test(d, 1); }
+  { enum { U, L, D, R } d; d = D; test(d, 2); }
+  { enum { U, L, D, R } d; d = R; test(d, 3); }
+
   return 0;
 }

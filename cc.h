@@ -51,6 +51,7 @@ typedef enum token_type {
   tCHAR,
   tINT,
   tSTRUCT,
+  tENUM,
   tTYPEDEF,
   tSIZEOF,
   tALIGNOF,
