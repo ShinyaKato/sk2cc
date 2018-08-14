@@ -110,6 +110,8 @@ test_return "typedef enum node_type { CONST, MUL, DIV, ADD, SUB } NodeType; int 
 
 test_return "extern int external_obj; int main() { return external_obj; }" 35
 
+test_stdout "int printf(char *format, ...); int main() { printf(\"%s %d\n\", \"abcd\", 1234); }" "abcd 1234"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

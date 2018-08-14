@@ -55,6 +55,7 @@ char *token_type_name[] = {
   "tQUESTION",
   "tCOLON",
   "tSEMICOLON",
+  "tELLIPSIS",
   "tASSIGN",
   "tADD_ASSIGN",
   "tSUB_ASSIGN",
@@ -262,7 +263,15 @@ Token *lex() {
   } else if (read_char(',')) {
     token->type = tCOMMA;
   } else if (read_char('.')) {
-    token->type = tDOT;
+    if (read_char('.')) {
+      if (read_char('.')) {
+        token->type = tELLIPSIS;
+      } else {
+        error("invalid token '..'\n");
+      }
+    } else {
+      token->type = tDOT;
+    }
   } else {
     error("unexpected character.");
   }

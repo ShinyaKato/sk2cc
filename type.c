@@ -116,7 +116,7 @@ Type *type_struct(Vector *identifiers, Map *members) {
   return struct_type;
 }
 
-Type *type_function_returning(Type *returning, Vector *params) {
+Type *type_function_returning(Type *returning, Vector *params, bool ellipsis) {
   Type *function_type = type_new();
   function_type->type = FUNCTION;
   function_type->function_returning = returning;
@@ -124,6 +124,7 @@ Type *type_function_returning(Type *returning, Vector *params) {
   function_type->array_pointer = false;
   function_type->definition = false;
   function_type->incomplete = false;
+  function_type->ellipsis = ellipsis;
   return function_type;
 }
 

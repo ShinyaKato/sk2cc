@@ -87,10 +87,16 @@ void analyze_func_call(Node *node) {
     if (node->expr->value_type->type != FUNCTION) {
       error("operand of function call should have function type.");
     }
-    if (node->args->length != node->expr->value_type->params->length) {
-      error("number of parameters and arguments should be the same.");
+    if (!node->expr->value_type->ellipsis) {
+      if (node->args->length != node->expr->value_type->params->length) {
+        error("number of parameters and arguments should be the same.");
+      }
+    } else {
+      if (node->args->length < node->expr->value_type->params->length) {
+        error("number of parameters and arguments should be the same.");
+      }
     }
-    for (int i = 0; i < node->args->length; i++) {
+    for (int i = 0; i < node->expr->value_type->params->length; i++) {
       Node *arg = node->args->array[i];
       Symbol *param = node->expr->value_type->params->array[i];
       if (!type_same(arg->value_type, param->value_type)) {

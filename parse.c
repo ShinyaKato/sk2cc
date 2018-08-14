@@ -576,15 +576,20 @@ Type *direct_declarator(Type *type) {
 
   if (read_token(tLPAREN)) {
     Vector *params = vector_new();
+    bool ellipsis = false;
     if (peek_token()->type != tRPAREN) {
       do {
+        if (read_token(tELLIPSIS)) {
+          ellipsis = true;
+          break;
+        }
         Type *specifier = declaration_specifiers();
         Symbol *param = declarator(specifier);
         vector_push(params, param);
       } while (read_token(tCOMMA));
     }
     expect_token(tRPAREN);
-    return type_function_returning(direct_declarator(type), params);
+    return type_function_returning(direct_declarator(type), params, ellipsis);
   }
 
   return type;

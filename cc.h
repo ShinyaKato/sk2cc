@@ -100,6 +100,7 @@ typedef enum token_type {
   tQUESTION,
   tCOLON,
   tSEMICOLON,
+  tELLIPSIS,
   tASSIGN,
   tADD_ASSIGN,
   tSUB_ASSIGN,
@@ -140,6 +141,7 @@ typedef struct type {
   Map *members, *offsets;
   struct type *function_returning;
   Vector *params;
+  bool ellipsis;
   int original_size;
   bool array_pointer;
   bool definition;
@@ -155,7 +157,7 @@ extern Type *type_int();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_struct(Vector *identifiers, Map *members);
-extern Type *type_function_returning(Type *returning, Vector *params);
+extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
 extern Type *type_convert(Type *type);
 extern void type_copy(Type *dest, Type *src);
 extern bool type_integer(Type *type);
