@@ -108,6 +108,8 @@ test_return "enum { U, L, D, R } d; int main() { d = R; return d; }" 3
 test_return "typedef enum { U, L, D, R } Dir; Dir d; int main() { d = D; return d; }" 2
 test_return "typedef enum node_type { CONST, MUL, DIV, ADD, SUB } NodeType; int main() { NodeType type = ADD; return ADD; }" 3
 
+test_return "extern int external_obj; int main() { return external_obj; }" 35
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

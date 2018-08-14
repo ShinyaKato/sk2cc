@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int external_obj = 35;
+
 int func_arg1(int a) {
   return a * a;
 }

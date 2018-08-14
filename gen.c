@@ -774,7 +774,7 @@ void gen_gvar_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
-    if (symbol->value_type->type == FUNCTION) continue;
+    if (symbol->declaration) continue;
     printf("%s:\n", symbol->identifier);
     printf("  .zero %d\n", symbol->value_type->size);
   }

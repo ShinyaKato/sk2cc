@@ -53,6 +53,7 @@ typedef enum token_type {
   tSTRUCT,
   tENUM,
   tTYPEDEF,
+  tEXTERN,
   tSIZEOF,
   tALIGNOF,
   tIF,
@@ -142,6 +143,7 @@ typedef struct type {
   int original_size;
   bool array_pointer;
   bool definition;
+  bool external;
   bool incomplete;
 } Type;
 

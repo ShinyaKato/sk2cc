@@ -558,9 +558,11 @@ Type *type_specifier() {
 
 Type *declaration_specifiers() {
   bool definition = read_token(tTYPEDEF);
+  bool external = read_token(tEXTERN);
 
   Type *specifier = type_specifier();
   specifier->definition = definition;
+  specifier->external = external;
 
   return specifier;
 }
@@ -642,6 +644,7 @@ Node *declaration(Type *specifier, Symbol *first_decl) {
       map_put(typedef_names, first_decl->identifier, first_decl->value_type);
     } else {
       Node *first_init_decl = init_declarator(specifier, first_decl);
+      first_decl->declaration = specifier->external || first_decl->value_type->type == FUNCTION;
       vector_push(declarations, first_init_decl);
     }
 
@@ -651,6 +654,7 @@ Node *declaration(Type *specifier, Symbol *first_decl) {
         map_put(typedef_names, decl->identifier, decl->value_type);
       } else {
         Node *init_decl = init_declarator(specifier, decl);
+        decl->declaration = specifier->external || decl->value_type->type == FUNCTION;
         vector_push(declarations, init_decl);
       }
     }
