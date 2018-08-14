@@ -30,8 +30,14 @@ bool check_type_specifier() {
   return false;
 }
 
+bool check_function_specifier() {
+  Token *token = peek_token();
+  if (token->type == tNORETURN) return true;
+  return false;
+}
+
 bool check_declaration_specifier() {
-  return check_strage_class_specifier() || check_type_specifier();
+  return check_strage_class_specifier() || check_type_specifier() || check_function_specifier();
 }
 
 Node *assignment_expression();
@@ -559,6 +565,7 @@ Type *type_specifier() {
 Type *declaration_specifiers() {
   bool definition = read_token(tTYPEDEF);
   bool external = read_token(tEXTERN);
+  read_token(tNORETURN);
 
   Type *specifier = type_specifier();
   specifier->definition = definition;

@@ -9,6 +9,7 @@ char *token_type_name[] = {
   "tENUM",
   "tTYPEDEF",
   "tEXTERN",
+  "tNORETURN",
   "tSIZEOF",
   "tALIGNOF",
   "tIF",
@@ -150,6 +151,8 @@ Token *lex() {
       token->type = tTYPEDEF;
     } else if (strcmp(identifier->buffer, "extern") == 0) {
       token->type = tEXTERN;
+    } else if (strcmp(identifier->buffer, "_Noreturn") == 0) {
+      token->type = tNORETURN;
     } else if (strcmp(identifier->buffer, "sizeof") == 0) {
       token->type = tSIZEOF;
     } else if (strcmp(identifier->buffer, "_Alignof") == 0) {

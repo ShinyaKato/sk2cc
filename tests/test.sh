@@ -112,6 +112,8 @@ test_return "extern int external_obj; int main() { return external_obj; }" 35
 
 test_stdout "int printf(char *format, ...); int main() { printf(\"%s %d\n\", \"abcd\", 1234); }" "abcd 1234"
 
+test_return "extern _Noreturn void error(char *format, ...); int main() { return 0; }" 0
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
