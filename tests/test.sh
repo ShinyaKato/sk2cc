@@ -142,6 +142,29 @@ typedef struct map {
 int main() { return printf(\"%d\n\", sizeof(Map)); }
 " "16392"
 
+test_stdout "
+typedef struct {
+  int gp_offset;
+  int fp_offset;
+  void *overflow_arg_area;
+  void *reg_save_area;
+} va_list[1];
+
+typedef struct _IO_FILE FILE;
+extern FILE *stdout;
+
+void print(char *format, ...) {
+  va_list ap;
+  va_start(ap, format);
+  vfprintf(stdout, format, ap);
+  va_end(ap);
+}
+
+int main() {
+  print(\"%s %d\n\", \"abc\", 123);
+}
+" "abc 123"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

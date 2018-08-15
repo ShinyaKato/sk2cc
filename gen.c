@@ -4,6 +4,7 @@ char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
 int label_no, return_label;
 Vector *continue_labels, *break_labels;
+Symbol *function_symbol;
 
 int stack_depth;
 
@@ -105,6 +106,24 @@ void gen_identifier(Node *node) {
 }
 
 void gen_func_call(Node *node) {
+  if (strcmp(node->expr->identifier, "va_start") == 0) {
+    Node *list = node->args->array[0];
+    gen_lvalue(list);
+    gen_pop("rdx");
+    printf("  movl $%d, (%%rdx)\n", function_symbol->value_type->params->length * 8);
+    printf("  movl $48, 4(%%rdx)\n");
+    printf("  leaq 16(%%rbp), %%rcx\n");
+    printf("  movq %%rcx, 8(%%rdx)\n");
+    printf("  leaq -176(%%rbp), %%rcx\n");
+    printf("  movq %%rcx, 16(%%rdx)\n");
+    printf("  pushq $0\n");
+    return;
+  }
+  if (strcmp(node->expr->identifier, "va_end") == 0) {
+    printf("  pushq $0\n");
+    return;
+  }
+
   for (int i = 0; i < node->args->length; i++) {
     gen_expr(node->args->array[i]);
   }
@@ -812,6 +831,8 @@ void gen_gvar_decl(Node *node) {
 }
 
 void gen_func_def(Node *node) {
+  function_symbol = node->symbol;
+
   return_label = label_no++;
   stack_depth = 8;
 
@@ -837,6 +858,12 @@ void gen_func_def(Node *node) {
     if (symbol->value_type->type == POINTER) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
+    }
+  }
+
+  if (node->symbol->value_type->ellipsis) {
+    for (int i = type->params->length; i < 6; i++) {
+      printf("  movq %%%s, %d(%%rbp)\n", arg_reg[i], -176 + i * 8);
     }
   }
 
