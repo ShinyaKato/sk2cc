@@ -54,7 +54,7 @@ void gen_load_lvalue(Node *node) {
   if (node->value_type->type == BOOL) {
     gen_lvalue(node);
     gen_pop("rcx");
-    printf("  movsbl (%%rcx), %%eax\n");
+    printf("  movzbl (%%rcx), %%eax\n");
     gen_push("rax");
   } else if (node->value_type->type == CHAR) {
     gen_lvalue(node);
@@ -125,7 +125,15 @@ void gen_func_call(Node *node) {
   }
 
   for (int i = 0; i < node->args->length; i++) {
-    gen_expr(node->args->array[i]);
+    Node *arg = node->args->array[i];
+    gen_expr(arg);
+    if (arg->value_type->type == BOOL) {
+      gen_pop("rax");
+      printf("  cmpl $0, %%eax\n");
+      printf("  setne %%al\n");
+      printf("  movzbl %%al, %%eax\n");
+      gen_push("rax");
+    }
   }
   for (int i = 5; i >= 0; i--) {
     if (i < node->args->length) {
@@ -143,7 +151,7 @@ void gen_func_call(Node *node) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
   if (node->value_type->type == BOOL) {
-    printf("  movsbl %%al, %%eax\n");
+    printf("  movzbl %%al, %%eax\n");
   }
   gen_push("rax");
 }
@@ -847,15 +855,18 @@ void gen_func_def(Node *node) {
   Type *type = node->symbol->value_type;
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->array[i];
-    if (symbol->value_type->type == CHAR) {
+    if (symbol->value_type->type == BOOL) {
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
+      printf("  cmpb $0, %%al\n");
+      printf("  setne %%al\n");
+      printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
+    } else if (symbol->value_type->type == CHAR) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    }
-    if (symbol->value_type->type == INT) {
+    } else if (symbol->value_type->type == INT) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-    }
-    if (symbol->value_type->type == POINTER) {
+    } else if (symbol->value_type->type == POINTER) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
     }
