@@ -114,6 +114,34 @@ test_stdout "int printf(char *format, ...); int main() { printf(\"%s %d\n\", \"a
 
 test_return "extern _Noreturn void error(char *format, ...); int main() { return 0; }" 0
 
+test_stdout "
+typedef struct string {
+  int size, length;
+  char *buffer;
+} String;
+
+int main() { return printf(\"%d\n\", sizeof(String)); }
+" "16"
+
+test_stdout "
+typedef struct vector {
+  int size, length;
+  void **array;
+} Vector;
+
+int main() { return printf(\"%d\n\", sizeof(Vector)); }
+" "16"
+
+test_stdout "
+typedef struct map {
+  int count;
+  char *keys[1024];
+  void *values[1024];
+} Map;
+
+int main() { return printf(\"%d\n\", sizeof(Map)); }
+" "16392"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
