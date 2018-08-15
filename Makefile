@@ -6,7 +6,7 @@ tmp:
 
 .PHONY: test
 test: tmp cc
-	./tests/test.sh
+	./tests/test.sh ./cc
 
 .PHONY: clean
 clean:

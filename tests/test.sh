@@ -1,5 +1,7 @@
 #!/bin/bash
 
+target=$1
+
 failed() {
   echo "$1"
   exit 1
@@ -7,7 +9,7 @@ failed() {
 
 compile() {
   prog=$1
-  echo "$prog" | ./cc > tmp/out.s || failed "failed to compile \"$prog\"."
+  echo "$prog" | $target > tmp/out.s || failed "failed to compile \"$prog\"."
   gcc -no-pie tmp/out.s tmp/func_call_stub.o -o tmp/out || failed "failed to link \"$prog\" and stubs."
 }
 
@@ -31,7 +33,7 @@ test_stdout() {
 test_error() {
   prog=$1
   expect="error: $2"
-  echo "$prog" | ./cc > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$prog\" was unexpectedly succeeded."
+  echo "$prog" | $target > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$prog\" was unexpectedly succeeded."
   echo "$expect" | diff - tmp/stderr.txt || failed "error message of \"$prog\" should be \"$expect\"."
 }
 
@@ -73,7 +75,7 @@ test_return "char c, s[20]; int main() { return 0; }" 0
 test_return "int main() { char c, s[20]; return 0; }" 0
 test_return "int main() { char c1, c2, c3; c1 = 13; c2 = 65; c3 = c1 + c2; return c3; }" 78
 test_return "char f(char c) { return c; } int main() { return f('A'); }" 65
-test_stdout "int main() { char s[3]; s[0] = 65; s[1] = 66; s[2] = 67; puts(s); return 0; }" "ABC"
+test_stdout "int main() { char s[4]; s[0] = 65; s[1] = 66; s[2] = 67; s[3] = 0; puts(s); return 0; }" "ABC"
 test_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i++) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
 test_stdout "int main() { puts(\"hello world\"); return 0; }" "hello world"
 test_stdout "int main() { char *s; s = \"hello world\"; puts(s); return 0; }" "hello world"
@@ -195,3 +197,5 @@ test_error "int f(int x) { int x; }" "duplicated function or variable definition
 test_error "int f[4](int x) { int a[4]; return a; }" "returning type of function should not be array type."
 test_error "int f(int x[4]) { return 0; }" "type of function parameter should not be array type."
 test_error "struct abc { struct abc p; }; int main() { return 0; }" "declaration with incomplete type."
+
+exit 0
