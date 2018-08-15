@@ -416,6 +416,19 @@ void analyze_sub_assign(Node *node) {
   }
 }
 
+void analyze_mul_assign(Node *node) {
+  analyze_expr(node->left);
+  analyze_expr(node->right);
+  if (!check_lvalue(node->left->type)) {
+    error("left side of *= operator should be lvalue.");
+  }
+  if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
+    node->value_type = type_int();
+  } else {
+    error("invalid operand types for *= operator.");
+  }
+}
+
 void analyze_expr(Node *node) {
   NodeType type = node->type;
   if (type == CONST) {
@@ -470,6 +483,8 @@ void analyze_expr(Node *node) {
     analyze_add_assign(node);
   } else if (type == SUB_ASSIGN) {
     analyze_sub_assign(node);
+  } else if (type == MUL_ASSIGN) {
+    analyze_mul_assign(node);
   }
 }
 

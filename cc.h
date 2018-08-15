@@ -105,6 +105,7 @@ typedef enum token_type {
   tASSIGN,
   tADD_ASSIGN,
   tSUB_ASSIGN,
+  tMUL_ASSIGN,
   tCOMMA,
   tEND
 } TokenType;
@@ -219,6 +220,7 @@ typedef enum node_type {
   ASSIGN,
   ADD_ASSIGN,
   SUB_ASSIGN,
+  MUL_ASSIGN,
   VAR_INIT_DECL,
   VAR_DECL,
   COMP_STMT,

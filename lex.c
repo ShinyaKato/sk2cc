@@ -60,6 +60,7 @@ char *token_type_name[] = {
   "tASSIGN",
   "tADD_ASSIGN",
   "tSUB_ASSIGN",
+  "tMUL_ASSIGN",
   "tCOMMA",
   "tEND"
 };
@@ -198,7 +199,11 @@ Token *lex() {
       token->type = tSUB;
     }
   } else if (read_char('*')) {
-    token->type = tMUL;
+    if (read_char('=')) {
+      token->type = tMUL_ASSIGN;
+    } else {
+      token->type = tMUL;
+    }
   } else if (read_char('/')) {
     token->type = tDIV;
   } else if (read_char('%')) {

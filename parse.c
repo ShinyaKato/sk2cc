@@ -436,6 +436,7 @@ Node *assignment_expression() {
   if (read_token(tASSIGN)) type = ASSIGN;
   else if (read_token(tADD_ASSIGN)) type = ADD_ASSIGN;
   else if (read_token(tSUB_ASSIGN)) type = SUB_ASSIGN;
+  else if (read_token(tMUL_ASSIGN)) type = MUL_ASSIGN;
   else return conditional_expression(cast_expr);
 
   Node *left = cast_expr;

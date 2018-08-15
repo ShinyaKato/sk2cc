@@ -571,6 +571,36 @@ void gen_sub_assign(Node *node) {
   }
 }
 
+void gen_mul_assign(Node *node) {
+  if (node->left->value_type->type == BOOL) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rax");
+    gen_pop("rcx");
+    printf("  movl (%%rcx), %%edx\n");
+    printf("  imull %%edx\n");
+    printf("  cmpl $0, %%eax\n");
+    printf("  setne %%al\n");
+    printf("  movb %%al, (%%rcx)\n");
+    gen_push("rcx");
+  } else if (node->left->value_type->type == CHAR) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rax");
+    gen_pop("rcx");
+    printf("  movl (%%rcx), %%edx\n");
+    printf("  imull %%edx\n");
+    printf("  movb %%al, (%%rcx)\n");
+    gen_push("rcx");
+  } else if (node->left->value_type->type == INT) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rax");
+    gen_pop("rcx");
+    printf("  movl (%%rcx), %%edx\n");
+    printf("  imull %%edx\n");
+    printf("  movl %%eax, (%%rcx)\n");
+    gen_push("rcx");
+  }
+}
+
 void gen_expr(Node *node) {
   if (node->type == CONST) gen_const(node);
   else if (node->type == STRING_LITERAL) gen_string_literal(node);
@@ -610,6 +640,7 @@ void gen_expr(Node *node) {
   else if (node->type == ASSIGN) gen_assign(node);
   else if (node->type == ADD_ASSIGN) gen_add_assign(node);
   else if (node->type == SUB_ASSIGN) gen_sub_assign(node);
+  else if (node->type == MUL_ASSIGN) gen_mul_assign(node);
 }
 
 void gen_var_decl(Node *node) {
