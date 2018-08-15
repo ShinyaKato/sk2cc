@@ -1,6 +1,6 @@
 #include "cc.h"
 
-int main(void) {
+int main(int argc, char **argv) {
   Node *node = parse();
   analyze(node);
   gen(node);
