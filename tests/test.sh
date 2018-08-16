@@ -167,6 +167,14 @@ int main() {
 }
 " "abc 123"
 
+test_return "int x = 211; int main() { return x; }" 211
+test_stdout "char *s = \"abcde\"; int main() { printf(\"%s\n\", s); }" "abcde"
+test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[0]; }" 1
+test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[1]; }" 2
+test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[2]; }" 55
+test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[3]; }" 91
+test_stdout "char *reg[6] = { \"rdi\", \"rsi\", \"rdx\", \"rcx\", \"r8\", \"r9\" }; int main() { for (int i = 0; i < 6; i++) printf(\"%s\n\", reg[i]); return 0; }" "rdi\nrsi\nrdx\nrcx\nr8\nr9\n"
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."

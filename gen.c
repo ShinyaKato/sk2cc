@@ -845,7 +845,38 @@ void gen_gvar_decl(Node *node) {
     Symbol *symbol = init_decl->symbol;
     if (symbol->declaration) continue;
     printf("%s:\n", symbol->identifier);
-    printf("  .zero %d\n", symbol->value_type->size);
+
+    Node *init = init_decl->initializer;
+    if (init) {
+      if (init->type == VAR_INIT) {
+        Node *value = init->expr->right;
+        if (value->type == CONST) {
+          printf("  .long %d\n", value->int_value);
+        } else if (value->type == STRING_LITERAL) {
+          printf("  .quad .LC%d\n", value->string_label);
+        }
+      } else if (init->type == VAR_ARRAY_INIT) {
+        Vector *elements = init->array_elements;
+        for (int i = 0; i < elements->length; i++) {
+          Node *element = elements->array[i];
+          Node *value = element->right;
+          if (value->type == CONST) {
+            printf("  .long %d\n", value->int_value);
+          } else if (value->type == STRING_LITERAL) {
+            printf("  .quad .LC%d\n", value->string_label);
+          }
+        }
+
+        int array_size = symbol->value_type->array_of->size;
+        int init_length = init->array_elements->length;
+        int pad_size = array_size * init_length;
+        if (pad_size > 0) {
+          printf("  .zero %d\n", pad_size);
+        }
+      }
+    } else {
+      printf("  .zero %d\n", symbol->value_type->size);
+    }
   }
 }
 
