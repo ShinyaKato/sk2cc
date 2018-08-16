@@ -189,6 +189,37 @@ test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[2]; }" 55
 test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[3]; }" 91
 test_stdout "char *reg[] = { \"rdi\", \"rsi\", \"rdx\", \"rcx\", \"r8\", \"r9\" }; int main() { for (int i = 0; i < 6; i++) printf(\"%s\n\", reg[i]); return 0; }" "rdi\nrsi\nrdx\nrcx\nr8\nr9\n"
 
+test_return "
+#define bool _Bool
+#define true 1
+#define false 0
+int main() {
+  bool b = true;
+  return b;
+}
+" 1
+test_return "
+#define NULL ((void *) 0)
+int main() {
+  int *p = NULL;
+  return !p;
+}
+" 1
+test_return "
+#define xxx 5
+int main() {
+  return xxx;
+}
+" 5
+test_return "
+#define xxx 5
+int yyy = 2;
+#define zzz 6
+int main() {
+  return xxx * yyy * zzz;
+}
+" 60
+
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."
 test_error "int main() { 5 }" "tSEMICOLON is expected."
