@@ -116,11 +116,13 @@ void gen_func_call(Node *node) {
     printf("  movq %%rcx, 8(%%rdx)\n");
     printf("  leaq -176(%%rbp), %%rcx\n");
     printf("  movq %%rcx, 16(%%rdx)\n");
-    printf("  pushq $0\n");
+    printf("  movl $0, %%eax\n");
+    gen_push("rax");
     return;
   }
   if (strcmp(node->expr->identifier, "va_end") == 0) {
-    printf("  pushq $0\n");
+    printf("  movl $0, %%eax\n");
+    gen_push("rax");
     return;
   }
 
@@ -479,11 +481,12 @@ void gen_condition(Node *node) {
   gen_operand(node->control, "rax");
   printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_false);
-  gen_expr(node->left);
+  gen_operand(node->left, "rax");
   gen_jump("jmp", label_end);
   gen_label(label_false);
-  gen_expr(node->right);
+  gen_operand(node->right, "rax");
   gen_label(label_end);
+  gen_push("rax");
 }
 
 void gen_assign(Node *node) {
