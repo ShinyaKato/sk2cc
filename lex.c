@@ -244,6 +244,8 @@ Token *lex() {
     } else {
       token->type = tDOT;
     }
+  } else if (read_char('#')) {
+    token->type = tHASH;
   } else {
     error("unexpected character. %d");
   }
