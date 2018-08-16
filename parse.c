@@ -694,6 +694,9 @@ Type *direct_declarator(Type *type) {
         }
         Type *specifier = declaration_specifiers();
         Symbol *param = declarator(specifier);
+        if (param->value_type->type == ARRAY) {
+          param->value_type = type_pointer_to(param->value_type->array_of);
+        }
         vector_push(params, param);
       } while (read_token(tCOMMA));
     }

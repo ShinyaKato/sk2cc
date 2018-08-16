@@ -106,7 +106,7 @@ void gen_identifier(Node *node) {
 }
 
 void gen_func_call(Node *node) {
-  if (strcmp(node->expr->identifier, "va_start") == 0) {
+  if (strcmp(node->expr->identifier, "__builtin_va_start") == 0) {
     Node *list = node->args->array[0];
     gen_lvalue(list);
     gen_pop("rdx");
@@ -120,7 +120,7 @@ void gen_func_call(Node *node) {
     gen_push("rax");
     return;
   }
-  if (strcmp(node->expr->identifier, "va_end") == 0) {
+  if (strcmp(node->expr->identifier, "__builtin_va_end") == 0) {
     printf("  movl $0, %%eax\n");
     gen_push("rax");
     return;
