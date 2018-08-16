@@ -577,7 +577,10 @@ Type *declaration_specifiers() {
 
 Type *direct_declarator(Type *type) {
   if (read_token(tLBRACKET)) {
-    int size = expect_token(tINT_CONST)->int_value;
+    int size = 0;
+    if (peek_token()->type == tINT_CONST) {
+      size = get_token()->int_value;
+    }
     expect_token(tRBRACKET);
     return type_array_of(direct_declarator(type), size);
   }
@@ -676,6 +679,11 @@ Node *init_declarator(Type *specifier, Symbol *symbol) {
   node->symbol = symbol;
   if (read_token(tASSIGN)) {
     node->initializer = initializer(symbol);
+    if (symbol->value_type->size == 0 && node->initializer->type == VAR_ARRAY_INIT) {
+      int length = node->initializer->array_elements->length;
+      symbol->value_type->array_size = length;
+      symbol->value_type->size = length * symbol->value_type->array_of->size;
+    }
   }
 
   return node;
