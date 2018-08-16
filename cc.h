@@ -1,6 +1,3 @@
-#ifndef _CC_H_
-#define _CC_H_
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -262,5 +259,3 @@ extern Node *parse(Vector *token_vector);
 extern void analyze(Node *node);
 
 extern void gen(Node *node);
-
-#endif
