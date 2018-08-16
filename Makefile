@@ -28,4 +28,4 @@ test: tmp cc
 
 .PHONY: clean
 clean:
-	rm -rf cc tmp
+	rm -rf cc self tmp
