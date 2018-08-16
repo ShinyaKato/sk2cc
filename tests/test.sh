@@ -197,5 +197,6 @@ test_error "int f(int x) { int x; }" "duplicated function or variable definition
 test_error "int f[4](int x) { int a[4]; return a; }" "returning type of function should not be array type."
 test_error "int f(int x[4]) { return 0; }" "type of function parameter should not be array type."
 test_error "struct abc { struct abc p; }; int main() { return 0; }" "declaration with incomplete type."
+test_error "int main() { int a[4] = { 4, 5, 6, 7, 8 }; return 0; }" "too many initializers."
 
 exit 0

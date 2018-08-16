@@ -678,9 +678,17 @@ void gen_var_decl(Node *node) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
     if (symbol->value_type->type == FUNCTION) continue;
-    if (init_decl->initializer) {
-      gen_expr(init_decl->initializer);
-      gen_pop("rax");
+    Node *init = init_decl->initializer;
+    if (init) {
+      if (init->type == VAR_INIT) {
+        gen_expr(init->expr);
+        gen_pop("rax");
+      } else if (init->type == VAR_ARRAY_INIT) {
+        for (int i = 0; i < init->array_elements->length; i++) {
+          gen_expr(init->array_elements->array[i]);
+          gen_pop("rax");
+        }
+      }
     }
   }
 }

@@ -493,8 +493,19 @@ void analyze_var_decl(Node *node) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
     put_symbol(symbol->identifier, symbol);
-    if (init_decl->initializer) {
-      analyze_expr(init_decl->initializer);
+
+    Node *init = init_decl->initializer;
+    if (init) {
+      if (init->type == VAR_INIT) {
+        analyze_expr(init->expr);
+      } else if (init->type == VAR_ARRAY_INIT) {
+        if (init->array_elements->length > symbol->value_type->array_size) {
+          error("too many initializers.");
+        }
+        for (int i = 0; i < init->array_elements->length; i++) {
+          analyze_expr(init->array_elements->array[i]);
+        }
+      }
     }
   }
 }

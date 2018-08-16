@@ -623,16 +623,49 @@ Symbol *declarator(Type *specifier) {
 }
 
 Node *initializer(Symbol *symbol) {
-  Node *left = node_new();
-  Node *right = assignment_expression();
-
-  left->type = IDENTIFIER;
-  left->identifier = symbol->identifier;
+  Node *id = node_new();
+  id->type = IDENTIFIER;
+  id->identifier = symbol->identifier;
 
   Node *node = node_new();
-  node->type = ASSIGN;
-  node->left = left;
-  node->right = right;
+  if (!read_token(tLBRACE)) {
+    Node *assign = node_new();
+    assign->type = ASSIGN;
+    assign->left = id;
+    assign->right = assignment_expression();
+
+    node = node_new();
+    node->type = VAR_INIT;
+    node->expr = assign;
+  } else {
+    Vector *elements = vector_new();
+    do {
+      Node *index = node_new();
+      index->type = CONST;
+      index->int_value = elements->length;
+
+      Node *add = node_new();
+      add->type = ADD;
+      add->left = id;
+      add->right = index;
+
+      Node *left = node_new();
+      left->type = INDIRECT;
+      left->expr = add;
+
+      Node *assign = node_new();
+      assign->type = ASSIGN;
+      assign->left = left;
+      assign->right = assignment_expression();
+
+      vector_push(elements, assign);
+    } while (read_token(tCOMMA));
+    expect_token(tRBRACE);
+
+    node = node_new();
+    node->type = VAR_ARRAY_INIT;
+    node->array_elements = elements;
+  }
 
   return node;
 }

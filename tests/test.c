@@ -336,5 +336,8 @@ int main() {
   { char c = 5; c *= 13; test(c, 65); }
   { int x = 5; x *= 8; test(x, 40); }
 
+  { int a[4] = { 5, 6, 7 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); }
+  { int a[4] = { 5, 6, 7, 8 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); test(a[3], 8); }
+
   return 0;
 }

@@ -221,6 +221,8 @@ typedef enum node_type {
   ADD_ASSIGN,
   SUB_ASSIGN,
   MUL_ASSIGN,
+  VAR_INIT,
+  VAR_ARRAY_INIT,
   VAR_INIT_DECL,
   VAR_DECL,
   COMP_STMT,
@@ -249,6 +251,7 @@ typedef struct node {
   int member_offset;
   struct node *left, *right, *init, *control, *afterthrough, *expr;
   struct node *initializer;
+  Vector *array_elements;
   Vector *declarations;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
