@@ -1,6 +1,103 @@
 #include "cc.h"
 
+char *token_type_name[] = {
+  "tVOID",
+  "tBOOL",
+  "tCHAR",
+  "tINT",
+  "tSTRUCT",
+  "tENUM",
+  "tTYPEDEF",
+  "tEXTERN",
+  "tNORETURN",
+  "tSIZEOF",
+  "tALIGNOF",
+  "tIF",
+  "tELSE",
+  "tWHILE",
+  "tDO",
+  "tFOR",
+  "tCONTINUE",
+  "tBREAK",
+  "tRETURN",
+  "tIDENTIFIER",
+  "tINT_CONST",
+  "tSTRING_LITERAL",
+  "tLBRACKET",
+  "tRBRACKET",
+  "tLPAREN",
+  "tRPAREN",
+  "tRBRACE",
+  "tLBRACE",
+  "tDOT",
+  "tARROW",
+  "tINC",
+  "tDEC",
+  "tNOT",
+  "tLNOT",
+  "tMUL",
+  "tDIV",
+  "tMOD",
+  "tADD",
+  "tSUB",
+  "tLSHIFT",
+  "tRSHIFT",
+  "tLT",
+  "tGT",
+  "tLTE",
+  "tGTE",
+  "tEQ",
+  "tNEQ",
+  "tAND",
+  "tXOR",
+  "tOR",
+  "tLAND",
+  "tLOR",
+  "tQUESTION",
+  "tCOLON",
+  "tSEMICOLON",
+  "tELLIPSIS",
+  "tASSIGN",
+  "tADD_ASSIGN",
+  "tSUB_ASSIGN",
+  "tMUL_ASSIGN",
+  "tCOMMA",
+  "tHASH",
+  "tEND"
+};
+
+int tokens_pos;
+Vector *tokens;
 Map *tags, *typedef_names, *enum_constants;
+
+Token *peek_token() {
+  return tokens->array[tokens_pos];
+}
+
+Token *get_token() {
+  return tokens->array[tokens_pos++];
+}
+
+Token *expect_token(TokenType type) {
+  Token *token = get_token();
+  if (token->type != type) {
+    error("%s is expected.", token_type_name[type]);
+  }
+  return token;
+}
+
+Token *optional_token(TokenType type) {
+  if (peek_token()->type == type) {
+    return get_token();
+  }
+  return NULL;
+}
+
+bool read_token(TokenType type) {
+  bool equal = peek_token()->type == type;
+  if (equal) get_token();
+  return equal;
+}
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
@@ -883,7 +980,10 @@ Node *translate_unit() {
   return node;
 }
 
-Node *parse() {
+Node *parse(Vector *token_vector) {
+  tokens_pos = 0;
+  tokens = token_vector;
+
   tags = map_new();
   typedef_names = map_new();
   enum_constants = map_new();

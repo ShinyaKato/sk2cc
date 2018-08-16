@@ -1,26 +1,14 @@
 #include "cc.h"
 
-char peek_char() {
-  char c = fgetc(stdin);
-  ungetc(c, stdin);
-  return c;
-}
+char *read_source(char *file) {
+  FILE *fp = fopen(file, "r");
 
-char get_char() {
-  return fgetc(stdin);
-}
-
-void expect_char(char c) {
-  if (peek_char() != c) {
-    error("'%c' is expected.", c);
+  String *src = string_new();
+  while(1) {
+    char c = fgetc(fp);
+    if (c == EOF) break;
+    string_push(src, c);
   }
-  get_char();
-}
 
-bool read_char(char c) {
-  if (peek_char() == c) {
-    get_char();
-    return true;
-  }
-  return false;
+  return src->buffer;
 }

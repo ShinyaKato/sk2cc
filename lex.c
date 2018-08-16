@@ -1,72 +1,30 @@
 #include "cc.h"
 
-char *token_type_name[] = {
-  "tVOID",
-  "tBOOL",
-  "tCHAR",
-  "tINT",
-  "tSTRUCT",
-  "tENUM",
-  "tTYPEDEF",
-  "tEXTERN",
-  "tNORETURN",
-  "tSIZEOF",
-  "tALIGNOF",
-  "tIF",
-  "tELSE",
-  "tWHILE",
-  "tDO",
-  "tFOR",
-  "tCONTINUE",
-  "tBREAK",
-  "tRETURN",
-  "tIDENTIFIER",
-  "tINT_CONST",
-  "tSTRING_LITERAL",
-  "tLBRACKET",
-  "tRBRACKET",
-  "tLPAREN",
-  "tRPAREN",
-  "tRBRACE",
-  "tLBRACE",
-  "tDOT",
-  "tARROW",
-  "tINC",
-  "tDEC",
-  "tNOT",
-  "tLNOT",
-  "tMUL",
-  "tDIV",
-  "tMOD",
-  "tADD",
-  "tSUB",
-  "tLSHIFT",
-  "tRSHIFT",
-  "tLT",
-  "tGT",
-  "tLTE",
-  "tGTE",
-  "tEQ",
-  "tNEQ",
-  "tAND",
-  "tXOR",
-  "tOR",
-  "tLAND",
-  "tLOR",
-  "tQUESTION",
-  "tCOLON",
-  "tSEMICOLON",
-  "tELLIPSIS",
-  "tASSIGN",
-  "tADD_ASSIGN",
-  "tSUB_ASSIGN",
-  "tMUL_ASSIGN",
-  "tCOMMA",
-  "tEND"
-};
+int buffer_pos;
+char *buffer;
 
-bool has_next_token = false;
-Token *next_token;
+char peek_char() {
+  return buffer[buffer_pos];
+}
+
+char get_char() {
+  return buffer[buffer_pos++];
+}
+
+void expect_char(char c) {
+  if (peek_char() != c) {
+    error("'%c' is expected.", c);
+  }
+  get_char();
+}
+
+bool read_char(char c) {
+  if (peek_char() == c) {
+    get_char();
+    return true;
+  }
+  return false;
+}
 
 Token *token_new() {
   Token *token = (Token *) calloc(1, sizeof(Token));
@@ -94,7 +52,7 @@ Token *lex() {
     get_char();
   }
 
-  if (peek_char() == EOF) {
+  if (peek_char() == '\0') {
     Token *token = token_new();
     token->type = tEND;
     return token;
@@ -281,45 +239,22 @@ Token *lex() {
       token->type = tDOT;
     }
   } else {
-    error("unexpected character.");
+    error("unexpected character. %d");
   }
 
   return token;
 }
 
-Token *peek_token() {
-  if (has_next_token) {
-    return next_token;
-  }
-  has_next_token = true;
-  return next_token = lex();
-}
+Vector *lexical_analyze(char *source_buffer) {
+  buffer_pos = 0;
+  buffer = source_buffer;
 
-Token *get_token() {
-  if (has_next_token) {
-    has_next_token = false;
-    return next_token;
+  Vector *tokens = vector_new();
+  while (1) {
+    Token *token = lex();
+    vector_push(tokens, token);
+    if (token->type == tEND) break;
   }
-  return lex();
-}
 
-Token *expect_token(TokenType type) {
-  Token *token = get_token();
-  if (token->type != type) {
-    error("%s is expected.", token_type_name[type]);
-  }
-  return token;
-}
-
-Token *optional_token(TokenType type) {
-  if (peek_token()->type == type) {
-    return get_token();
-  }
-  return NULL;
-}
-
-bool read_token(TokenType type) {
-  bool equal = peek_token()->type == type;
-  if (equal) get_token();
-  return equal;
+  return tokens;
 }

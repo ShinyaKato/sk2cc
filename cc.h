@@ -40,10 +40,7 @@ extern void map_clear();
 
 extern noreturn void error(char *format, ...);
 
-extern char peek_char();
-extern char get_char();
-extern void expect_char(char c);
-extern bool read_char(char c);
+extern char *read_source(char *file);
 
 typedef enum token_type {
   tVOID,
@@ -107,6 +104,7 @@ typedef enum token_type {
   tSUB_ASSIGN,
   tMUL_ASSIGN,
   tCOMMA,
+  tHASH,
   tEND
 } TokenType;
 
@@ -117,11 +115,7 @@ typedef struct token {
   char *identifier;
 } Token;
 
-extern Token *peek_token();
-extern Token *get_token();
-extern Token *expect_token(TokenType type);
-extern Token *optional_token(TokenType type);
-extern bool read_token(TokenType type);
+extern Vector *lexical_analyze(char *source_buffer);
 
 typedef enum type_type {
   VOID,
@@ -260,7 +254,7 @@ typedef struct node {
 } Node;
 
 extern Node *node_new();
-extern Node *parse();
+extern Node *parse(Vector *token_vector);
 
 extern void analyze(Node *node);
 

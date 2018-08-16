@@ -9,7 +9,8 @@ failed() {
 
 compile() {
   prog=$1
-  echo "$prog" | $target > tmp/out.s || failed "failed to compile \"$prog\"."
+  echo "$prog" > tmp/out.c
+  $target tmp/out.c > tmp/out.s || failed "failed to compile \"$prog\"."
   gcc -no-pie tmp/out.s tmp/func_call_stub.o -o tmp/out || failed "failed to link \"$prog\" and stubs."
 }
 
@@ -33,7 +34,8 @@ test_stdout() {
 test_error() {
   prog=$1
   expect="error: $2"
-  echo "$prog" | $target > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$prog\" was unexpectedly succeeded."
+  echo "$prog" > tmp/out.c
+  $target tmp/out.c > /dev/null 2> tmp/stderr.txt && failed "compilation of \"$prog\" was unexpectedly succeeded."
   echo "$expect" | diff - tmp/stderr.txt || failed "error message of \"$prog\" should be \"$expect\"."
 }
 
