@@ -63,6 +63,7 @@ char *token_type_name[] = {
   "tMUL_ASSIGN",
   "tCOMMA",
   "tHASH",
+  "tNEWLINE",
   "tEND"
 };
 

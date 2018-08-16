@@ -48,8 +48,14 @@ char get_escape_sequence() {
 }
 
 Token *lex() {
-  while (peek_char() == ' ' || peek_char() == '\n') {
+  while (peek_char() == ' ') {
     get_char();
+  }
+
+  if (read_char('\n')) {
+    Token *token = token_new();
+    token->type = tNEWLINE;
+    return token;
   }
 
   if (peek_char() == '\0') {

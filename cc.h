@@ -105,6 +105,7 @@ typedef enum token_type {
   tMUL_ASSIGN,
   tCOMMA,
   tHASH,
+  tNEWLINE,
   tEND
 } TokenType;
 
@@ -116,6 +117,8 @@ typedef struct token {
 } Token;
 
 extern Vector *lexical_analyze(char *source_buffer);
+
+extern Vector *preprocess(Vector *token_vector);
 
 typedef enum type_type {
   VOID,

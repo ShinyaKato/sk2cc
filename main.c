@@ -9,7 +9,8 @@ int main(int argc, char **argv) {
   char *file = argv[1];
   char *src = read_source(file);
   Vector *tokens = lexical_analyze(src);
-  Node *node = parse(tokens);
+  Vector *process_tokens = preprocess(tokens);
+  Node *node = parse(process_tokens);
   analyze(node);
   gen(node);
 
