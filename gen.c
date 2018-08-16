@@ -632,7 +632,7 @@ void gen_mul_assign(Node *node) {
 }
 
 void gen_expr(Node *node) {
-  if (node->type == CONST) gen_const(node);
+  if (node->type == INT_CONST) gen_const(node);
   else if (node->type == STRING_LITERAL) gen_string_literal(node);
   else if (node->type == IDENTIFIER) gen_identifier(node);
   else if (node->type == FUNC_CALL) gen_func_call(node);
@@ -850,7 +850,7 @@ void gen_gvar_decl(Node *node) {
     if (init) {
       if (init->type == VAR_INIT) {
         Node *value = init->expr->right;
-        if (value->type == CONST) {
+        if (value->type == INT_CONST) {
           printf("  .long %d\n", value->int_value);
         } else if (value->type == STRING_LITERAL) {
           printf("  .quad .LC%d\n", value->string_label);
@@ -860,7 +860,7 @@ void gen_gvar_decl(Node *node) {
         for (int i = 0; i < elements->length; i++) {
           Node *element = elements->array[i];
           Node *value = element->right;
-          if (value->type == CONST) {
+          if (value->type == INT_CONST) {
             printf("  .long %d\n", value->int_value);
           } else if (value->type == STRING_LITERAL) {
             printf("  .quad .LC%d\n", value->string_label);

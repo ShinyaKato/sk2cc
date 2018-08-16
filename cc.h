@@ -210,7 +210,7 @@ typedef struct symbol {
 } Symbol;
 
 typedef enum node_type {
-  CONST,
+  INT_CONST,
   STRING_LITERAL,
   IDENTIFIER,
   FUNC_CALL,

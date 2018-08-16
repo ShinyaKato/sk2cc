@@ -147,7 +147,7 @@ Node *primary_expression() {
 
   if (token->type == tINT_CONST) {
     Node *node = node_new();
-    node->type = CONST;
+    node->type = INT_CONST;
     node->int_value = token->int_value;
     return node;
   }
@@ -163,7 +163,7 @@ Node *primary_expression() {
     int *enum_value = map_lookup(enum_constants, token->identifier);
     if (enum_value) {
       Node *node = node_new();
-      node->type = CONST;
+      node->type = INT_CONST;
       node->int_value = *enum_value;
       return node;
     } else {
@@ -258,7 +258,7 @@ Node *unary_expression() {
     if (read_token(tLPAREN)) {
       if (check_type_specifier()) {
         Type *type = type_name();
-        node->type = CONST;
+        node->type = INT_CONST;
         node->int_value = type->size;
       } else {
         node->type = SIZEOF;
@@ -277,7 +277,7 @@ Node *unary_expression() {
     Type *type = type_name();
     expect_token(tRPAREN);
     Node *node = node_new();
-    node->type = CONST;
+    node->type = INT_CONST;
     node->int_value = type->align;
     return node;
   }
@@ -745,7 +745,7 @@ Node *initializer(Symbol *symbol) {
     Vector *elements = vector_new();
     do {
       Node *index = node_new();
-      index->type = CONST;
+      index->type = INT_CONST;
       index->int_value = elements->length;
 
       Node *add = node_new();

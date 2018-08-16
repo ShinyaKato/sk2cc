@@ -222,7 +222,7 @@ void analyze_lnot(Node *node) {
 
 void analyze_sizeof(Node *node) {
   analyze_expr(node->expr);
-  node->type = CONST;
+  node->type = INT_CONST;
   node->value_type = type_int();
   node->int_value = node->expr->value_type->original_size;
 }
@@ -431,7 +431,7 @@ void analyze_mul_assign(Node *node) {
 
 void analyze_expr(Node *node) {
   NodeType type = node->type;
-  if (type == CONST) {
+  if (type == INT_CONST) {
     analyze_const(node);
   } else if (type == STRING_LITERAL) {
     analyze_string_literal(node);
