@@ -1,10 +1,45 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdnoreturn.h>
+#define EOF (-1)
+
+#define NULL ((void *) 0)
+
+#define bool _Bool
+#define false 0
+#define true 1
+
+#define noreturn _Noreturn
+
+#define va_start __builtin_va_start
+#define va_end __builtin_va_end
+typedef struct {
+  int gp_offset;
+  int fp_offset;
+  void *overflow_arg_area;
+  void *reg_save_area;
+} va_list[1];
+
+typedef int size_t;
+typedef struct _IO_FILE FILE;
+
+extern struct _IO_FILE *stdin;
+extern struct _IO_FILE *stdout;
+extern struct _IO_FILE *stderr;
+
+int fgetc(FILE *stream);
+int ungetc(int c, FILE *stream);
+int printf (char *format, ...);
+int fprintf(FILE *stream, char *format, ...);
+int vfprintf(FILE *s, char *format, va_list arg);
+FILE *fopen(char *filename, char *modes);
+
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+void exit(int status);
+
+int strcmp(char *s1, char *s2);
+
+int isdigit(int c);
+int isalpha(int c);
+int isalnum(int c);
 
 typedef struct string {
   int size, length;
