@@ -126,7 +126,7 @@ void gen_func_call(Node *node) {
     return;
   }
 
-  for (int i = 0; i < node->args->length; i++) {
+  for (int i = node->args->length - 1; i >= 0; i--) {
     Node *arg = node->args->array[i];
     gen_expr(arg);
     if (arg->value_type->type == BOOL) {
@@ -137,10 +137,8 @@ void gen_func_call(Node *node) {
       gen_push("rax");
     }
   }
-  for (int i = 5; i >= 0; i--) {
-    if (i < node->args->length) {
-      gen_pop(arg_reg[i]);
-    }
+  for (int i = 0; i < node->args->length; i++) {
+    gen_pop(arg_reg[i]);
   }
 
   int top = stack_depth % 16;
