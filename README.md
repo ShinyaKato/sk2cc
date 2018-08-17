@@ -12,11 +12,11 @@ $ make cc
 
 ## compilation
 
-Compiler `cc` reads C program from stdin and generates assembly to stdout.
+Compiler `cc` recieves source file name and generates assembly to stdout.
 To generate executable, use gcc with `-no-pie` option.
 
 ```
-$ cat examples/queen.c | ./cc > queen.s
+$ ./cc examples/queen.c > queen.s
 $ gcc -no-pie queen.s
 ```
 
