@@ -224,6 +224,8 @@ int main() {
 " 60
 
 test_stdout "int main() { printf(\"%7.3f\n\", 123.456); }" "123.456"
+test_stdout "int main() { double d = 123.456; printf(\"%7.3f\n\", d); }" "123.456"
+test_stdout "int main() { double d[2] = { 123.456, 123.456 }; printf(\"%7.3f\n\", d[1]); }" "123.456"
 
 test_error "int main() { 2 * (3 + 4; }" "tRPAREN is expected."
 test_error "int main() { 5 + *; }" "unexpected primary expression."

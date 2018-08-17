@@ -79,6 +79,7 @@ typedef enum token_type {
   tBOOL,
   tCHAR,
   tINT,
+  tDOUBLE,
   tSTRUCT,
   tENUM,
   tTYPEDEF,

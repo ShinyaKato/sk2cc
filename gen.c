@@ -66,6 +66,12 @@ void gen_load_lvalue(Node *node) {
     gen_pop("rcx");
     printf("  movl (%%rcx), %%eax\n");
     gen_push("rax");
+  } else if (node->value_type->type == DOUBLE) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movsd (%%rcx), %%xmm0\n");
+    printf("  movq %%xmm0, %%rax\n");
+    gen_push("rax");
   } else if (node->value_type->type == POINTER) {
     gen_lvalue(node);
     if (!node->value_type->array_pointer) {
@@ -520,6 +526,13 @@ void gen_assign(Node *node) {
     gen_operand(node->right, "rcx");
     gen_pop("rax");
     printf("  movl %%ecx, (%%rax)\n");
+    gen_push("rcx");
+  } else if (node->left->value_type->type == DOUBLE) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rcx");
+    gen_pop("rax");
+    printf("  movq %%rcx, %%xmm0\n");
+    printf("  movsd %%xmm0, (%%rax)\n");
     gen_push("rcx");
   } else if (node->left->value_type->type == POINTER) {
     gen_lvalue(node->left);

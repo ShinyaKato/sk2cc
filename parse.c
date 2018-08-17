@@ -5,6 +5,7 @@ char *token_type_name[] = {
   "tBOOL",
   "tCHAR",
   "tINT",
+  "tDOUBLE",
   "tSTRUCT",
   "tENUM",
   "tTYPEDEF",
@@ -123,6 +124,7 @@ bool check_type_specifier() {
   if (token->type == tBOOL) return true;
   if (token->type == tCHAR) return true;
   if (token->type == tINT) return true;
+  if (token->type == tDOUBLE) return true;
   if (token->type == tSTRUCT) return true;
   if (token->type == tENUM) return true;
   if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
@@ -657,6 +659,8 @@ Type *type_specifier() {
     return type_char();
   } else if (read_token(tINT)) {
     return type_int();
+  } else if (read_token(tDOUBLE)) {
+    return type_double();
   } else if (peek_token()->type == tSTRUCT) {
     return struct_or_union_specifier();
   } else if (peek_token()->type == tENUM) {
