@@ -158,7 +158,7 @@ Node *primary_expression() {
   if (token->type == tFLOAT_CONST) {
     Node *node = node_new();
     node->type = FLOAT_CONST;
-    node->float_pattern = token->float_pattern;
+    node->double_value = token->double_value;
     return node;
   }
 

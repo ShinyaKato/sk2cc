@@ -67,24 +67,24 @@ Token *lex() {
   Token *token = token_new();
 
   if (isdigit(peek_char())) {
-    int int_value = 0;
+    String *s = string_new();
     while (isdigit(peek_char())) {
-      int_value = int_value * 10 + (get_char() - '0');
+      string_push(s, get_char());
     }
-    if (!read_char('.')) {
+    if (peek_char() == '.') {
+      string_push(s, get_char());
+      while (isdigit(peek_char())) {
+        string_push(s, get_char());
+      }
+      token->type = tFLOAT_CONST;
+      token->double_value = strtod(s->buffer, NULL);
+    } else {
+      int int_value = 0;
+      for (int i = 0; i < s->length; i++) {
+        int_value = int_value * 10 + (s->buffer[i] - '0');
+      }
       token->type = tINT_CONST;
       token->int_value = int_value;
-    } else {
-      int float_value = 0;
-      while (isdigit(peek_char())) {
-        float_value = float_value * 10 + (get_char() - '0');
-      }
-      if (int_value == 123 && float_value == 456) {
-        token->type = tFLOAT_CONST;
-        token->float_pattern = "4638387859538109000";
-      } else {
-        error("unexpected foating constant.");
-      }
     }
   } else if (read_char('\'')) {
     int int_value;

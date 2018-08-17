@@ -34,6 +34,7 @@ FILE *fopen(char *filename, char *modes);
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status);
+double strtod(char *s, char *endpoint);
 
 int strcmp(char *s1, char *s2);
 
@@ -146,7 +147,7 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   int int_value;
-  char *float_pattern;
+  double double_value;
   String *string_value;
   char *identifier;
 } Token;
@@ -278,7 +279,7 @@ typedef struct node {
   enum node_type type;
   Type *value_type;
   int int_value;
-  char *float_pattern;
+  double double_value;
   String *string_value;
   int string_label, float_label;
   char *identifier;

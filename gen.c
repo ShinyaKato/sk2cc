@@ -100,7 +100,8 @@ void gen_int_const(Node *node) {
 }
 
 void gen_float_const(Node *node) {
-  printf("  movq $%s, %%rax\n", node->float_pattern);
+  int *d = (int *) &node->double_value;
+  printf("  movq $0x%08x%08x, %%rax\n", d[1], d[0]);
   gen_push("rax");
 }
 
