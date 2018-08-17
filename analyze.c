@@ -49,8 +49,12 @@ bool check_lvalue(NodeType type) {
 
 void analyze_expr(Node *node);
 
-void analyze_const(Node *node) {
+void analyze_int_const(Node *node) {
   node->value_type = type_int();
+}
+
+void analyze_float_const(Node *node) {
+  node->value_type = type_double();
 }
 
 void analyze_string_literal(Node *node) {
@@ -432,7 +436,9 @@ void analyze_mul_assign(Node *node) {
 void analyze_expr(Node *node) {
   NodeType type = node->type;
   if (type == INT_CONST) {
-    analyze_const(node);
+    analyze_int_const(node);
+  } else if (type == FLOAT_CONST) {
+    analyze_float_const(node);
   } else if (type == STRING_LITERAL) {
     analyze_string_literal(node);
   } else if (type == IDENTIFIER) {

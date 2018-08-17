@@ -96,6 +96,7 @@ typedef enum token_type {
   tRETURN,
   tIDENTIFIER,
   tINT_CONST,
+  tFLOAT_CONST,
   tSTRING_LITERAL,
   tLBRACKET,
   tRBRACKET,
@@ -144,6 +145,7 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   int int_value;
+  char *float_pattern;
   String *string_value;
   char *identifier;
 } Token;
@@ -157,6 +159,7 @@ typedef enum type_type {
   BOOL,
   CHAR,
   INT,
+  DOUBLE,
   POINTER,
   ARRAY,
   STRUCT,
@@ -185,6 +188,7 @@ extern Type *type_void();
 extern Type *type_bool();
 extern Type *type_char();
 extern Type *type_int();
+extern Type *type_double();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_struct(Vector *identifiers, Map *members);
@@ -211,6 +215,7 @@ typedef struct symbol {
 
 typedef enum node_type {
   INT_CONST,
+  FLOAT_CONST,
   STRING_LITERAL,
   IDENTIFIER,
   FUNC_CALL,
@@ -272,8 +277,9 @@ typedef struct node {
   enum node_type type;
   Type *value_type;
   int int_value;
+  char *float_pattern;
   String *string_value;
-  int string_label;
+  int string_label, float_label;
   char *identifier;
   Symbol *symbol;
   Vector *args;

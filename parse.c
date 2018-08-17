@@ -22,6 +22,7 @@ char *token_type_name[] = {
   "tRETURN",
   "tIDENTIFIER",
   "tINT_CONST",
+  "tFLOAT_CONST",
   "tSTRING_LITERAL",
   "tLBRACKET",
   "tRBRACKET",
@@ -149,6 +150,13 @@ Node *primary_expression() {
     Node *node = node_new();
     node->type = INT_CONST;
     node->int_value = token->int_value;
+    return node;
+  }
+
+  if (token->type == tFLOAT_CONST) {
+    Node *node = node_new();
+    node->type = FLOAT_CONST;
+    node->float_pattern = token->float_pattern;
     return node;
   }
 

@@ -50,6 +50,18 @@ Type *type_int() {
   return int_type;
 }
 
+Type *type_double() {
+  Type *double_type = type_new();
+  double_type->type = DOUBLE;
+  double_type->size = 8;
+  double_type->align = 8;
+  double_type->original_size = 8;
+  double_type->array_pointer = false;
+  double_type->definition = false;
+  double_type->incomplete = false;
+  return double_type;
+}
+
 Type *type_pointer_to(Type *type) {
   Type *pointer = type_new();
   pointer->type = POINTER;

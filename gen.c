@@ -88,8 +88,13 @@ void gen_operands(Node *left, Node *right, char *reg_left, char *reg_right) {
   gen_pop(reg_left);
 }
 
-void gen_const(Node *node) {
+void gen_int_const(Node *node) {
   printf("  movl $%d, %%eax\n", node->int_value);
+  gen_push("rax");
+}
+
+void gen_float_const(Node *node) {
+  printf("  movq $%s, %%rax\n", node->float_pattern);
   gen_push("rax");
 }
 
@@ -137,15 +142,23 @@ void gen_func_call(Node *node) {
       gen_push("rax");
     }
   }
+
+  int int_reg = 0, float_reg = 0;
   for (int i = 0; i < node->args->length; i++) {
-    gen_pop(arg_reg[i]);
+    Node *arg = node->args->array[i];
+    if (arg->value_type->type == DOUBLE) {
+      gen_pop("rax");
+      printf("  movq %%rax, %%xmm%d\n", float_reg++);
+    } else {
+      gen_pop(arg_reg[int_reg++]);
+    }
   }
 
   int top = stack_depth % 16;
   if (top > 0) {
     printf("  subq $%d, %%rsp\n", 16 - top);
   }
-  printf("  movl $0, %%eax\n");
+  printf("  movl $%d, %%eax\n", float_reg);
   printf("  call %s\n", node->expr->identifier);
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
@@ -630,7 +643,8 @@ void gen_mul_assign(Node *node) {
 }
 
 void gen_expr(Node *node) {
-  if (node->type == INT_CONST) gen_const(node);
+  if (node->type == INT_CONST) gen_int_const(node);
+  else if (node->type == FLOAT_CONST) gen_float_const(node);
   else if (node->type == STRING_LITERAL) gen_string_literal(node);
   else if (node->type == IDENTIFIER) gen_identifier(node);
   else if (node->type == FUNC_CALL) gen_func_call(node);
@@ -950,7 +964,6 @@ void gen_trans_unit(Node *node) {
       gen_gvar_decl(def);
     }
   }
-
   printf("  .text\n");
   for (int i = 0; i < node->definitions->length; i++) {
     Node *def = node->definitions->array[i];

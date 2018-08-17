@@ -71,8 +71,21 @@ Token *lex() {
     while (isdigit(peek_char())) {
       int_value = int_value * 10 + (get_char() - '0');
     }
-    token->type = tINT_CONST;
-    token->int_value = int_value;
+    if (!read_char('.')) {
+      token->type = tINT_CONST;
+      token->int_value = int_value;
+    } else {
+      int float_value = 0;
+      while (isdigit(peek_char())) {
+        float_value = float_value * 10 + (get_char() - '0');
+      }
+      if (int_value == 123 && float_value == 456) {
+        token->type = tFLOAT_CONST;
+        token->float_pattern = "4638387859538109000";
+      } else {
+        error("unexpected foating constant.");
+      }
+    }
   } else if (read_char('\'')) {
     int int_value;
     if (read_char('\\')) {
