@@ -169,6 +169,10 @@ void gen_func_call(Node *node) {
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
+
+  if (node->value_type->type == DOUBLE) {
+    printf("  movq %%xmm0, %%rax\n");
+  }
   if (node->value_type->type == BOOL) {
     printf("  movzbl %%al, %%eax\n");
   }
@@ -951,6 +955,9 @@ void gen_func_def(Node *node) {
   if (type->function_returning->type == BOOL) {
     printf("  cmpl $0, %%eax\n");
     printf("  setne %%al\n");
+  }
+  if (type->function_returning->type == DOUBLE) {
+    printf("  movq %%rax, %%xmm0\n");
   }
   printf("  leave\n");
   printf("  ret\n");

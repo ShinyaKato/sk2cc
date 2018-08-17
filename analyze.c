@@ -104,7 +104,7 @@ void analyze_func_call(Node *node) {
       Node *arg = node->args->array[i];
       Symbol *param = node->expr->value_type->params->array[i];
       if (!type_same(arg->value_type, param->value_type)) {
-        error("parameter types and argument types should be the same. (%s, %d)", node->expr->identifier, i);
+        error("parameter types and argument types should be the same.");
       }
     }
     node->value_type = node->expr->value_type->function_returning;

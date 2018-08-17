@@ -71,3 +71,7 @@ int test_struct(struct test_struct *s) {
 _Bool bool_ret(int b) {
   return b;
 }
+
+double test_double(double a) {
+  return a * 2;
+}

@@ -180,5 +180,6 @@ bool type_scalar(Type *type) {
 bool type_same(Type *type1, Type *type2) {
   if (type_integer(type1) && type_integer(type2)) return true;
   if (type_pointer(type1) && type_pointer(type2)) return true;
+  if (type1->type == DOUBLE && type2->type == DOUBLE) return true;
   return false;
 }
