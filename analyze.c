@@ -178,7 +178,7 @@ void analyze_decrement_operator(Node *node) {
 void analyze_address(Node *node) {
   analyze_expr(node->expr);
   node->value_type = type_pointer_to(node->expr->value_type);
-  if (node->expr->type != IDENTIFIER) {
+  if (!check_lvalue(node->expr->type)) {
     error("operand of unary & operator should be identifier.");
   }
 }

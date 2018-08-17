@@ -260,14 +260,7 @@ void gen_pre_dec(Node *node) {
 }
 
 void gen_address(Node *node) {
-  Symbol *symbol = node->expr->symbol;
-  if (symbol->type == GLOBAL) {
-    printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
-    gen_push("rax");
-  } else if (symbol->type == LOCAL) {
-    printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
-    gen_push("rax");
-  }
+  gen_lvalue(node->expr);
 }
 
 void gen_indirect(Node *node) {

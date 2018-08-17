@@ -339,5 +339,9 @@ int main() {
   { int a[4] = { 5, 6, 7 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); }
   { int a[4] = { 5, 6, 7, 8 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); test(a[3], 8); }
 
+  { int a = 10, *p = &a; test(*&*&*p, 10); }
+  { struct { int x, y; } t; t.x = 10; test(*&*&t.x, 10); }
+  { struct { int x, y; } t, *p; p = &t; t.x = 10; test(*&*&p->x, 10); }
+
   return 0;
 }
