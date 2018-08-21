@@ -1,72 +1,72 @@
 #include "cc.h"
 
 char *token_type_name[] = {
-  "tVOID",
-  "tBOOL",
-  "tCHAR",
-  "tINT",
-  "tDOUBLE",
-  "tSTRUCT",
-  "tENUM",
-  "tTYPEDEF",
-  "tEXTERN",
-  "tNORETURN",
-  "tSIZEOF",
-  "tALIGNOF",
-  "tIF",
-  "tELSE",
-  "tWHILE",
-  "tDO",
-  "tFOR",
-  "tCONTINUE",
-  "tBREAK",
-  "tRETURN",
-  "tIDENTIFIER",
-  "tINT_CONST",
-  "tFLOAT_CONST",
-  "tSTRING_LITERAL",
-  "tLBRACKET",
-  "tRBRACKET",
-  "tLPAREN",
-  "tRPAREN",
-  "tRBRACE",
-  "tLBRACE",
-  "tDOT",
-  "tARROW",
-  "tINC",
-  "tDEC",
-  "tNOT",
-  "tLNOT",
-  "tMUL",
-  "tDIV",
-  "tMOD",
-  "tADD",
-  "tSUB",
-  "tLSHIFT",
-  "tRSHIFT",
-  "tLT",
-  "tGT",
-  "tLTE",
-  "tGTE",
-  "tEQ",
-  "tNEQ",
-  "tAND",
-  "tXOR",
-  "tOR",
-  "tLAND",
-  "tLOR",
-  "tQUESTION",
-  "tCOLON",
-  "tSEMICOLON",
-  "tELLIPSIS",
-  "tASSIGN",
-  "tADD_ASSIGN",
-  "tSUB_ASSIGN",
-  "tMUL_ASSIGN",
-  "tCOMMA",
-  "tHASH",
-  "tNEWLINE",
-  "tEND"
+  "void",
+  "bool",
+  "char",
+  "int",
+  "double",
+  "struct",
+  "enum",
+  "typedef",
+  "extern",
+  "_Noreturn",
+  "sizeof",
+  "_Alignof",
+  "if",
+  "else",
+  "while",
+  "do",
+  "for",
+  "continue",
+  "break",
+  "return",
+  "identifier",
+  "integer constant",
+  "floating point constant",
+  "string literal",
+  "[",
+  "]",
+  "(",
+  ")",
+  "{",
+  "}",
+  ".",
+  "->",
+  "++",
+  "--",
+  "~",
+  "!",
+  "*",
+  "/",
+  "%",
+  "+",
+  "-",
+  "<<",
+  ">>",
+  "<",
+  ">",
+  "<=",
+  ">=",
+  "==",
+  "!=",
+  "&",
+  "^",
+  "|",
+  "&&",
+  "||",
+  "?",
+  ":",
+  ";",
+  "...",
+  "=",
+  "+=",
+  "-=",
+  "*=",
+  ",",
+  "#",
+  "new line",
+  "end of file"
 };
 
 int tokens_pos;
@@ -84,7 +84,7 @@ Token *get_token() {
 Token *expect_token(TokenType type) {
   Token *token = get_token();
   if (token->type != type) {
-    error("%s is expected.", token_type_name[type]);
+    error(token, "%s is expected.", token_type_name[type]);
   }
   return token;
 }
@@ -151,6 +151,7 @@ Node *primary_expression() {
   if (token->type == tINT_CONST) {
     Node *node = node_new();
     node->type = INT_CONST;
+    node->token = token;
     node->int_value = token->int_value;
     return node;
   }
@@ -158,6 +159,7 @@ Node *primary_expression() {
   if (token->type == tFLOAT_CONST) {
     Node *node = node_new();
     node->type = FLOAT_CONST;
+    node->token = token;
     node->double_value = token->double_value;
     return node;
   }
@@ -165,6 +167,7 @@ Node *primary_expression() {
   if (token->type == tSTRING_LITERAL) {
     Node *node = node_new();
     node->type = STRING_LITERAL;
+    node->token = token;
     node->string_value = token->string_value;
     return node;
   }
@@ -174,11 +177,13 @@ Node *primary_expression() {
     if (enum_value) {
       Node *node = node_new();
       node->type = INT_CONST;
+      node->token = token;
       node->int_value = *enum_value;
       return node;
     } else {
       Node *node = node_new();
       node->type = IDENTIFIER;
+      node->token = token;
       node->identifier = token->identifier;
       return node;
     }
@@ -190,13 +195,14 @@ Node *primary_expression() {
     return node;
   }
 
-  error("unexpected primary expression.");
+  error(token, "invalid primary expression.");
 }
 
 Node *postfix_expression() {
   Node *node = primary_expression();
 
   while (1) {
+    Token *op = peek_token();
     if (read_token(tLPAREN)) {
       Node *expr = node;
       Vector *args = vector_new();
@@ -209,6 +215,7 @@ Node *postfix_expression() {
 
       node = node_new();
       node->type = FUNC_CALL;
+      node->token = op;
       node->expr = expr;
       node->args = args;
     } else if (read_token(tLBRACKET)) {
@@ -218,11 +225,13 @@ Node *postfix_expression() {
 
       Node *expr = node_new();
       expr->type = ADD;
+      node->token = op;
       expr->left = left;
       expr->right = right;
 
       node = node_new();
       node->type = INDIRECT;
+      node->token = op;
       node->expr = expr;
     } else if (read_token(tDOT)) {
       Node *expr = node;
@@ -230,6 +239,7 @@ Node *postfix_expression() {
 
       node = node_new();
       node->type = DOT;
+      node->token = op;
       node->expr = expr;
       node->identifier = token->identifier;
     } else if (read_token(tARROW)) {
@@ -240,6 +250,7 @@ Node *postfix_expression() {
 
       node = node_new();
       node->type = DOT;
+      node->token = op;
       node->expr = expr;
       node->identifier = token->identifier;
     } else if (read_token(tINC)) {
@@ -247,12 +258,14 @@ Node *postfix_expression() {
 
       node = node_new();
       node->type = POST_INC;
+      node->token = op;
       node->expr = expr;
     } else if (read_token(tDEC)) {
       Node *expr = node;
 
       node = node_new();
       node->type = POST_DEC;
+      node->token = op;
       node->expr = expr;
     } else {
       break;
@@ -263,20 +276,25 @@ Node *postfix_expression() {
 }
 
 Node *unary_expression() {
+  Token *token = peek_token();
+
   if (read_token(tSIZEOF)) {
     Node *node = node_new();
     if (read_token(tLPAREN)) {
       if (check_type_specifier()) {
         Type *type = type_name();
         node->type = INT_CONST;
+        node->token = token;
         node->int_value = type->size;
       } else {
         node->type = SIZEOF;
+        node->token = token;
         node->expr = expression();
       }
       expect_token(tRPAREN);
     } else {
       node->type = SIZEOF;
+      node->token = token;
       node->expr = unary_expression();
     }
     return node;
@@ -288,6 +306,7 @@ Node *unary_expression() {
     expect_token(tRPAREN);
     Node *node = node_new();
     node->type = INT_CONST;
+    node->token = token;
     node->int_value = type->align;
     return node;
   }
@@ -305,12 +324,14 @@ Node *unary_expression() {
 
   Node *node = node_new();
   node->type = type;
+  node->token = token;
   node->expr = unary_expression();
 
   return node;
 }
 
 Node *cast_expression() {
+  Token *token = peek_token();
   if (!read_token(tLPAREN)) {
     return unary_expression();
   }
@@ -324,6 +345,7 @@ Node *cast_expression() {
 
   Node *node = node_new();
   node->type = CAST;
+  node->token = token;
   node->value_type = type;
   node->expr = cast_expression();
 
@@ -334,6 +356,7 @@ Node *multiplicative_expression(Node *cast_expr) {
   Node *node = cast_expr;
 
   while (1) {
+    Token *token = peek_token();
     NodeType type;
     if (read_token(tMUL)) type = MUL;
     else if (read_token(tDIV)) type = DIV;
@@ -345,6 +368,7 @@ Node *multiplicative_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = type;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -356,6 +380,7 @@ Node *additive_expression(Node *cast_expr) {
   Node *node = multiplicative_expression(cast_expr);
 
   while (1) {
+    Token *token = peek_token();
     NodeType type;
     if (read_token(tADD)) type = ADD;
     else if (read_token(tSUB)) type = SUB;
@@ -366,6 +391,7 @@ Node *additive_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = type;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -377,6 +403,7 @@ Node *shift_expression(Node *cast_expr) {
   Node *node = additive_expression(cast_expr);
 
   while (1) {
+    Token *token = peek_token();
     NodeType type;
     if (read_token(tLSHIFT)) type = LSHIFT;
     else if (read_token(tRSHIFT)) type = RSHIFT;
@@ -387,6 +414,7 @@ Node *shift_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = type;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -398,6 +426,7 @@ Node *relational_expression(Node *cast_expr) {
   Node *node = shift_expression(cast_expr);
 
   while (1) {
+    Token *token = peek_token();
     NodeType type;
     if (read_token(tLT)) type = LT;
     else if (read_token(tGT)) type = GT;
@@ -410,6 +439,7 @@ Node *relational_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = type;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -421,6 +451,7 @@ Node *equality_expression(Node *cast_expr) {
   Node *node = relational_expression(cast_expr);
 
   while (1) {
+    Token *token = peek_token();
     NodeType type;
     if (read_token(tEQ)) type = EQ;
     else if (read_token(tNEQ)) type = NEQ;
@@ -431,6 +462,7 @@ Node *equality_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = type;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -441,12 +473,17 @@ Node *equality_expression(Node *cast_expr) {
 Node *and_expression(Node *cast_expr) {
   Node *node = equality_expression(cast_expr);
 
-  while (read_token(tAND)) {
+  Token *token;
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tAND)) break;
+
     Node *left = node;
     Node *right = equality_expression(cast_expression());
 
     node = node_new();
     node->type = AND;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -457,12 +494,16 @@ Node *and_expression(Node *cast_expr) {
 Node *exclusive_or_expression(Node *cast_expr) {
   Node *node = and_expression(cast_expr);
 
-  while (read_token(tXOR)) {
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tXOR)) break;
+
     Node *left = node;
     Node *right = and_expression(cast_expression());
 
     node = node_new();
     node->type = XOR;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -473,12 +514,16 @@ Node *exclusive_or_expression(Node *cast_expr) {
 Node *inclusive_or_expression(Node *cast_expr) {
   Node *node = exclusive_or_expression(cast_expr);
 
-  while (read_token(tOR)) {
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tOR)) break;
+
     Node *left = node;
     Node *right = exclusive_or_expression(cast_expression());
 
     node = node_new();
     node->type = OR;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -489,12 +534,16 @@ Node *inclusive_or_expression(Node *cast_expr) {
 Node *logical_and_expression(Node *cast_expr) {
   Node *node = inclusive_or_expression(cast_expr);
 
-  while (read_token(tLAND)) {
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tLAND)) break;
+
     Node *left = node;
     Node *right = inclusive_or_expression(cast_expression());
 
     node = node_new();
     node->type = LAND;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -505,12 +554,16 @@ Node *logical_and_expression(Node *cast_expr) {
 Node *logical_or_expression(Node *cast_expr) {
   Node *node = logical_and_expression(cast_expr);
 
-  while (read_token(tLOR)) {
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tLOR)) break;
+
     Node *left = node;
     Node *right = logical_and_expression(cast_expression());
 
     node = node_new();
     node->type = LOR;
+    node->token = token;
     node->left = left;
     node->right = right;
   }
@@ -521,6 +574,7 @@ Node *logical_or_expression(Node *cast_expr) {
 Node *conditional_expression(Node *cast_expr) {
   Node *node = logical_or_expression(cast_expr);
 
+  Token *token = peek_token();
   if (read_token(tQUESTION)) {
     Node *control = node;
     Node *left = expression();
@@ -529,6 +583,7 @@ Node *conditional_expression(Node *cast_expr) {
 
     node = node_new();
     node->type = CONDITION;
+    node->token = token;
     node->control = control;
     node->left = left;
     node->right = right;
@@ -540,6 +595,7 @@ Node *conditional_expression(Node *cast_expr) {
 Node *assignment_expression() {
   Node *cast_expr = cast_expression();
 
+  Token *token = peek_token();
   NodeType type;
   if (read_token(tASSIGN)) type = ASSIGN;
   else if (read_token(tADD_ASSIGN)) type = ADD_ASSIGN;
@@ -552,6 +608,7 @@ Node *assignment_expression() {
 
   Node *node = node_new();
   node->type = type;
+  node->token = token;
   node->value_type = left->value_type;
   node->left = left;
   node->right = right;
@@ -591,12 +648,8 @@ Type *struct_or_union_specifier() {
   }
 
   if (!read_token(tLBRACE)) {
-    if (!token) error("invalid struct type specifier.");
-
-    Type *type = map_lookup(tags, token->identifier);
-    if (!type) error("undefined struct tag.");
-
-    return type;
+    if (!token) error(peek_token(), "invalid struct type specifier.");
+    return map_lookup(tags, token->identifier);
   }
 
   Vector *identifiers = vector_new();
@@ -626,10 +679,10 @@ Type *enum_specifier() {
   Token *token = optional_token(tIDENTIFIER);
 
   if (!read_token(tLBRACE)) {
-    if (!token) error("invalid enum type spcifier.");
+    if (!token) error(peek_token(), "invalid enum type spcifier.");
 
     Type *type = map_lookup(tags, token->identifier);
-    if (!type) error("undefined enum tag.");
+    if (!type) error(token, "undefined enum tag.");
 
     return type;
   }
@@ -665,12 +718,12 @@ Type *type_specifier() {
     return struct_or_union_specifier();
   } else if (peek_token()->type == tENUM) {
     return enum_specifier();
-  } else if (peek_token()->type == tIDENTIFIER) {
-    Token *token = get_token();
-    Type *type = map_lookup(typedef_names, token->identifier);
-    if (type) return type;
   }
-  error("type specifier is expected.");
+
+  Token *token = get_token();
+  Type *type = map_lookup(typedef_names, token->identifier);
+  if (!type) error(token, "type specifier is expected.");
+  return type;
 }
 
 Type *declaration_specifiers() {
@@ -728,10 +781,11 @@ Symbol *declarator(Type *specifier) {
   type = direct_declarator(type);
 
   if (!specifier->definition && type->incomplete) {
-    error("declaration with incomplete type.");
+    error(token, "declaration with incomplete type.");
   }
 
   Symbol *symbol = symbol_new();
+  symbol->token = token;
   symbol->identifier = token->identifier;
   symbol->value_type = type;
 
@@ -925,11 +979,14 @@ Node *iteration_statement() {
 Node *jump_statement() {
   Node *node = node_new();
 
+  Token *token = peek_token();
   if (read_token(tCONTINUE)) {
     node->type = CONTINUE_STMT;
+    node->token = token;
     expect_token(tSEMICOLON);
   } else if (read_token(tBREAK)) {
     node->type = BREAK_STMT;
+    node->token = token;
     expect_token(tSEMICOLON);
   } else if (read_token(tRETURN)) {
     node->type = RETURN_STMT;
@@ -962,6 +1019,7 @@ Node *statement() {
 Node *function_definition(Symbol *func_symbol) {
   Node *node = node_new();
   node->type = FUNC_DEF;
+  node->token = func_symbol->token;
   node->identifier = func_symbol->identifier;
   node->symbol = func_symbol;
   node->function_body = compound_statement();

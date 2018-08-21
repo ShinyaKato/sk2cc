@@ -198,6 +198,8 @@ typedef struct token {
   double double_value;
   String *string_value;
   char *identifier;
+  int lineno, column;
+  char *source;
 } Token;
 
 typedef struct type {
@@ -219,6 +221,7 @@ typedef struct type {
 
 typedef struct symbol {
   SymbolType type;
+  Token *token;
   char *identifier;
   Type *value_type;
   int offset;
@@ -227,6 +230,7 @@ typedef struct symbol {
 
 typedef struct node {
   enum node_type type;
+  Token *token;
   Type *value_type;
   int int_value;
   double double_value;
@@ -246,7 +250,7 @@ typedef struct node {
   Vector *string_literals, *definitions;
 } Node;
 
-extern noreturn void error(char *format, ...);
+extern noreturn void error(Token *token, char *format, ...);
 
 extern char *read_source(char *file);
 

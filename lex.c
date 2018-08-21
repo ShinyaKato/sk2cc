@@ -1,19 +1,34 @@
 #include "cc.h"
 
-int buffer_pos;
-char *buffer;
+int buffer_pos, lineno, column;
+char *buffer, *source;
+
+Token *token_new() {
+  Token *token = (Token *) calloc(1, sizeof(Token));
+  token->lineno = lineno;
+  token->column = column;
+  token->source = source;
+  return token;
+}
 
 char peek_char() {
   return buffer[buffer_pos];
 }
 
 char get_char() {
-  return buffer[buffer_pos++];
+  char c = buffer[buffer_pos++];
+  column++;
+  if (c == '\n') {
+    lineno++;
+    column = 0;
+    source = &buffer[buffer_pos];
+  }
+  return c;
 }
 
 void expect_char(char c) {
   if (peek_char() != c) {
-    error("'%c' is expected.", c);
+    error(token_new(), "%c is expected.", c);
   }
   get_char();
 }
@@ -24,11 +39,6 @@ bool read_char(char c) {
     return true;
   }
   return false;
-}
-
-Token *token_new() {
-  Token *token = (Token *) calloc(1, sizeof(Token));
-  return token;
 }
 
 char get_escape_sequence() {
@@ -44,7 +54,7 @@ char get_escape_sequence() {
   if (read_char('v')) return '\v';
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
-  error("invalid escape sequence.");
+  error(token_new(), "invalid escape sequence.");
 }
 
 Token *lex() {
@@ -52,20 +62,7 @@ Token *lex() {
     get_char();
   }
 
-  if (read_char('\n')) {
-    Token *token = token_new();
-    token->type = tNEWLINE;
-    return token;
-  }
-
-  if (peek_char() == '\0') {
-    Token *token = token_new();
-    token->type = tEND;
-    return token;
-  }
-
   Token *token = token_new();
-
   if (isdigit(peek_char())) {
     String *s = string_new();
     while (isdigit(peek_char())) {
@@ -251,18 +248,21 @@ Token *lex() {
     token->type = tCOMMA;
   } else if (read_char('.')) {
     if (read_char('.')) {
-      if (read_char('.')) {
-        token->type = tELLIPSIS;
-      } else {
-        error("invalid token '..'\n");
+      if (!read_char('.')) {
+        error(token, "invalid token '..'");
       }
+      token->type = tELLIPSIS;
     } else {
       token->type = tDOT;
     }
   } else if (read_char('#')) {
     token->type = tHASH;
+  } else if (read_char('\n')) {
+    token->type = tNEWLINE;
+  } else if (peek_char() == '\0') {
+    token->type = tEND;
   } else {
-    error("unexpected character. %d");
+    error(token, "unexpected character: %c.", peek_char());
   }
 
   return token;
@@ -270,7 +270,10 @@ Token *lex() {
 
 Vector *lexical_analyze(char *source_buffer) {
   buffer_pos = 0;
+  lineno = 0;
+  column = 0;
   buffer = source_buffer;
+  source = source_buffer;
 
   Vector *tokens = vector_new();
   while (1) {

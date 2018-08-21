@@ -18,7 +18,7 @@ void put_symbol(char *identifier, Symbol *symbol) {
   Map *map = scopes->array[scopes->length - 1];
   Symbol *previous = map_lookup(map, identifier);
   if (previous && !previous->declaration) {
-    error("duplicated function or variable definition of '%s'.", identifier);
+    error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
   }
 
   if (scopes->length == 1) {
@@ -82,29 +82,31 @@ void analyze_func_call(Node *node) {
     analyze_expr(arg);
   }
   if (node->expr->type != IDENTIFIER) {
-    error("invalid function call.");
+    error(node->token, "invalid function call.");
   }
   if (node->args->length > 6) {
-    error("too many arguments.");
+    error(node->token, "too many arguments.");
   }
   if (node->expr->symbol) {
+    Vector *params = node->expr->value_type->params;
+    Vector *args = node->args;
     if (node->expr->value_type->type != FUNCTION) {
-      error("operand of function call should have function type.");
+      error(node->token, "operand of function call should have function type.");
     }
     if (!node->expr->value_type->ellipsis) {
-      if (node->args->length != node->expr->value_type->params->length) {
-        error("number of parameters and arguments should be the same.");
+      if (args->length != params->length) {
+        error(node->token, "number of parameters should be %d, but got %d.", params->length, args->length);
       }
     } else {
       if (node->args->length < node->expr->value_type->params->length) {
-        error("number of parameters and arguments should be the same.");
+        error(node->token, "number of parameters should be %d or more, but got %d.", params->length, args->length);
       }
     }
-    for (int i = 0; i < node->expr->value_type->params->length; i++) {
-      Node *arg = node->args->array[i];
-      Symbol *param = node->expr->value_type->params->array[i];
+    for (int i = 0; i < params->length; i++) {
+      Node *arg = args->array[i];
+      Symbol *param = params->array[i];
       if (!type_same(arg->value_type, param->value_type)) {
-        error("parameter types and argument types should be the same.");
+        error(node->token, "parameter types and argument types should be the same.");
       }
     }
     node->value_type = node->expr->value_type->function_returning;
@@ -116,13 +118,13 @@ void analyze_func_call(Node *node) {
 void analyze_dot(Node *node) {
   analyze_expr(node->expr);
   if (node->expr->value_type->type != STRUCT) {
-    error("operand of . operator should have struct type.");
+    error(node->token, "operand of . operator should have struct type.");
   }
   node->value_type = map_lookup(node->expr->value_type->members, node->identifier);
-  node->value_type = type_convert(node->value_type);
   if (node->value_type == NULL) {
-    error("undefined struct member.");
+    error(node->token, "undefined struct member: %s.", node->identifier);
   }
+  node->value_type = type_convert(node->value_type);
   int *offset = map_lookup(node->expr->value_type->offsets, node->identifier);
   node->member_offset = *offset;
 }
@@ -130,48 +132,28 @@ void analyze_dot(Node *node) {
 void analyze_increment_operator(Node *node) {
   analyze_expr(node->expr);
   if (!check_lvalue(node->expr->type)) {
-    if (node->type == POST_INC) {
-      error("operand of postfix ++ operator should be lvalue.");
-    }
-    if (node->type == PRE_INC) {
-      error("operand of prefix ++ operator should be lvalue.");
-    }
+    error(node->token, "operand of ++ operator should be lvalue.");
   }
   if (type_integer(node->expr->value_type)) {
     node->value_type = type_int();
   } else if (type_pointer(node->expr->value_type)) {
     node->value_type = node->expr->value_type;
   } else {
-    if (node->type == POST_INC) {
-      error("invalid operand type for postfix ++ operator.");
-    }
-    if (node->type == PRE_INC) {
-      error("invalid operand type for prefix ++ operator.");
-    }
+    error(node->token, "invalid operand type for ++ operator.");
   }
 }
 
 void analyze_decrement_operator(Node *node) {
   analyze_expr(node->expr);
   if (!check_lvalue(node->expr->type)) {
-    if (node->type == POST_DEC) {
-      error("operand of postfix -- operator should be lvalue.");
-    }
-    if (node->type == PRE_DEC) {
-      error("operand of prefix -- operator should be lvalue.");
-    }
+    error(node->token, "operand of -- operator should be lvalue.");
   }
   if (type_integer(node->expr->value_type)) {
     node->value_type = type_int();
   } else if (type_pointer(node->expr->value_type)) {
     node->value_type = node->expr->value_type;
   } else {
-    if (node->type == POST_DEC) {
-      error("invalid operand type for postfix -- operator.");
-    }
-    if (node->type == PRE_DEC) {
-      error("invalid operand type for prefix -- operator.");
-    }
+    error(node->token, "invalid operand type for -- operator.");
   }
 }
 
@@ -179,7 +161,7 @@ void analyze_address(Node *node) {
   analyze_expr(node->expr);
   node->value_type = type_pointer_to(node->expr->value_type);
   if (!check_lvalue(node->expr->type)) {
-    error("operand of unary & operator should be identifier.");
+    error(node->token, "operand of unary & operator should be identifier.");
   }
 }
 
@@ -188,7 +170,7 @@ void analyze_indirect(Node *node) {
   if (type_pointer(node->expr->value_type)) {
     node->value_type = type_convert(node->expr->value_type->pointer_to);
   } else {
-    error("operand of unary * operator should have pointer type.");
+    error(node->token, "operand of unary * operator should have pointer type.");
   }
 }
 
@@ -198,10 +180,10 @@ void analyze_uarithmetic_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == UPLUS) {
-      error("operand of unary + operator should have integer type.");
+      error(node->token, "operand of unary + operator should have integer type.");
     }
     if (node->type == UMINUS) {
-      error("operand of unary - operator should have integer type.");
+      error(node->token, "operand of unary - operator should have integer type.");
     }
   }
 }
@@ -211,7 +193,7 @@ void analyze_not(Node *node) {
   if (type_integer(node->expr->value_type)) {
     node->value_type = type_int();
   } else  {
-    error("operand of ~ operator should have integer type.");
+    error(node->token, "operand of ~ operator should have integer type.");
   }
 }
 
@@ -220,7 +202,7 @@ void analyze_lnot(Node *node) {
   if (type_scalar(node->expr->value_type)) {
     node->value_type = type_int();
   } else {
-    error("operand of ! operator should have integer type.");
+    error(node->token, "operand of ! operator should have scalar type.");
   }
 }
 
@@ -242,10 +224,10 @@ void analyze_multiprecative_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == MUL) {
-      error("operands of binary * should have integer type.");
+      error(node->token, "operands of * should have integer type.");
     }
     if (node->type == DIV) {
-    error("operands of / should have integer type.");
+    error(node->token, "operands of / should have integer type.");
     }
   }
 }
@@ -256,7 +238,7 @@ void analyze_mod(Node *node) {
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
   } else {
-    error("operands of %% operator should have integer type.");
+    error(node->token, "operands of %% operator should have integer type.");
   }
 }
 
@@ -273,7 +255,7 @@ void analyze_add(Node *node) {
     node->right = left;
     node->value_type = node->left->value_type;
   } else {
-    error("invalid operand types for binary + operator.");
+    error(node->token, "invalid operand types for + operator.");
   }
 }
 
@@ -285,7 +267,7 @@ void analyze_sub(Node *node) {
   } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = node->left->value_type;
   } else {
-    error("invalid operand types for binary - operator.");
+    error(node->token, "invalid operand types for - operator.");
   }
 }
 
@@ -296,19 +278,19 @@ void analyze_bitwise_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == LSHIFT) {
-      error("operands of << operator should be integer type.");
+      error(node->token, "operands of << operator should be integer type.");
     }
     if (node->type == RSHIFT) {
-      error("operands of >> operator should be integer type.");
+      error(node->token, "operands of >> operator should be integer type.");
     }
     if (node->type == AND) {
-      error("operands of binary & operator should be integer type.");
+      error(node->token, "operands of & operator should be integer type.");
     }
     if (node->type == XOR) {
-      error("operands of ^ operator should be integer type.");
+      error(node->token, "operands of ^ operator should be integer type.");
     }
     if (node->type == OR) {
-      error("operands of | operator should be integer type.");
+      error(node->token, "operands of | operator should be integer type.");
     }
   }
 }
@@ -322,16 +304,16 @@ void analyze_relational_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == LT) {
-      error("operands of < operator should be integer type.");
+      error(node->token, "operands of < operator should be integer type.");
     }
     if (node->type == GT) {
-      error("operands of > operator should be integer type.");
+      error(node->token, "operands of > operator should be integer type.");
     }
     if (node->type == LTE) {
-      error("operands of <= operator should be integer type.");
+      error(node->token, "operands of <= operator should be integer type.");
     }
     if (node->type == GTE) {
-      error("operands of >= operator should be integer type.");
+      error(node->token, "operands of >= operator should be integer type.");
     }
   }
 }
@@ -345,10 +327,10 @@ void analyze_equality_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == EQ) {
-      error("operands of == operator should be integer type.");
+      error(node->token, "operands of == operator should be integer type.");
     }
     if (node->type == NEQ) {
-      error("operands of != operator should be integer type.");
+      error(node->token, "operands of != operator should be integer type.");
     }
   }
 }
@@ -360,10 +342,10 @@ void analyze_logical_operator(Node *node) {
     node->value_type = type_int();
   } else {
     if (node->type == LAND) {
-      error("operands of && operator should be integer type.");
+      error(node->token, "operands of && operator should be integer type.");
     }
     if (node->type == LOR) {
-      error("operands of || operator should be integer type.");
+      error(node->token, "operands of || operator should be integer type.");
     }
   }
 }
@@ -377,7 +359,7 @@ void analyze_condition(Node *node) {
   } else if (type_pointer(node->left->value_type) && type_pointer(node->right->value_type)) {
     node->value_type = node->left->value_type;
   } else {
-    error("second and third operands of ?: operator should be integer type.");
+    error(node->token, "second and third operands of ?: operator should have the same type.");
   }
 }
 
@@ -386,7 +368,7 @@ void analyze_assign(Node *node) {
   analyze_expr(node->right);
   node->value_type = node->left->value_type;
   if (!check_lvalue(node->left->type)) {
-    error("left side of = operator should be lvalue.");
+    error(node->token, "left side of = operator should be lvalue.");
   }
 }
 
@@ -394,14 +376,14 @@ void analyze_add_assign(Node *node) {
   analyze_expr(node->left);
   analyze_expr(node->right);
   if (!check_lvalue(node->left->type)) {
-    error("left side of += operator should be lvalue.");
+    error(node->token, "left side of += operator should be lvalue.");
   }
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
   } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = node->left->value_type;
   } else {
-    error("invalid operand types for += operator.");
+    error(node->token, "invalid operand types for += operator.");
   }
 }
 
@@ -409,14 +391,14 @@ void analyze_sub_assign(Node *node) {
   analyze_expr(node->left);
   analyze_expr(node->right);
   if (!check_lvalue(node->left->type)) {
-    error("left side of -= operator should be lvalue.");
+    error(node->token, "left side of -= operator should be lvalue.");
   }
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
   } else if (type_pointer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = node->left->value_type;
   } else {
-    error("invalid operand types for -= operator.");
+    error(node->token, "invalid operand types for -= operator.");
   }
 }
 
@@ -424,12 +406,12 @@ void analyze_mul_assign(Node *node) {
   analyze_expr(node->left);
   analyze_expr(node->right);
   if (!check_lvalue(node->left->type)) {
-    error("left side of *= operator should be lvalue.");
+    error(node->token, "left side of *= operator should be lvalue.");
   }
   if (type_integer(node->left->value_type) && type_integer(node->right->value_type)) {
     node->value_type = type_int();
   } else {
-    error("invalid operand types for *= operator.");
+    error(node->token, "invalid operand types for *= operator.");
   }
 }
 
@@ -506,7 +488,7 @@ void analyze_var_decl(Node *node) {
         analyze_expr(init->expr);
       } else if (init->type == VAR_ARRAY_INIT) {
         if (init->array_elements->length > symbol->value_type->array_size) {
-          error("too many initializers.");
+          error(symbol->token, "too many initializers.");
         }
         for (int i = 0; i < init->array_elements->length; i++) {
           analyze_expr(init->array_elements->array[i]);
@@ -589,13 +571,13 @@ void analyze_for_stmt(Node *node) {
 
 void analyze_continue_stmt(Node *node) {
   if (continue_level == 0) {
-    error("continue statement should appear in loops.");
+    error(node->token, "continue statement should appear in loops.");
   }
 }
 
 void analyze_break_stmt(Node *node) {
   if (break_level == 0) {
-    error("break statement should appear in loops.");
+    error(node->token, "break statement should appear in loops.");
   }
 }
 
@@ -631,7 +613,7 @@ void analyze_stmt(Node *node) {
 
 void analyze_func_def(Node *node) {
   if (node->symbol->value_type->type == ARRAY) {
-    error("returning type of function should not be array type.");
+    error(node->symbol->token, "returning type of function should not be array type.");
   }
   put_symbol(node->symbol->identifier, node->symbol);
 
@@ -639,13 +621,10 @@ void analyze_func_def(Node *node) {
   make_scope();
   Type *type = node->symbol->value_type;
   if (type->params->length > 6) {
-    error("too many parameters.");
+    error(node->token, "too many parameters.");
   }
   for (int i = 0; i < type->params->length; i++) {
     Symbol *param = type->params->array[i];
-    if (param->value_type->type == ARRAY) {
-      error("type of function parameter should not be array type.");
-    }
     put_symbol(param->identifier, param);
   }
   analyze_comp_stmt(node->function_body);
