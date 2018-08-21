@@ -1,4 +1,4 @@
-# seccamp2018
+# sk2cc
 
 Simple C compiler developed by @ShinyaKato
 
@@ -22,4 +22,4 @@ $ gcc -no-pie queen.s
 
 ## example
 
-See example programs that can be compiled with `cc` in [examples](https://github.com/ShinyaKato/seccamp2018/tree/master/examples).
+See example programs that can be compiled with `cc` in [examples](https://github.com/ShinyaKato/sk2cc/tree/master/examples).
