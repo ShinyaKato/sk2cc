@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "vector.h"
 
 Vector *vector_new() {
   Vector *vector = (Vector *) calloc(1, sizeof(Vector));

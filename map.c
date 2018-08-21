@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "map.h"
 
 Map *map_new() {
   Map *map = (Map *) calloc(1, sizeof(Map));

@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "string.h"
 
 String *string_new() {
   String *string = (String *) calloc(1, sizeof(String));

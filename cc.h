@@ -1,3 +1,7 @@
+#include "string.h"
+#include "vector.h"
+#include "map.h"
+
 #define EOF (-1)
 
 #define NULL ((void *) 0)
@@ -41,39 +45,6 @@ int strcmp(char *s1, char *s2);
 int isdigit(int c);
 int isalpha(int c);
 int isalnum(int c);
-
-typedef struct string {
-  int size, length;
-  char *buffer;
-} String;
-
-extern String *string_new();
-extern void string_push(String *string, char c);
-
-typedef struct vector {
-  int size, length;
-  void **array;
-} Vector;
-
-extern Vector *vector_new();
-extern void vector_push(Vector *vector, void *value);
-extern void *vector_pop(Vector *vector);
-
-typedef struct map {
-  int count;
-  char *keys[1024];
-  void *values[1024];
-} Map;
-
-extern Map *map_new();
-extern int map_count(Map *map);
-extern bool map_put(Map *map, char *key, void *value);
-extern void *map_lookup(Map *map, char *key);
-extern void map_clear();
-
-extern noreturn void error(char *format, ...);
-
-extern char *read_source(char *file);
 
 typedef enum token_type {
   tVOID,
@@ -144,18 +115,6 @@ typedef enum token_type {
   tEND
 } TokenType;
 
-typedef struct token {
-  TokenType type;
-  int int_value;
-  double double_value;
-  String *string_value;
-  char *identifier;
-} Token;
-
-extern Vector *lexical_analyze(char *source_buffer);
-
-extern Vector *preprocess(Vector *token_vector);
-
 typedef enum type_type {
   VOID,
   BOOL,
@@ -167,53 +126,6 @@ typedef enum type_type {
   STRUCT,
   FUNCTION
 } TypeType;
-
-typedef struct type {
-  TypeType type;
-  int size, align;
-  struct type *pointer_to;
-  struct type *array_of;
-  int array_size;
-  Map *members, *offsets;
-  struct type *function_returning;
-  Vector *params;
-  bool ellipsis;
-  int original_size;
-  bool array_pointer;
-  bool definition;
-  bool external;
-  bool incomplete;
-} Type;
-
-extern Type *type_new();
-extern Type *type_void();
-extern Type *type_bool();
-extern Type *type_char();
-extern Type *type_int();
-extern Type *type_double();
-extern Type *type_pointer_to(Type *type);
-extern Type *type_array_of(Type *type, int array_size);
-extern Type *type_struct(Vector *identifiers, Map *members);
-extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
-extern Type *type_convert(Type *type);
-extern void type_copy(Type *dest, Type *src);
-extern bool type_integer(Type *type);
-extern bool type_pointer(Type *type);
-extern bool type_scalar(Type *type);
-extern bool type_same(Type *type1, Type *type2);
-
-typedef enum symbol_type {
-  GLOBAL,
-  LOCAL
-} SymbolType;
-
-typedef struct symbol {
-  SymbolType type;
-  char *identifier;
-  Type *value_type;
-  int offset;
-  bool declaration;
-} Symbol;
 
 typedef enum node_type {
   INT_CONST,
@@ -275,6 +187,44 @@ typedef enum node_type {
   TLANS_UNIT
 } NodeType;
 
+typedef enum symbol_type {
+  GLOBAL,
+  LOCAL
+} SymbolType;
+
+typedef struct token {
+  TokenType type;
+  int int_value;
+  double double_value;
+  String *string_value;
+  char *identifier;
+} Token;
+
+typedef struct type {
+  TypeType type;
+  int size, align;
+  struct type *pointer_to;
+  struct type *array_of;
+  int array_size;
+  Map *members, *offsets;
+  struct type *function_returning;
+  Vector *params;
+  bool ellipsis;
+  int original_size;
+  bool array_pointer;
+  bool definition;
+  bool external;
+  bool incomplete;
+} Type;
+
+typedef struct symbol {
+  SymbolType type;
+  char *identifier;
+  Type *value_type;
+  int offset;
+  bool declaration;
+} Symbol;
+
 typedef struct node {
   enum node_type type;
   Type *value_type;
@@ -295,6 +245,31 @@ typedef struct node {
   int local_vars_size;
   Vector *string_literals, *definitions;
 } Node;
+
+extern noreturn void error(char *format, ...);
+
+extern char *read_source(char *file);
+
+extern Vector *lexical_analyze(char *source_buffer);
+
+extern Vector *preprocess(Vector *token_vector);
+
+extern Type *type_new();
+extern Type *type_void();
+extern Type *type_bool();
+extern Type *type_char();
+extern Type *type_int();
+extern Type *type_double();
+extern Type *type_pointer_to(Type *type);
+extern Type *type_array_of(Type *type, int array_size);
+extern Type *type_struct(Vector *identifiers, Map *members);
+extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
+extern Type *type_convert(Type *type);
+extern void type_copy(Type *dest, Type *src);
+extern bool type_integer(Type *type);
+extern bool type_pointer(Type *type);
+extern bool type_scalar(Type *type);
+extern bool type_same(Type *type1, Type *type2);
 
 extern Node *node_new();
 extern Node *parse(Vector *token_vector);
