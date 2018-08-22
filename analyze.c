@@ -512,7 +512,9 @@ void analyze_comp_stmt(Node *node) {
 }
 
 void analyze_expr_stmt(Node *node) {
-  analyze_expr(node->expr);
+  if (node->expr) {
+    analyze_expr(node->expr);
+  }
 }
 
 void analyze_if_stmt(Node *node) {

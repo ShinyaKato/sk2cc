@@ -343,5 +343,8 @@ int main() {
   { struct { int x, y; } t; t.x = 10; test(*&*&t.x, 10); }
   { struct { int x, y; } t, *p; p = &t; t.x = 10; test(*&*&p->x, 10); }
 
+  { int i = 0; for (; i < 5; i++); test(i, 5); }
+  { ; }
+
   return 0;
 }

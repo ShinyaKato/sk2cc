@@ -916,7 +916,9 @@ Node *compound_statement() {
 Node *expression_statement() {
   Node *node = node_new();
   node->type = EXPR_STMT;
-  node->expr = expression();
+  if (peek_token()->type != tSEMICOLON) {
+    node->expr = expression();
+  }
   expect_token(tSEMICOLON);
 
   return node;

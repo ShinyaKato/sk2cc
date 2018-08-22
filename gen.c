@@ -730,8 +730,10 @@ void gen_comp_stmt(Node *node) {
 }
 
 void gen_expr_stmt(Node *node) {
-  gen_expr(node->expr);
-  gen_pop("rax");
+  if (node->expr) {
+    gen_expr(node->expr);
+    gen_pop("rax");
+  }
 }
 
 void gen_if_stmt(Node *node) {
