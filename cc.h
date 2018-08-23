@@ -235,7 +235,7 @@ typedef struct node {
   double double_value;
   String *string_value;
   int string_label, float_label;
-  char *identifier;
+  char *identifier, *member;
   Symbol *symbol;
   Vector *args;
   int member_offset;

@@ -120,12 +120,12 @@ void analyze_dot(Node *node) {
   if (node->expr->value_type->type != STRUCT) {
     error(node->token, "operand of . operator should have struct type.");
   }
-  node->value_type = map_lookup(node->expr->value_type->members, node->identifier);
+  node->value_type = map_lookup(node->expr->value_type->members, node->member);
   if (node->value_type == NULL) {
-    error(node->token, "undefined struct member: %s.", node->identifier);
+    error(node->token, "undefined struct member: %s.", node->member);
   }
   node->value_type = type_convert(node->value_type);
-  int *offset = map_lookup(node->expr->value_type->offsets, node->identifier);
+  int *offset = map_lookup(node->expr->value_type->offsets, node->member);
   node->member_offset = *offset;
 }
 

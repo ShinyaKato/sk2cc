@@ -46,11 +46,11 @@ Node *node_func_call(Node *expr, Vector *args, Token *token) {
   return node;
 }
 
-Node *node_dot(Node *expr, char *identifier, Token *token) {
+Node *node_dot(Node *expr, char *member, Token *token) {
   Node *node = node_new();
   node->type = DOT;
   node->expr = expr;
-  node->identifier = identifier;
+  node->member = member;
   node->token = token;
   return node;
 }
