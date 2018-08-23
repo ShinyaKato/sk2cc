@@ -920,21 +920,24 @@ void gen_func_def(Node *node) {
   stack_depth += node->local_vars_size;
 
   Type *type = node->symbol->value_type;
+  int int_param = 0, double_param = 0;
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->array[i];
     if (symbol->value_type->type == BOOL) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
+      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  cmpb $0, %%al\n");
       printf("  setne %%al\n");
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->value_type->type == CHAR) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
+      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->value_type->type == INT) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
+      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
+    } else if (symbol->value_type->type == DOUBLE) {
+      printf("  movsd %%xmm%d, %d(%%rbp)\n", double_param++, -symbol->offset);
     } else if (symbol->value_type->type == POINTER) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
+      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
     }
   }
