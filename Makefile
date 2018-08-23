@@ -1,4 +1,4 @@
-cc: cc.h string.c vector.c map.c error.c scan.c lex.c cpp.c type.c parse.c analyze.c gen.c main.c
+cc: cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c parse.c analyze.c gen.c main.c
 	gcc -std=c11 -Wall -ggdb string.c vector.c map.c error.c scan.c lex.c cpp.c type.c parse.c analyze.c gen.c main.c -o cc
 
 self: tmp cc cc.h string.c vector.c map.c error.c scan.c lex.c cpp.c type.c parse.c analyze.c gen.c main.c
