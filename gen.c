@@ -737,16 +737,6 @@ void gen_expr_stmt(Node *node) {
 }
 
 void gen_if_stmt(Node *node) {
-  int label_end = label_no++;
-
-  gen_operand(node->control, "rax");
-  printf("  cmpq $0, %%rax\n");
-  gen_jump("je", label_end);
-  gen_stmt(node->if_body);
-  gen_label(label_end);
-}
-
-void gen_if_else_stmt(Node *node) {
   int label_else = label_no++;
   int label_end = label_no++;
 
@@ -756,7 +746,9 @@ void gen_if_else_stmt(Node *node) {
   gen_stmt(node->if_body);
   gen_jump("jmp", label_end);
   gen_label(label_else);
-  gen_stmt(node->else_body);
+  if (node->else_body) {
+    gen_stmt(node->else_body);
+  }
   gen_label(label_end);
 }
 
@@ -855,7 +847,6 @@ void gen_stmt(Node *node) {
   if (node->type == COMP_STMT) gen_comp_stmt(node);
   else if (node->type == EXPR_STMT) gen_expr_stmt(node);
   else if (node->type == IF_STMT) gen_if_stmt(node);
-  else if (node->type == IF_ELSE_STMT) gen_if_else_stmt(node);
   else if (node->type == WHILE_STMT) gen_while_stmt(node);
   else if (node->type == DO_WHILE_STMT) gen_do_while_stmt(node);
   else if (node->type == FOR_STMT) gen_for_stmt(node);
@@ -911,8 +902,8 @@ void gen_func_def(Node *node) {
   return_label = label_no++;
   stack_depth = 8;
 
-  printf("  .global %s\n", node->identifier);
-  printf("%s:\n", node->identifier);
+  printf("  .global %s\n", node->symbol->identifier);
+  printf("%s:\n", node->symbol->identifier);
 
   gen_push("rbp");
   printf("  movq %%rsp, %%rbp\n");

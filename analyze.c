@@ -520,12 +520,9 @@ void analyze_expr_stmt(Node *node) {
 void analyze_if_stmt(Node *node) {
   analyze_expr(node->control);
   analyze_stmt(node->if_body);
-}
-
-void analyze_if_else_stmt(Node *node) {
-  analyze_expr(node->control);
-  analyze_stmt(node->if_body);
-  analyze_stmt(node->else_body);
+  if (node->else_body) {
+    analyze_stmt(node->else_body);
+  }
 }
 
 void analyze_while_stmt(Node *node) {
@@ -596,8 +593,6 @@ void analyze_stmt(Node *node) {
     analyze_expr_stmt(node);
   } else if (node->type == IF_STMT) {
     analyze_if_stmt(node);
-  } else if (node->type == IF_ELSE_STMT) {
-    analyze_if_else_stmt(node);
   } else if (node->type == WHILE_STMT) {
     analyze_while_stmt(node);
   } else if (node->type == DO_WHILE_STMT) {

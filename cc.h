@@ -176,7 +176,6 @@ typedef enum node_type {
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
-  IF_ELSE_STMT,
   WHILE_STMT,
   DO_WHILE_STMT,
   FOR_STMT,
@@ -276,6 +275,31 @@ extern bool type_scalar(Type *type);
 extern bool type_same(Type *type1, Type *type2);
 
 extern Node *node_new();
+extern Node *node_int_const(int int_value, Token *token);
+extern Node *node_float_const(double double_value, Token *token);
+extern Node *node_string_literal(String *string_value, Token *token);
+extern Node *node_identifier(char *identifier, Token *token);
+extern Node *node_func_call(Node *expr, Vector *args, Token *token);
+extern Node *node_dot(Node *expr, char *identifier, Token *token);
+extern Node *node_sizeof(Node *expr, Token *token);
+extern Node *node_unary_expr(NodeType type, Node *expr, Token *token);
+extern Node *node_cast(Type *value_type, Node *expr, Token *token);
+extern Node *node_binary_expr(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_condition(Node *control, Node *left, Node *right, Token *token);
+extern Node *node_assign(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_comp_stmt(Vector *statements);
+extern Node *node_expr_stmt(Node *expr);
+extern Node *node_if_stmt(Node *control, Node *if_body, Node *else_body);
+extern Node *node_while_stmt(Node *control, Node *loop_body);
+extern Node *node_do_while_stmt(Node *control, Node *loop_body);
+extern Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *loop_body);
+extern Node *node_continue_stmt(Token *token);
+extern Node *node_break_stmt(Token *token);
+extern Node *node_return_stmt(Node *node);
+extern Node *node_func_def(Symbol *symbol, Node *function_body, Token *token);
+extern Node *node_trans_unit(Vector *definitions);
+
+
 extern Node *parse(Vector *tokens);
 
 extern void analyze(Node *node);
