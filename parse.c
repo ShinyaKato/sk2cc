@@ -623,16 +623,11 @@ Symbol *declarator(Type *specifier) {
 }
 
 Node *initializer(Symbol *symbol) {
-  Node *id = node_new();
-  id->type = IDENTIFIER;
-  id->identifier = symbol->identifier;
+  Node *id = node_identifier(symbol->identifier, symbol->token);
 
-  Node *node = node_new();
+  Node *node;
   if (!read_token(tLBRACE)) {
-    Node *assign = node_new();
-    assign->type = ASSIGN;
-    assign->left = id;
-    assign->right = assignment_expression();
+    Node *assign = node_assign(ASSIGN, id, assignment_expression(), symbol->token);
 
     node = node_new();
     node->type = VAR_INIT;
@@ -640,24 +635,10 @@ Node *initializer(Symbol *symbol) {
   } else {
     Vector *elements = vector_new();
     do {
-      Node *index = node_new();
-      index->type = INT_CONST;
-      index->int_value = elements->length;
-
-      Node *add = node_new();
-      add->type = ADD;
-      add->left = id;
-      add->right = index;
-
-      Node *left = node_new();
-      left->type = INDIRECT;
-      left->expr = add;
-
-      Node *assign = node_new();
-      assign->type = ASSIGN;
-      assign->left = left;
-      assign->right = assignment_expression();
-
+      Node *index = node_int_const(elements->length, symbol->token);
+      Node *add = node_binary_expr(ADD, id, index, symbol->token);
+      Node *lvalue = node_unary_expr(INDIRECT, add, symbol->token);
+      Node *assign = node_assign(ASSIGN, lvalue, assignment_expression(), symbol->token);
       vector_push(elements, assign);
     } while (read_token(tCOMMA));
     expect_token(tRBRACE);
