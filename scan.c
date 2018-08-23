@@ -1,7 +1,11 @@
 #include "cc.h"
 
-char *read_source(char *file) {
-  FILE *fp = fopen(file, "r");
+char *scan(char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    fprintf(stderr, "%s: failed to open file.", filename);
+    exit(1);
+  }
 
   String *src = string_new();
   while(1) {

@@ -252,11 +252,11 @@ typedef struct node {
 
 extern noreturn void error(Token *token, char *format, ...);
 
-extern char *read_source(char *file);
+extern char *scan(char *filename);
 
-extern Vector *lexical_analyze(char *source_buffer);
+extern Vector *tokenize(char *buffer);
 
-extern Vector *preprocess(Vector *token_vector);
+extern Vector *preprocess(Vector *pp_tokens);
 
 extern Type *type_new();
 extern Type *type_void();
@@ -276,7 +276,7 @@ extern bool type_scalar(Type *type);
 extern bool type_same(Type *type1, Type *type2);
 
 extern Node *node_new();
-extern Node *parse(Vector *token_vector);
+extern Node *parse(Vector *tokens);
 
 extern void analyze(Node *node);
 

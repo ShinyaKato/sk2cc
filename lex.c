@@ -58,9 +58,7 @@ char get_escape_sequence() {
 }
 
 Token *lex() {
-  while (peek_char() == ' ') {
-    get_char();
-  }
+  while (read_char(' '));
 
   Token *token = token_new();
   if (isdigit(peek_char())) {
@@ -268,19 +266,19 @@ Token *lex() {
   return token;
 }
 
-Vector *lexical_analyze(char *source_buffer) {
+Vector *tokenize(char *input_buffer) {
   buffer_pos = 0;
   lineno = 0;
   column = 0;
-  buffer = source_buffer;
-  source = source_buffer;
+  buffer = input_buffer;
+  source = input_buffer;
 
-  Vector *tokens = vector_new();
+  Vector *pp_tokens = vector_new();
   while (1) {
-    Token *token = lex();
-    vector_push(tokens, token);
-    if (token->type == tEND) break;
+    Token *pp_token = lex();
+    vector_push(pp_tokens, pp_token);
+    if (pp_token->type == tEND) break;
   }
 
-  return tokens;
+  return pp_tokens;
 }

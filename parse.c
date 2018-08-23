@@ -473,7 +473,6 @@ Node *equality_expression(Node *cast_expr) {
 Node *and_expression(Node *cast_expr) {
   Node *node = equality_expression(cast_expr);
 
-  Token *token;
   while (1) {
     Token *token = peek_token();
     if (!read_token(tAND)) break;
@@ -1056,9 +1055,9 @@ Node *translate_unit() {
   return node;
 }
 
-Node *parse(Vector *token_vector) {
+Node *parse(Vector *input_tokens) {
   tokens_pos = 0;
-  tokens = token_vector;
+  tokens = input_tokens;
 
   tags = map_new();
   typedef_names = map_new();

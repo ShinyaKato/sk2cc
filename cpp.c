@@ -2,11 +2,11 @@
 
 Map *macros;
 
-void directives(Vector *process_token, Vector *token_vector) {
+void directives(Vector *tokens, Vector *pp_tokens) {
   bool newline = true;
 
-  for (int i = 0; i < token_vector->length; i++) {
-    Token *token = token_vector->array[i];
+  for (int i = 0; i < pp_tokens->length; i++) {
+    Token *token = pp_tokens->array[i];
 
     if (token->type == tNEWLINE) {
       newline = true;
@@ -15,33 +15,33 @@ void directives(Vector *process_token, Vector *token_vector) {
 
     if (newline && token->type == tHASH) {
       i++;
-      Token *directive = token_vector->array[i];
+      Token *directive = pp_tokens->array[i];
 
       if (directive->type == tIDENTIFIER && strcmp(directive->identifier, "include") == 0) {
         i++;
-        Token *header = token_vector->array[i];
+        Token *header = pp_tokens->array[i];
 
         if (header->type == tSTRING_LITERAL) {
-          char *file = header->string_value->buffer;
-          char *src = read_source(file);
-          Vector *tokens = lexical_analyze(src);
-          directives(process_token, tokens);
-          vector_pop(process_token);
+          char *filename = header->string_value->buffer;
+          char *buffer = scan(filename);
+          Vector *include_pp_tokens = tokenize(buffer);
+          directives(tokens, include_pp_tokens);
+          vector_pop(tokens);
           continue;
         } else {
           while (1) {
-            Token *next = token_vector->array[i++];
+            Token *next = pp_tokens->array[i++];
             if (next->type == tNEWLINE) break;
           }
           continue;
         }
       } else if (directive->type == tIDENTIFIER && strcmp(directive->identifier, "define") == 0) {
         i++;
-        Token *id = token_vector->array[i++];
+        Token *id = pp_tokens->array[i++];
 
         Vector *sequence = vector_new();
         while (1) {
-          Token *next = token_vector->array[i];
+          Token *next = pp_tokens->array[i];
           if (next->type == tNEWLINE) break;
           i++;
           vector_push(sequence, next);
@@ -55,20 +55,20 @@ void directives(Vector *process_token, Vector *token_vector) {
     if (token->type == tIDENTIFIER && map_lookup(macros, token->identifier)) {
       Vector *sequence = map_lookup(macros, token->identifier);
       for (int j = 0; j < sequence->length; j++) {
-        vector_push(process_token, sequence->array[j]);
+        vector_push(tokens, sequence->array[j]);
       }
     } else {
-      vector_push(process_token, token);
+      vector_push(tokens, token);
     }
     newline = false;
   }
 }
 
-Vector *preprocess(Vector *token_vector) {
+Vector *preprocess(Vector *pp_tokens) {
   macros = map_new();
 
-  Vector *process_tokens = vector_new();
-  directives(process_tokens, token_vector);
+  Vector *tokens = vector_new();
+  directives(tokens, pp_tokens);
 
-  return process_tokens;
+  return tokens;
 }
