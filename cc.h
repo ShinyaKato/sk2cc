@@ -285,7 +285,7 @@ extern void begin_global_scope();
 extern Node *node_new();
 extern Node *node_int_const(int int_value, Token *token);
 extern Node *node_float_const(double double_value, Token *token);
-extern Node *node_string_literal(String *string_value, Token *token);
+extern Node *node_string_literal(String *string_value, int string_label, Token *token);
 extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Node *node_func_call(Node *expr, Vector *args, Token *token);
 extern Node *node_dot(Node *expr, char *identifier, Token *token);
@@ -305,7 +305,7 @@ extern Node *node_continue_stmt(int continue_level, Token *token);
 extern Node *node_break_stmt(int break_level, Token *token);
 extern Node *node_return_stmt(Node *node);
 extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token);
-extern Node *node_trans_unit(Vector *definitions);
+extern Node *node_trans_unit(Vector *string_literals, Vector *definitions);
 
 extern Node *parse(Vector *tokens);
 

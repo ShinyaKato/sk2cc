@@ -21,10 +21,11 @@ Node *node_float_const(double double_value, Token *token) {
   return node;
 }
 
-Node *node_string_literal(String *string_value, Token *token) {
+Node *node_string_literal(String *string_value, int string_label, Token *token) {
   Node *node = node_new();
   node->type = STRING_LITERAL;
   node->string_value = string_value;
+  node->string_label = string_label;
   node->token = token;
   return node;
 }
@@ -197,9 +198,10 @@ Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, To
   return node;
 }
 
-Node *node_trans_unit(Vector *definitions) {
+Node *node_trans_unit(Vector *string_literals, Vector *definitions) {
   Node *node = node_new();
   node->type = TLANS_UNIT;
+  node->string_literals = string_literals;
   node->definitions = definitions;
   return node;
 }

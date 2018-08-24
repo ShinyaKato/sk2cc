@@ -1,7 +1,5 @@
 #include "cc.h"
 
-Vector *string_literals;
-
 bool check_lvalue(NodeType type) {
   return type == IDENTIFIER || type == INDIRECT || type == DOT;
 }
@@ -20,8 +18,6 @@ void analyze_string_literal(Node *node) {
   String *string_value = node->string_value;
   Type *type = type_array_of(type_char(), string_value->length);
   node->value_type = type_convert(type);
-  node->string_label = string_literals->length;
-  vector_push(string_literals, node->string_value);
 }
 
 void analyze_identifier(Node *node) {
@@ -549,9 +545,5 @@ void analyze_trans_unit(Node *node) {
 }
 
 void analyze(Node *node) {
-  string_literals = vector_new();
-
   analyze_trans_unit(node);
-
-  node->string_literals = string_literals;
 }

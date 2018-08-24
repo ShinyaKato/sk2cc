@@ -72,6 +72,7 @@ char *token_type_name[] = {
 int tokens_pos;
 Vector *tokens;
 
+Vector *string_literals;
 Map *tags, *typedef_names, *enum_constants;
 int continue_level, break_level;
 
@@ -161,7 +162,9 @@ Node *primary_expression() {
     return node_float_const(token->double_value, token);
   }
   if (token->type == tSTRING_LITERAL) {
-    return node_string_literal(token->string_value, token);
+    int string_label = string_literals->length;
+    vector_push(string_literals, token->string_value);
+    return node_string_literal(token->string_value, string_label, token);
   }
   if (token->type == tIDENTIFIER) {
     int *enum_value = map_lookup(enum_constants, token->identifier);
@@ -849,7 +852,6 @@ Node *function_definition(Symbol *symbol) {
 
 Node *translate_unit() {
   begin_global_scope();
-  Vector *declarations = vector_new();
   Vector *definitions = vector_new();
   while (!check_token(tEND)) {
     Type *specifier = declaration_specifiers();
@@ -869,12 +871,14 @@ Node *translate_unit() {
   }
   end_scope();
 
-  return node_trans_unit(definitions);
+  return node_trans_unit(string_literals, definitions);
 }
 
 Node *parse(Vector *input_tokens) {
   tokens_pos = 0;
   tokens = input_tokens;
+
+  string_literals = vector_new();
 
   tags = map_new();
   typedef_names = map_new();
