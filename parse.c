@@ -71,6 +71,7 @@ char *token_type_name[] = {
 
 int tokens_pos;
 Vector *tokens;
+
 Map *tags, *typedef_names, *enum_constants;
 
 Token *peek_token() {
@@ -97,43 +98,42 @@ Token *optional_token(TokenType type) {
 }
 
 bool read_token(TokenType type) {
-  bool equal = peek_token()->type == type;
-  if (equal) get_token();
-  return equal;
+  if (peek_token()->type == type) {
+    get_token();
+    return true;
+  }
+  return false;
+}
+
+bool check_token(TokenType type) {
+  return peek_token()->type == type;
+}
+
+bool check_strage_class_specifier() {
+  return check_token(tTYPEDEF);
+}
+
+bool check_type_specifier() {
+  TokenType specifiers[7] = { tVOID, tBOOL, tCHAR, tINT, tDOUBLE, tSTRUCT, tENUM };
+  for (int i = 0; i < 7; i++) {
+    if (check_token(specifiers[i])) {
+      return true;
+    }
+  }
+  return check_token(tIDENTIFIER) && map_lookup(typedef_names, peek_token()->identifier);
+}
+
+bool check_function_specifier() {
+  return check_token(tNORETURN);
+}
+
+bool check_declaration_specifier() {
+  return check_strage_class_specifier() || check_type_specifier() || check_function_specifier();
 }
 
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   return symbol;
-}
-
-bool check_strage_class_specifier() {
-  Token *token = peek_token();
-  if (token->type == tTYPEDEF) return true;
-  return false;
-}
-
-bool check_type_specifier() {
-  Token *token = peek_token();
-  if (token->type == tVOID) return true;
-  if (token->type == tBOOL) return true;
-  if (token->type == tCHAR) return true;
-  if (token->type == tINT) return true;
-  if (token->type == tDOUBLE) return true;
-  if (token->type == tSTRUCT) return true;
-  if (token->type == tENUM) return true;
-  if (token->type == tIDENTIFIER && map_lookup(typedef_names, token->identifier)) return true;
-  return false;
-}
-
-bool check_function_specifier() {
-  Token *token = peek_token();
-  if (token->type == tNORETURN) return true;
-  return false;
-}
-
-bool check_declaration_specifier() {
-  return check_strage_class_specifier() || check_type_specifier() || check_function_specifier();
 }
 
 Node *assignment_expression();
@@ -175,7 +175,7 @@ Node *postfix_expression() {
     Token *token = peek_token();
     if (read_token(tLPAREN)) {
       Vector *args = vector_new();
-      if (peek_token()->type != tRPAREN) {
+      if (!check_token(tRPAREN)) {
         do {
           vector_push(args, assignment_expression());
         } while (read_token(tCOMMA));
@@ -492,7 +492,7 @@ Type *struct_or_union_specifier() {
       map_put(members, symbol->identifier, symbol->value_type);
     } while (read_token(tCOMMA));
     expect_token(tSEMICOLON);
-  } while (peek_token()->type != tRBRACE && peek_token()->type != tEND);
+  } while (!check_token(tRBRACE) && !check_token(tEND));
   expect_token(tRBRACE);
 
   Type *type = type_struct(identifiers, members);
@@ -544,9 +544,9 @@ Type *type_specifier() {
     return type_int();
   } else if (read_token(tDOUBLE)) {
     return type_double();
-  } else if (peek_token()->type == tSTRUCT) {
+  } else if (check_token(tSTRUCT)) {
     return struct_or_union_specifier();
-  } else if (peek_token()->type == tENUM) {
+  } else if (check_token(tENUM)) {
     return enum_specifier();
   }
 
@@ -571,7 +571,7 @@ Type *declaration_specifiers() {
 Type *direct_declarator(Type *type) {
   if (read_token(tLBRACKET)) {
     int size = 0;
-    if (peek_token()->type == tINT_CONST) {
+    if (check_token(tINT_CONST)) {
       size = get_token()->int_value;
     }
     expect_token(tRBRACKET);
@@ -581,7 +581,7 @@ Type *direct_declarator(Type *type) {
   if (read_token(tLPAREN)) {
     Vector *params = vector_new();
     bool ellipsis = false;
-    if (peek_token()->type != tRPAREN) {
+    if (!check_token(tRPAREN)) {
       do {
         if (read_token(tELLIPSIS)) {
           ellipsis = true;
@@ -706,7 +706,7 @@ Node *compound_statement() {
   Vector *statements = vector_new();
 
   expect_token(tLBRACE);
-  while (peek_token()->type != tRBRACE && peek_token()->type != tEND) {
+  while (!check_token(tRBRACE) && !check_token(tEND)) {
     if (check_declaration_specifier()) {
       vector_push(statements, declaration(declaration_specifiers(), NULL));
     } else {
@@ -719,7 +719,7 @@ Node *compound_statement() {
 }
 
 Node *expression_statement() {
-  Node *expr = peek_token()->type != tSEMICOLON ? expression() : NULL;
+  Node *expr = !check_token(tSEMICOLON) ? expression() : NULL;
   expect_token(tSEMICOLON);
 
   return node_expr_stmt(expr);
@@ -765,12 +765,12 @@ Node *for_statement() {
   if (check_declaration_specifier()) {
     init = declaration(declaration_specifiers(), NULL);
   } else {
-    init = peek_token()->type != tSEMICOLON ? expression() : NULL;
+    init = !check_token(tSEMICOLON) ? expression() : NULL;
     expect_token(tSEMICOLON);
   }
-  Node *control = peek_token()->type != tSEMICOLON ? expression() : NULL;
+  Node *control = !check_token(tSEMICOLON) ? expression() : NULL;
   expect_token(tSEMICOLON);
-  Node *afterthrough = peek_token()->type != tRPAREN ? expression() : NULL;
+  Node *afterthrough = !check_token(tRPAREN) ? expression() : NULL;
   expect_token(tRPAREN);
   Node *loop_body = statement();
 
@@ -793,7 +793,7 @@ Node *break_statement() {
 
 Node *return_statement() {
   expect_token(tRETURN);
-  Node *expr = peek_token()->type != tSEMICOLON ? expression() : NULL;
+  Node *expr = !check_token(tSEMICOLON) ? expression() : NULL;
   expect_token(tSEMICOLON);
 
   return node_return_stmt(expr);
@@ -819,14 +819,14 @@ Node *function_definition(Symbol *symbol) {
 Node *translate_unit() {
   Vector *definitions = vector_new();
 
-  while (peek_token()->type != tEND) {
+  while (!check_token(tEND)) {
     Type *specifier = declaration_specifiers();
-    if (peek_token()->type == tSEMICOLON) {
+    if (check_token(tSEMICOLON)) {
       Node *node = declaration(specifier, NULL);
       vector_push(definitions, node);
     } else {
       Symbol *first_decl = declarator(specifier);
-      if (peek_token()->type == tLBRACE) {
+      if (check_token(tLBRACE)) {
         Node *node = function_definition(first_decl);
         vector_push(definitions, node);
       } else {
