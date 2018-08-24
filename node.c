@@ -155,17 +155,24 @@ Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *loop_bo
   node->afterthrough = afterthrough;
   node->loop_body = loop_body;
   return node;
-  return node;
 }
 
-Node *node_continue_stmt(Token *token) {
+Node *node_continue_stmt(int continue_level, Token *token) {
+  if (continue_level == 0) {
+    error(token, "continue statement should appear in loops.");
+  }
+
   Node *node = node_new();
   node->type = CONTINUE_STMT;
   node->token = token;
   return node;
 }
 
-Node *node_break_stmt(Token *token) {
+Node *node_break_stmt(int break_level, Token *token) {
+  if (break_level == 0) {
+    error(token, "break statement should appear in loops.");
+  }
+
   Node *node = node_new();
   node->type = BREAK_STMT;
   node->token = token;

@@ -73,6 +73,7 @@ int tokens_pos;
 Vector *tokens;
 
 Map *tags, *typedef_names, *enum_constants;
+int continue_level, break_level;
 
 Token *peek_token() {
   return tokens->array[tokens_pos];
@@ -129,6 +130,16 @@ bool check_function_specifier() {
 
 bool check_declaration_specifier() {
   return check_strage_class_specifier() || check_type_specifier() || check_function_specifier();
+}
+
+void begin_loop() {
+  continue_level++;
+  break_level++;
+}
+
+void end_loop() {
+  continue_level--;
+  break_level--;
 }
 
 Symbol *symbol_new() {
@@ -737,16 +748,19 @@ Node *if_statement() {
 }
 
 Node *while_statement() {
+  begin_loop();
   expect_token(tWHILE);
   expect_token(tLPAREN);
   Node *control = expression();
   expect_token(tRPAREN);
   Node *loop_body = statement();
+  end_loop();
 
   return node_while_stmt(control, loop_body);
 }
 
 Node *do_while_statement() {
+  begin_loop();
   expect_token(tDO);
   Node *loop_body = statement();
   expect_token(tWHILE);
@@ -754,11 +768,13 @@ Node *do_while_statement() {
   Node *control = expression();
   expect_token(tRPAREN);
   expect_token(tSEMICOLON);
+  end_loop();
 
   return node_do_while_stmt(control, loop_body);
 }
 
 Node *for_statement() {
+  begin_loop();
   expect_token(tFOR);
   expect_token(tLPAREN);
   Node *init;
@@ -773,6 +789,7 @@ Node *for_statement() {
   Node *afterthrough = !check_token(tRPAREN) ? expression() : NULL;
   expect_token(tRPAREN);
   Node *loop_body = statement();
+  end_loop();
 
   return node_for_stmt(init, control, afterthrough, loop_body);
 }
@@ -781,14 +798,14 @@ Node *continue_statement() {
   Token *token = expect_token(tCONTINUE);
   expect_token(tSEMICOLON);
 
-  return node_continue_stmt(token);
+  return node_continue_stmt(continue_level, token);
 }
 
 Node *break_statement() {
   Token *token = expect_token(tBREAK);
   expect_token(tSEMICOLON);
 
-  return node_break_stmt(token);
+  return node_break_stmt(break_level, token);
 }
 
 Node *return_statement() {
@@ -846,6 +863,9 @@ Node *parse(Vector *input_tokens) {
   tags = map_new();
   typedef_names = map_new();
   enum_constants = map_new();
+
+  continue_level = 0;
+  break_level = 0;
 
   return translate_unit();
 }

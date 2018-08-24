@@ -3,7 +3,6 @@
 Vector *string_literals;
 Vector *scopes;
 int local_vars_size;
-int break_level, continue_level;
 
 Symbol *lookup_symbol(char *identifier) {
   for (int i = scopes->length - 1; i >= 0; i--) {
@@ -526,31 +525,16 @@ void analyze_if_stmt(Node *node) {
 }
 
 void analyze_while_stmt(Node *node) {
-  continue_level++;
-  break_level++;
-
   analyze_expr(node->control);
   analyze_stmt(node->loop_body);
-
-  continue_level--;
-  break_level--;
 }
 
 void analyze_do_while_stmt(Node *node) {
-  continue_level++;
-  break_level++;
-
   analyze_expr(node->control);
   analyze_stmt(node->loop_body);
-
-  continue_level--;
-  break_level--;
 }
 
 void analyze_for_stmt(Node *node) {
-  continue_level++;
-  break_level++;
-
   make_scope();
   if (node->init) {
     if (node->init->type == VAR_DECL) {
@@ -563,21 +547,6 @@ void analyze_for_stmt(Node *node) {
   if (node->afterthrough) analyze_expr(node->afterthrough);
   analyze_stmt(node->loop_body);
   remove_scope();
-
-  continue_level--;
-  break_level--;
-}
-
-void analyze_continue_stmt(Node *node) {
-  if (continue_level == 0) {
-    error(node->token, "continue statement should appear in loops.");
-  }
-}
-
-void analyze_break_stmt(Node *node) {
-  if (break_level == 0) {
-    error(node->token, "break statement should appear in loops.");
-  }
 }
 
 void analyze_return_stmt(Node *node) {
@@ -599,10 +568,6 @@ void analyze_stmt(Node *node) {
     analyze_do_while_stmt(node);
   } else if (node->type == FOR_STMT) {
     analyze_for_stmt(node);
-  } else if (node->type == CONTINUE_STMT) {
-    analyze_continue_stmt(node);
-  } else if (node->type == BREAK_STMT) {
-    analyze_break_stmt(node);
   } else if (node->type == RETURN_STMT) {
     analyze_return_stmt(node);
   }
@@ -646,9 +611,6 @@ void analyze(Node *node) {
 
   scopes = vector_new();
   make_scope();
-
-  break_level = 0;
-  continue_level = 0;
 
   analyze_trans_unit(node);
 

@@ -293,12 +293,11 @@ extern Node *node_if_stmt(Node *control, Node *if_body, Node *else_body);
 extern Node *node_while_stmt(Node *control, Node *loop_body);
 extern Node *node_do_while_stmt(Node *control, Node *loop_body);
 extern Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *loop_body);
-extern Node *node_continue_stmt(Token *token);
-extern Node *node_break_stmt(Token *token);
+extern Node *node_continue_stmt(int continue_level, Token *token);
+extern Node *node_break_stmt(int break_level, Token *token);
 extern Node *node_return_stmt(Node *node);
 extern Node *node_func_def(Symbol *symbol, Node *function_body, Token *token);
 extern Node *node_trans_unit(Vector *definitions);
-
 
 extern Node *parse(Vector *tokens);
 
