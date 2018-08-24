@@ -274,11 +274,19 @@ extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
 extern bool type_same(Type *type1, Type *type2);
 
+extern int get_local_vars_size();
+extern Symbol *symbol_lookup(char *identifier);
+extern void symbol_put(char *identifier, Symbol *symbol);
+extern void begin_scope();
+extern void end_scope();
+extern void begin_function_scope(Symbol *symbol);
+extern void begin_global_scope();
+
 extern Node *node_new();
 extern Node *node_int_const(int int_value, Token *token);
 extern Node *node_float_const(double double_value, Token *token);
 extern Node *node_string_literal(String *string_value, Token *token);
-extern Node *node_identifier(char *identifier, Token *token);
+extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Node *node_func_call(Node *expr, Vector *args, Token *token);
 extern Node *node_dot(Node *expr, char *identifier, Token *token);
 extern Node *node_sizeof(Node *expr, Token *token);
@@ -296,7 +304,7 @@ extern Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *
 extern Node *node_continue_stmt(int continue_level, Token *token);
 extern Node *node_break_stmt(int break_level, Token *token);
 extern Node *node_return_stmt(Node *node);
-extern Node *node_func_def(Symbol *symbol, Node *function_body, Token *token);
+extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token);
 extern Node *node_trans_unit(Vector *definitions);
 
 extern Node *parse(Vector *tokens);

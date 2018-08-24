@@ -29,10 +29,11 @@ Node *node_string_literal(String *string_value, Token *token) {
   return node;
 }
 
-Node *node_identifier(char *identifier, Token *token) {
+Node *node_identifier(char *identifier, Symbol *symbol, Token *token) {
   Node *node = node_new();
   node->type = IDENTIFIER;
   node->identifier = identifier;
+  node->symbol = symbol;
   node->token = token;
   return node;
 }
@@ -186,10 +187,11 @@ Node *node_return_stmt(Node *expr) {
   return node;
 }
 
-Node *node_func_def(Symbol *symbol, Node *function_body, Token *token) {
+Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token) {
   Node *node = node_new();
   node->type = FUNC_DEF;
   node->symbol = symbol;
+  node->local_vars_size = local_vars_size;
   node->function_body = function_body;
   node->token = token;
   return node;

@@ -1,46 +1,6 @@
 #include "cc.h"
 
 Vector *string_literals;
-Vector *scopes;
-int local_vars_size;
-
-Symbol *lookup_symbol(char *identifier) {
-  for (int i = scopes->length - 1; i >= 0; i--) {
-    Map *map = scopes->array[i];
-    Symbol *symbol = map_lookup(map, identifier);
-    if (symbol) return symbol;
-  }
-  return NULL;
-}
-
-void put_symbol(char *identifier, Symbol *symbol) {
-  Map *map = scopes->array[scopes->length - 1];
-  Symbol *previous = map_lookup(map, identifier);
-  if (previous && !previous->declaration) {
-    error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
-  }
-
-  if (scopes->length == 1) {
-    symbol->type = GLOBAL;
-  } else {
-    int size = symbol->value_type->size;
-    if (size % 8 != 0) size = size / 8 * 8 + 8;
-    local_vars_size += size;
-
-    symbol->type = LOCAL;
-    symbol->offset = local_vars_size;
-  }
-
-  map_put(map, identifier, symbol);
-}
-
-void make_scope() {
-  vector_push(scopes, map_new());
-}
-
-void remove_scope() {
-  vector_pop(scopes);
-}
 
 bool check_lvalue(NodeType type) {
   return type == IDENTIFIER || type == INDIRECT || type == DOT;
@@ -65,10 +25,8 @@ void analyze_string_literal(Node *node) {
 }
 
 void analyze_identifier(Node *node) {
-  Symbol *symbol = lookup_symbol(node->identifier);
-  if (symbol) {
-    node->symbol = symbol;
-    node->value_type = type_convert(symbol->value_type);
+  if (node->symbol) {
+    node->value_type = type_convert(node->symbol->value_type);
   } else {
     node->value_type = type_int();
   }
@@ -479,8 +437,6 @@ void analyze_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
     Node *init_decl = node->declarations->array[i];
     Symbol *symbol = init_decl->symbol;
-    put_symbol(symbol->identifier, symbol);
-
     Node *init = init_decl->initializer;
     if (init) {
       if (init->type == VAR_INIT) {
@@ -535,7 +491,6 @@ void analyze_do_while_stmt(Node *node) {
 }
 
 void analyze_for_stmt(Node *node) {
-  make_scope();
   if (node->init) {
     if (node->init->type == VAR_DECL) {
       analyze_var_decl(node->init);
@@ -546,7 +501,6 @@ void analyze_for_stmt(Node *node) {
   if (node->control) analyze_expr(node->control);
   if (node->afterthrough) analyze_expr(node->afterthrough);
   analyze_stmt(node->loop_body);
-  remove_scope();
 }
 
 void analyze_return_stmt(Node *node) {
@@ -555,9 +509,7 @@ void analyze_return_stmt(Node *node) {
 
 void analyze_stmt(Node *node) {
   if (node->type == COMP_STMT) {
-    make_scope();
     analyze_comp_stmt(node);
-    remove_scope();
   } else if (node->type == EXPR_STMT) {
     analyze_expr_stmt(node);
   } else if (node->type == IF_STMT) {
@@ -574,25 +526,15 @@ void analyze_stmt(Node *node) {
 }
 
 void analyze_func_def(Node *node) {
-  if (node->symbol->value_type->type == ARRAY) {
+  if (node->symbol->value_type->function_returning->type == ARRAY) {
     error(node->symbol->token, "returning type of function should not be array type.");
   }
-  put_symbol(node->symbol->identifier, node->symbol);
 
-  local_vars_size = node->symbol->value_type->ellipsis ? 176 : 0;
-  make_scope();
   Type *type = node->symbol->value_type;
   if (type->params->length > 6) {
     error(node->token, "too many parameters.");
   }
-  for (int i = 0; i < type->params->length; i++) {
-    Symbol *param = type->params->array[i];
-    put_symbol(param->identifier, param);
-  }
   analyze_comp_stmt(node->function_body);
-  remove_scope();
-
-  node->local_vars_size = local_vars_size;
 }
 
 void analyze_trans_unit(Node *node) {
@@ -608,9 +550,6 @@ void analyze_trans_unit(Node *node) {
 
 void analyze(Node *node) {
   string_literals = vector_new();
-
-  scopes = vector_new();
-  make_scope();
 
   analyze_trans_unit(node);
 

@@ -168,7 +168,8 @@ Node *primary_expression() {
     if (enum_value) {
       return node_int_const(*enum_value, token);
     }
-    return node_identifier(token->identifier, token);
+    Symbol *symbol = symbol_lookup(token->identifier);
+    return node_identifier(token->identifier, symbol, token);
   }
   if (token->type == tLPAREN) {
     Node *node = expression();
@@ -634,7 +635,7 @@ Symbol *declarator(Type *specifier) {
 }
 
 Node *initializer(Symbol *symbol) {
-  Node *id = node_identifier(symbol->identifier, symbol->token);
+  Node *id = node_identifier(symbol->identifier, symbol, symbol->token);
 
   Node *node;
   if (!read_token(tLBRACE)) {
@@ -689,6 +690,7 @@ Node *declaration(Type *specifier, Symbol *first_decl) {
       Node *first_init_decl = init_declarator(specifier, first_decl);
       first_decl->declaration = specifier->external || first_decl->value_type->type == FUNCTION;
       vector_push(declarations, first_init_decl);
+      symbol_put(first_decl->identifier, first_decl);
     }
 
     while (read_token(tCOMMA)) {
@@ -699,6 +701,7 @@ Node *declaration(Type *specifier, Symbol *first_decl) {
         Node *init_decl = init_declarator(specifier, decl);
         decl->declaration = specifier->external || decl->value_type->type == FUNCTION;
         vector_push(declarations, init_decl);
+        symbol_put(decl->identifier, decl);
       }
     }
     expect_token(tSEMICOLON);
@@ -715,7 +718,6 @@ Node *statement();
 
 Node *compound_statement() {
   Vector *statements = vector_new();
-
   expect_token(tLBRACE);
   while (!check_token(tRBRACE) && !check_token(tEND)) {
     if (check_declaration_specifier()) {
@@ -774,6 +776,7 @@ Node *do_while_statement() {
 }
 
 Node *for_statement() {
+  begin_scope();
   begin_loop();
   expect_token(tFOR);
   expect_token(tLPAREN);
@@ -790,6 +793,7 @@ Node *for_statement() {
   expect_token(tRPAREN);
   Node *loop_body = statement();
   end_loop();
+  end_scope();
 
   return node_for_stmt(init, control, afterthrough, loop_body);
 }
@@ -818,7 +822,12 @@ Node *return_statement() {
 
 Node *statement() {
   TokenType type = peek_token()->type;
-  if (type == tLBRACE) return compound_statement();
+  if (type == tLBRACE) {
+    begin_scope();
+    Node *node = compound_statement();
+    end_scope();
+    return node;
+  }
   if (type == tIF) return if_statement();
   if (type == tWHILE) return while_statement();
   if (type == tDO) return do_while_statement();
@@ -830,12 +839,18 @@ Node *statement() {
 }
 
 Node *function_definition(Symbol *symbol) {
-  return node_func_def(symbol, compound_statement(), symbol->token);
+  begin_function_scope(symbol);
+  Node *function_body = compound_statement();
+  int local_vars_size = get_local_vars_size();
+  end_scope();
+
+  return node_func_def(symbol, function_body, local_vars_size, symbol->token);
 }
 
 Node *translate_unit() {
+  begin_global_scope();
+  Vector *declarations = vector_new();
   Vector *definitions = vector_new();
-
   while (!check_token(tEND)) {
     Type *specifier = declaration_specifiers();
     if (check_token(tSEMICOLON)) {
@@ -852,6 +867,7 @@ Node *translate_unit() {
       }
     }
   }
+  end_scope();
 
   return node_trans_unit(definitions);
 }
