@@ -200,19 +200,19 @@ Node *postfix_expression() {
     } else if (read_token(tLBRACKET)) {
       Node *index = expression();
       expect_token(tRBRACKET);
-      Node *expr = node_binary_expr(ADD, node, index, token);
-      node = node_unary_expr(INDIRECT, expr, token);
+      Node *expr = node_additive(ADD, node, index, token);
+      node = node_indirect(expr, token);
     } else if (read_token(tDOT)) {
       char *member = expect_token(tIDENTIFIER)->identifier;
       node = node_dot(node, member, token);
     } else if (read_token(tARROW)) {
       char *member = expect_token(tIDENTIFIER)->identifier;
-      Node *expr = node_unary_expr(INDIRECT, node, token);
+      Node *expr = node_indirect(node, token);
       node = node_dot(expr, member, token);
     } else if (read_token(tINC)) {
-      node = node_unary_expr(POST_INC, node, token);
+      node = node_inc(POST_INC, node, token);
     } else if (read_token(tDEC)) {
-      node = node_unary_expr(POST_DEC, node, token);
+      node = node_dec(POST_DEC, node, token);
     } else {
       break;
     }
@@ -225,18 +225,18 @@ Node *unary_expression() {
   Token *token = peek_token();
 
   if (read_token(tSIZEOF)) {
+    Type *type;
     if (read_token(tLPAREN)) {
-      Node *node;
       if (check_type_specifier()) {
-        Type *type = type_name();
-        node = node_int_const(type->original_size, token);
+        type = type_name();
       } else {
-        node = node_unary_expr(SIZEOF, expression(), token);
+        type = expression()->value_type;
       }
       expect_token(tRPAREN);
-      return node;
+    } else {
+      type = unary_expression()->value_type;
     }
-    return node_unary_expr(SIZEOF, unary_expression(), token);
+    return node_int_const(type->original_size, token);
   }
 
   if (read_token(tALIGNOF)) {
@@ -246,18 +246,34 @@ Node *unary_expression() {
     return node_int_const(type->align, token);
   }
 
-  NodeType type;
-  if (read_token(tINC)) type = PRE_INC;
-  else if (read_token(tDEC)) type = PRE_DEC;
-  else if (read_token(tAND)) type = ADDRESS;
-  else if (read_token(tMUL)) type = INDIRECT;
-  else if (read_token(tADD)) type = UPLUS;
-  else if (read_token(tSUB)) type = UMINUS;
-  else if (read_token(tNOT)) type = NOT;
-  else if (read_token(tLNOT)) type = LNOT;
-  else return postfix_expression();
+  if (read_token(tINC)) {
+    return node_inc(PRE_INC, unary_expression(), token);
+  }
+  if (read_token(tDEC)) {
+    return node_dec(PRE_DEC, unary_expression(), token);
+  }
 
-  return node_unary_expr(type, unary_expression(), token);
+  if (read_token(tAND)) {
+    return node_address(unary_expression(), token);
+  }
+  if (read_token(tMUL)) {
+    return node_indirect(unary_expression(), token);
+  }
+
+  if (read_token(tADD)) {
+    return node_unary_arithmetic(UPLUS, unary_expression(), token);
+  }
+  if (read_token(tSUB)) {
+    return node_unary_arithmetic(UMINUS, unary_expression(), token);
+  }
+  if (read_token(tNOT)) {
+    return node_unary_arithmetic(NOT, unary_expression(), token);
+  }
+  if (read_token(tLNOT)) {
+    return node_unary_arithmetic(LNOT, unary_expression(), token);
+  }
+
+  return postfix_expression();
 }
 
 Node *cast_expression() {
@@ -289,7 +305,7 @@ Node *multiplicative_expression(Node *cast_expr) {
     else break;
 
     Node *right = cast_expression();
-    node = node_binary_expr(type, node, right, token);
+    node = node_multiplicative(type, node, right, token);
   }
 
   return node;
@@ -306,7 +322,7 @@ Node *additive_expression(Node *cast_expr) {
     else break;
 
     Node *right = multiplicative_expression(cast_expression());
-    node = node_binary_expr(type, node, right, token);
+    node = node_additive(type, node, right, token);
   }
 
   return node;
@@ -323,7 +339,7 @@ Node *shift_expression(Node *cast_expr) {
     else break;
 
     Node *right = additive_expression(cast_expression());
-    node = node_binary_expr(type, node, right, token);
+    node = node_shift(type, node, right, token);
   }
 
   return node;
@@ -342,7 +358,7 @@ Node *relational_expression(Node *cast_expr) {
     else break;
 
     Node *right = shift_expression(cast_expression());
-    node = node_binary_expr(type, node, right, token);
+    node = node_relational(type, node, right, token);
   }
 
   return node;
@@ -359,7 +375,7 @@ Node *equality_expression(Node *cast_expr) {
     else break;
 
     Node *right = relational_expression(cast_expression());
-    node = node_binary_expr(type, node, right, token);
+    node = node_equality(type, node, right, token);
   }
 
   return node;
@@ -373,7 +389,7 @@ Node *and_expression(Node *cast_expr) {
     if (!read_token(tAND)) break;
 
     Node *right = equality_expression(cast_expression());
-    node = node_binary_expr(AND, node, right, token);
+    node = node_bitwise(AND, node, right, token);
   }
 
   return node;
@@ -387,7 +403,7 @@ Node *exclusive_or_expression(Node *cast_expr) {
     if (!read_token(tXOR)) break;
 
     Node *right = and_expression(cast_expression());
-    node = node_binary_expr(XOR, node, right, token);
+    node = node_bitwise(XOR, node, right, token);
   }
 
   return node;
@@ -401,7 +417,7 @@ Node *inclusive_or_expression(Node *cast_expr) {
     if (!read_token(tOR)) break;
 
     Node *right = exclusive_or_expression(cast_expression());
-    node = node_binary_expr(OR, node, right, token);
+    node = node_bitwise(OR, node, right, token);
   }
 
   return node;
@@ -415,7 +431,7 @@ Node *logical_and_expression(Node *cast_expr) {
     if (!read_token(tLAND)) break;
 
     Node *right = inclusive_or_expression(cast_expression());
-    node = node_binary_expr(LAND, node, right, token);
+    node = node_logical(LAND, node, right, token);
   }
 
   return node;
@@ -429,7 +445,7 @@ Node *logical_or_expression(Node *cast_expr) {
     if (!read_token(tLOR)) break;
 
     Node *right = logical_and_expression(cast_expression());
-    node = node_binary_expr(LOR, node, right, token);
+    node = node_logical(LOR, node, right, token);
   }
 
   return node;
@@ -444,7 +460,7 @@ Node *conditional_expression(Node *cast_expr) {
   expect_token(tCOLON);
   Node *right = conditional_expression(cast_expression());
 
-  return node_condition(control, left, right, token);
+  return node_conditional(control, left, right, token);
 }
 
 Node *assignment_expression() {
@@ -651,8 +667,8 @@ Node *initializer(Symbol *symbol) {
     Vector *elements = vector_new();
     do {
       Node *index = node_int_const(elements->length, symbol->token);
-      Node *add = node_binary_expr(ADD, id, index, symbol->token);
-      Node *lvalue = node_unary_expr(INDIRECT, add, symbol->token);
+      Node *add = node_additive(ADD, id, index, symbol->token);
+      Node *lvalue = node_indirect(add, symbol->token);
       Node *assign = node_assign(ASSIGN, lvalue, assignment_expression(), symbol->token);
       vector_push(elements, assign);
     } while (read_token(tCOMMA));
@@ -676,6 +692,11 @@ Node *init_declarator(Type *specifier, Symbol *symbol) {
       int length = node->initializer->array_elements->length;
       symbol->value_type->array_size = length;
       symbol->value_type->size = length * symbol->value_type->array_of->size;
+    }
+    if (node->initializer->array_elements) {
+      if (node->initializer->array_elements->length > symbol->value_type->array_size) {
+        error(symbol->token, "too many initializers.");
+      }
     }
   }
 

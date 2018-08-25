@@ -144,7 +144,6 @@ typedef enum node_type {
   UMINUS,
   NOT,
   LNOT,
-  SIZEOF,
   CAST,
   MUL,
   DIV,
@@ -289,11 +288,20 @@ extern Node *node_string_literal(String *string_value, int string_label, Token *
 extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Node *node_func_call(Node *expr, Vector *args, Token *token);
 extern Node *node_dot(Node *expr, char *identifier, Token *token);
-extern Node *node_sizeof(Node *expr, Token *token);
-extern Node *node_unary_expr(NodeType type, Node *expr, Token *token);
+extern Node *node_inc(NodeType type, Node *expr, Token *token);
+extern Node *node_dec(NodeType type, Node *expr, Token *token);
+extern Node *node_address(Node *expr, Token *token);
+extern Node *node_indirect(Node *expr, Token *token);
+extern Node *node_unary_arithmetic(NodeType type, Node *expr, Token *token);
 extern Node *node_cast(Type *value_type, Node *expr, Token *token);
-extern Node *node_binary_expr(NodeType type, Node *left, Node *right, Token *token);
-extern Node *node_condition(Node *control, Node *left, Node *right, Token *token);
+extern Node *node_multiplicative(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_additive(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_shift(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_relational(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_equality(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_bitwise(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_logical(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
 extern Node *node_assign(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_comp_stmt(Vector *statements);
 extern Node *node_expr_stmt(Node *expr);
@@ -308,7 +316,5 @@ extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_s
 extern Node *node_trans_unit(Vector *string_literals, Vector *definitions);
 
 extern Node *parse(Vector *tokens);
-
-extern void analyze(Node *node);
 
 extern void gen(Node *node);

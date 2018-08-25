@@ -11,7 +11,6 @@ int main(int argc, char **argv) {
   Vector *pp_tokens = tokenize(buffer);
   Vector *tokens = preprocess(pp_tokens);
   Node *node = parse(tokens);
-  analyze(node);
   gen(node);
 
   return 0;
