@@ -31,9 +31,6 @@ void gen_expr(Node *node);
 void gen_lvalue(Node *node) {
   if (node->type == IDENTIFIER) {
     Symbol *symbol = node->symbol;
-    if (!symbol) {
-      error(node->token, "undefined identifier.");
-    }
     if (symbol->type == GLOBAL) {
       printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
     } else if (symbol->type == LOCAL) {
@@ -111,9 +108,6 @@ void gen_string_literal(Node *node) {
 }
 
 void gen_identifier(Node *node) {
-  if (!node->symbol) {
-    error(node->token, "undefined identifier.");
-  }
   gen_load_lvalue(node);
 }
 

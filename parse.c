@@ -172,6 +172,9 @@ Node *primary_expression() {
       return node_int_const(*enum_value, token);
     }
     Symbol *symbol = symbol_lookup(token->identifier);
+    if (!check_token(tLPAREN) && !symbol) {
+      error(token, "undefined identifier.");
+    }
     return node_identifier(token->identifier, symbol, token);
   }
   if (token->type == tLPAREN) {
