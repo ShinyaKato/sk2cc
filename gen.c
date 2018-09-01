@@ -103,7 +103,7 @@ void gen_float_const(Node *node) {
 }
 
 void gen_string_literal(Node *node) {
-  printf("  movq $.LC%d, %%rax\n", node->string_label);
+  printf("  movq $.S%d, %%rax\n", node->string_label);
   gen_push("rax");
 }
 
@@ -863,7 +863,7 @@ void gen_gvar_decl(Node *node) {
         if (value->type == INT_CONST) {
           printf("  .long %d\n", value->int_value);
         } else if (value->type == STRING_LITERAL) {
-          printf("  .quad .LC%d\n", value->string_label);
+          printf("  .quad .S%d\n", value->string_label);
         }
       } else if (init->type == VAR_ARRAY_INIT) {
         Vector *elements = init->array_elements;
@@ -873,7 +873,7 @@ void gen_gvar_decl(Node *node) {
           if (value->type == INT_CONST) {
             printf("  .long %d\n", value->int_value);
           } else if (value->type == STRING_LITERAL) {
-            printf("  .quad .LC%d\n", value->string_label);
+            printf("  .quad .S%d\n", value->string_label);
           }
         }
 
@@ -948,30 +948,43 @@ void gen_func_def(Node *node) {
 }
 
 void gen_trans_unit(Node *node) {
-  printf("  .text\n");
-  for (int i = 0; i < node->string_literals->length; i++) {
-    String *string_value = node->string_literals->array[i];
-    printf(".LC%d:\n", i);
-    printf("  .string \"");
-    for (int j = 0; j < string_value->length; j++) {
-      char c = string_value->buffer[j];
-      if (isalnum(c)) printf("%c", c);
-      else printf("\\%03o", c);
+  if (node->string_literals->length > 0) {
+    printf("  .text\n");
+    for (int i = 0; i < node->string_literals->length; i++) {
+      String *string_value = node->string_literals->array[i];
+      printf(".S%d:\n", i);
+      printf("  .ascii \"");
+      for (int j = 0; j < string_value->length; j++) {
+        char c = string_value->buffer[j];
+        if (c == '\\') printf("\\\\");
+        else if (c == '"') printf("\\\"");
+        else if (c == '\a') printf("\\a");
+        else if (c == '\b') printf("\\b");
+        else if (c == '\f') printf("\\f");
+        else if (c == '\n') printf("\\n");
+        else if (c == '\r') printf("\\r");
+        else if (c == '\v') printf("\\v");
+        else if (c == '\t') printf("\\t");
+        else if (c == '\0') printf("\\0");
+        else if (isprint(c)) printf("%c", c);
+        else printf("\\%03o", c);
+      }
+      printf("\"\n");
     }
-    printf("\"\n");
   }
 
-  printf("  .data\n");
-  for (int i = 0; i < node->definitions->length; i++) {
-    Node *def = node->definitions->array[i];
-    if (def->type == VAR_DECL) {
+  if (node->declarations->length > 0) {
+    printf("  .data\n");
+    for (int i = 0; i < node->declarations->length; i++) {
+      Node *def = node->declarations->array[i];
       gen_gvar_decl(def);
     }
   }
-  printf("  .text\n");
-  for (int i = 0; i < node->definitions->length; i++) {
-    Node *def = node->definitions->array[i];
-    if (def->type == FUNC_DEF) {
+
+  if (node->definitions->length > 0) {
+    printf("  .text\n");
+    for (int i = 0; i < node->definitions->length; i++) {
+      Node *def = node->definitions->array[i];
       gen_func_def(def);
     }
   }

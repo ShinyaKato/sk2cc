@@ -45,6 +45,7 @@ int strcmp(char *s1, char *s2);
 int isdigit(int c);
 int isalpha(int c);
 int isalnum(int c);
+int isprint(int c);
 
 typedef enum token_type {
   tVOID,
@@ -241,11 +242,10 @@ typedef struct node {
   struct node *left, *right, *init, *control, *afterthrough, *expr;
   struct node *initializer;
   Vector *array_elements;
-  Vector *declarations;
   Vector *statements;
   struct node *if_body, *else_body, *loop_body, *function_body;
   int local_vars_size;
-  Vector *string_literals, *definitions;
+  Vector *string_literals, *declarations, *definitions;
 } Node;
 
 extern noreturn void error(Token *token, char *format, ...);
@@ -313,7 +313,7 @@ extern Node *node_continue_stmt(int continue_level, Token *token);
 extern Node *node_break_stmt(int break_level, Token *token);
 extern Node *node_return_stmt(Node *node);
 extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token);
-extern Node *node_trans_unit(Vector *string_literals, Vector *definitions);
+extern Node *node_trans_unit(Vector *string_literals, Vector *declarations, Vector *definitions);
 
 extern Node *parse(Vector *tokens);
 

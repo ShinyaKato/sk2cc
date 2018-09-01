@@ -876,12 +876,13 @@ Node *function_definition(Symbol *symbol) {
 
 Node *translate_unit() {
   begin_global_scope();
+  Vector *declarations = vector_new();
   Vector *definitions = vector_new();
   while (!check_token(tEND)) {
     Type *specifier = declaration_specifiers();
     if (check_token(tSEMICOLON)) {
       Node *node = declaration(specifier, NULL);
-      vector_push(definitions, node);
+      vector_push(declarations, node);
     } else {
       Symbol *first_decl = declarator(specifier);
       if (check_token(tLBRACE)) {
@@ -889,13 +890,13 @@ Node *translate_unit() {
         vector_push(definitions, node);
       } else {
         Node *node = declaration(specifier, first_decl);
-        vector_push(definitions, node);
+        vector_push(declarations, node);
       }
     }
   }
   end_scope();
 
-  return node_trans_unit(string_literals, definitions);
+  return node_trans_unit(string_literals, declarations, definitions);
 }
 
 Node *parse(Vector *input_tokens) {

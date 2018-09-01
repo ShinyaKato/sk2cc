@@ -510,10 +510,11 @@ Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, To
   return node;
 }
 
-Node *node_trans_unit(Vector *string_literals, Vector *definitions) {
+Node *node_trans_unit(Vector *string_literals, Vector *declarations, Vector *definitions) {
   Node *node = node_new();
   node->type = TLANS_UNIT;
   node->string_literals = string_literals;
+  node->declarations = declarations;
   node->definitions = definitions;
   return node;
 }
