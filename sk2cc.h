@@ -189,11 +189,17 @@ typedef enum symbol_type {
   LOCAL
 } SymbolType;
 
+typedef struct source_char SourceChar;
 typedef struct token Token;
 typedef struct type Type;
 typedef struct initializer Initializer;
 typedef struct symbol Symbol;
 typedef struct node Node;
+
+struct source_char {
+  char *filename, *char_ptr, *line_ptr;
+  int lineno, column;
+};
 
 struct token {
   TokenType type;
@@ -201,8 +207,7 @@ struct token {
   double double_value;
   String *string_value;
   char *identifier;
-  int lineno, column;
-  char *source;
+  SourceChar *schar;
 };
 
 struct type {
@@ -260,9 +265,9 @@ struct node {
 
 extern noreturn void error(Token *token, char *format, ...);
 
-extern char *scan(char *filename);
+extern Vector *scan(char *filename);
 
-extern Vector *tokenize(char *buffer);
+extern Vector *tokenize(Vector *input_src);
 
 extern Vector *preprocess(Vector *pp_tokens);
 

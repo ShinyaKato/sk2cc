@@ -23,8 +23,8 @@ void directives(Vector *tokens, Vector *pp_tokens) {
 
         if (header->type == tSTRING_LITERAL) {
           char *filename = header->string_value->buffer;
-          char *buffer = scan(filename);
-          Vector *include_pp_tokens = tokenize(buffer);
+          Vector *src = scan(filename);
+          Vector *include_pp_tokens = tokenize(src);
           directives(tokens, include_pp_tokens);
           vector_pop(tokens);
           continue;

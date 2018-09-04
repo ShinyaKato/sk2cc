@@ -6,9 +6,9 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  char *file = argv[1];
-  char *buffer = scan(file);
-  Vector *pp_tokens = tokenize(buffer);
+  char *filename = argv[1];
+  Vector *src = scan(filename);
+  Vector *pp_tokens = tokenize(src);
   Vector *tokens = preprocess(pp_tokens);
   Node *node = parse(tokens);
   gen(node);

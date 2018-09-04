@@ -1,28 +1,22 @@
 #include "sk2cc.h"
 
-int buffer_pos, lineno, column;
-char *buffer, *source;
+Vector *src;
+int src_pos;
 
 Token *token_new() {
   Token *token = (Token *) calloc(1, sizeof(Token));
-  token->lineno = lineno;
-  token->column = column;
-  token->source = source;
+  token->schar = src->array[src_pos];
   return token;
 }
 
 char peek_char() {
-  return buffer[buffer_pos];
+  SourceChar *schar = src->array[src_pos];
+  return *(schar->char_ptr);
 }
 
 char get_char() {
-  char c = buffer[buffer_pos++];
-  column++;
-  if (c == '\n') {
-    lineno++;
-    column = 0;
-    source = &buffer[buffer_pos];
-  }
+  char c = peek_char();
+  src_pos++;
   return c;
 }
 
@@ -271,7 +265,7 @@ Token *lex() {
     token->type = tSPACE;
   } else if (read_char('\n')) {
     token->type = tNEWLINE;
-  } else if (peek_char() == '\0') {
+  } else if (peek_char() == EOF) {
     token->type = tEND;
   } else {
     error(token, "unexpected character: %c.", peek_char());
@@ -280,12 +274,9 @@ Token *lex() {
   return token;
 }
 
-Vector *tokenize(char *input_buffer) {
-  buffer_pos = 0;
-  lineno = 0;
-  column = 0;
-  buffer = input_buffer;
-  source = input_buffer;
+Vector *tokenize(Vector *input_src) {
+  src = input_src;
+  src_pos = 0;
 
   Vector *pp_tokens = vector_new();
   while (1) {
