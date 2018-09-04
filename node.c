@@ -414,6 +414,10 @@ Node *node_assign(NodeType type, Node *left, Node *right, Token *token) {
   return node_binary_expr(type, value_type, left, right, token);
 }
 
+Node *node_comma(Node *left, Node *right, Token *token) {
+  return node_binary_expr(COMMA, right->value_type, left, right, token);
+}
+
 Node *node_comp_stmt(Vector *statements) {
   Node *node = node_new();
   node->type = COMP_STMT;

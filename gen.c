@@ -647,6 +647,12 @@ void gen_mul_assign(Node *node) {
   }
 }
 
+void gen_comma(Node *node) {
+  gen_expr(node->left);
+  gen_pop("rax");
+  gen_expr(node->right);
+}
+
 void gen_expr(Node *node) {
   if (node->type == INT_CONST) gen_int_const(node);
   else if (node->type == FLOAT_CONST) gen_float_const(node);
@@ -688,6 +694,7 @@ void gen_expr(Node *node) {
   else if (node->type == ADD_ASSIGN) gen_add_assign(node);
   else if (node->type == SUB_ASSIGN) gen_sub_assign(node);
   else if (node->type == MUL_ASSIGN) gen_mul_assign(node);
+  else if (node->type == COMMA) gen_comma(node);
 }
 
 void gen_stmt(Node *node);

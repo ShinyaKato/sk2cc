@@ -486,7 +486,17 @@ Node *assignment_expression() {
 }
 
 Node *expression() {
-  return assignment_expression();
+  Node *node = assignment_expression();
+
+  while (1) {
+    Token *token = peek_token();
+    if (!read_token(tCOMMA)) break;
+
+    Node *right = assignment_expression();
+    node = node_comma(node, right, token);
+  }
+
+  return node;
 }
 
 Type *type_specifier();

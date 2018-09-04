@@ -170,6 +170,7 @@ typedef enum node_type {
   ADD_ASSIGN,
   SUB_ASSIGN,
   MUL_ASSIGN,
+  COMMA,
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
@@ -313,6 +314,7 @@ extern Node *node_bitwise(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_logical(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
 extern Node *node_assign(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_comma(Node *left, Node *right, Token *token);
 extern Node *node_comp_stmt(Vector *statements);
 extern Node *node_expr_stmt(Node *expr);
 extern Node *node_if_stmt(Node *control, Node *if_body, Node *else_body);
