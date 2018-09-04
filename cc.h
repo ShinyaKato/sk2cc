@@ -112,6 +112,7 @@ typedef enum token_type {
   tMUL_ASSIGN,
   tCOMMA,
   tHASH,
+  tSPACE,
   tNEWLINE,
   tEND
 } TokenType;

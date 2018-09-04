@@ -221,6 +221,15 @@ test_stdout "double test_double(double d); int main() { printf(\"%7.3f\n\", test
 test_stdout "int main() { double d = 13211.5673; printf(\"%.4f\n\", d); }" "13211.5673"
 test_stdout "double f(double d) { return d; } int main() { printf(\"%4.1f\", f(33.2)); }" "33.2"
 
+test_return "int main() { /* this is comment */ return 0; }" 0
+test_return "int main() { return /* this is comment */ 0; }" 0
+test_return "
+int main() {
+  // this is comment.
+  return 0;
+}
+" 0
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"

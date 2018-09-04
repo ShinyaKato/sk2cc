@@ -58,8 +58,6 @@ char get_escape_sequence() {
 }
 
 Token *lex() {
-  while (read_char(' '));
-
   Token *token = token_new();
   if (isdigit(peek_char())) {
     String *s = string_new();
@@ -179,7 +177,21 @@ Token *lex() {
       token->type = tMUL;
     }
   } else if (read_char('/')) {
-    token->type = tDIV;
+    if (read_char('/')) {
+      while (1) {
+        char c = get_char();
+        if (c == '\n') break;
+      }
+      token->type = tSPACE;
+    } else if (read_char('*')) {
+      while (1) {
+        char c = get_char();
+        if (c == '*' && read_char('/')) break;
+      }
+      token->type = tSPACE;
+    } else {
+      token->type = tDIV;
+    }
   } else if (read_char('%')) {
     token->type = tMOD;
   } else if (read_char('<')) {
@@ -255,6 +267,8 @@ Token *lex() {
     }
   } else if (read_char('#')) {
     token->type = tHASH;
+  } else if (read_char(' ')) {
+    token->type = tSPACE;
   } else if (read_char('\n')) {
     token->type = tNEWLINE;
   } else if (peek_char() == '\0') {
@@ -276,6 +290,7 @@ Vector *tokenize(char *input_buffer) {
   Vector *pp_tokens = vector_new();
   while (1) {
     Token *pp_token = lex();
+    if (pp_token->type == tSPACE) continue;
     vector_push(pp_tokens, pp_token);
     if (pp_token->type == tEND) break;
   }
