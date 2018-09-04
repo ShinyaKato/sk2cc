@@ -920,6 +920,7 @@ void gen_trans_unit(Node *node) {
     for (int i = 0; i < node->declarations->length; i++) {
       Symbol *symbol = node->declarations->array[i];
       Initializer *initializer = symbol->initializer;
+      printf("  .global %s\n", symbol->identifier);
       printf("%s:\n", symbol->identifier);
       if (symbol->initializer) {
         if (symbol->value_type->type == ARRAY) {
