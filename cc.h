@@ -169,10 +169,6 @@ typedef enum node_type {
   ADD_ASSIGN,
   SUB_ASSIGN,
   MUL_ASSIGN,
-  VAR_INIT,
-  VAR_ARRAY_INIT,
-  VAR_INIT_DECL,
-  VAR_DECL,
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
@@ -191,7 +187,13 @@ typedef enum symbol_type {
   LOCAL
 } SymbolType;
 
-typedef struct token {
+typedef struct token Token;
+typedef struct type Type;
+typedef struct initializer Initializer;
+typedef struct symbol Symbol;
+typedef struct node Node;
+
+struct token {
   TokenType type;
   int int_value;
   double double_value;
@@ -199,16 +201,16 @@ typedef struct token {
   char *identifier;
   int lineno, column;
   char *source;
-} Token;
+};
 
-typedef struct type {
+struct type {
   TypeType type;
   int size, align;
-  struct type *pointer_to;
-  struct type *array_of;
+  Type *pointer_to;
+  Type *array_of;
   int array_size;
   Map *members, *offsets;
-  struct type *function_returning;
+  Type *function_returning;
   Vector *params;
   bool ellipsis;
   int original_size;
@@ -216,18 +218,25 @@ typedef struct type {
   bool definition;
   bool external;
   bool incomplete;
-} Type;
+};
 
-typedef struct symbol {
+struct initializer {
+  bool array;
+  Node *node;
+  Vector *elements;
+};
+
+struct symbol {
   SymbolType type;
   Token *token;
   char *identifier;
   Type *value_type;
+  Initializer *initializer;
   int offset;
-  bool declaration;
-} Symbol;
+  bool defined;
+};
 
-typedef struct node {
+struct node {
   enum node_type type;
   Token *token;
   Type *value_type;
@@ -239,14 +248,13 @@ typedef struct node {
   Symbol *symbol;
   Vector *args;
   int member_offset;
-  struct node *left, *right, *init, *control, *afterthrough, *expr;
-  struct node *initializer;
+  Node *left, *right, *init, *control, *afterthrough, *expr;
   Vector *array_elements;
   Vector *statements;
-  struct node *if_body, *else_body, *loop_body, *function_body;
+  Node *if_body, *else_body, *loop_body, *function_body;
   int local_vars_size;
   Vector *string_literals, *declarations, *definitions;
-} Node;
+};
 
 extern noreturn void error(Token *token, char *format, ...);
 
@@ -264,6 +272,7 @@ extern Type *type_int();
 extern Type *type_double();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
+extern Type *type_incomplete_array_of(Type *type);
 extern Type *type_struct(Vector *identifiers, Map *members);
 extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
 extern Type *type_convert(Type *type);

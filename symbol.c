@@ -19,7 +19,7 @@ Symbol *symbol_lookup(char *identifier) {
 void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->array[scopes->length - 1];
   Symbol *previous = map_lookup(map, identifier);
-  if (previous && !previous->declaration) {
+  if (previous && previous->defined) {
     error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
   }
 

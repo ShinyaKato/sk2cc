@@ -38,18 +38,18 @@ test_error() {
   $target tmp/out.c > /dev/null 2> /dev/null && failed "compilation of \"$prog\" was unexpectedly succeeded."
 }
 
-gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch string.c tests/string_driver.c -o tmp/string_test
 ./tmp/string_test || failed "assertion of string.c was failed."
 
-gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch vector.c tests/vector_driver.c -o tmp/vector_test
 ./tmp/vector_test || failed "assertion of vector.c was failed."
 
-gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch map.c tests/map_driver.c -o tmp/map_test
 ./tmp/map_test || failed "assertion of map.c was failed."
 
-gcc -c tests/func_call_stub.c -o tmp/func_call_stub.o
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -c tests/func_call_stub.c -o tmp/func_call_stub.o
 
-compile "$(gcc -P -E tests/test.c)"
+compile "$(gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c)"
 ./tmp/out || failed "test.c failed."
 
 test_return "int main() { int x; x = 0; return x; x = 1; return x; }" 0
@@ -170,14 +170,6 @@ int main() {
   print(\"%s %d\n\", \"abc\", 123);
 }
 " "abc 123"
-
-test_return "int x = 211; int main() { return x; }" 211
-test_stdout "char *s = \"abcde\"; int main() { printf(\"%s\n\", s); }" "abcde"
-test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[0]; }" 1
-test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[1]; }" 2
-test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[2]; }" 55
-test_return "int a[4] = { 1, 2, 55, 91 }; int main() { return a[3]; }" 91
-test_stdout "char *reg[6] = { \"rdi\", \"rsi\", \"rdx\", \"rcx\", \"r8\", \"r9\" }; int main() { for (int i = 0; i < 6; i++) printf(\"%s\n\", reg[i]); return 0; }" "rdi\nrsi\nrdx\nrcx\nr8\nr9\n"
 
 test_return "int x = 211; int main() { return x; }" 211
 test_stdout "char *s = \"abcde\"; int main() { printf(\"%s\n\", s); }" "abcde"

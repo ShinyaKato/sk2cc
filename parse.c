@@ -143,6 +143,11 @@ void end_loop() {
   break_level--;
 }
 
+Initializer *initializer_new() {
+  Initializer *initializer = (Initializer *) calloc(1, sizeof(Initializer));
+  return initializer;
+}
+
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   return symbol;
@@ -522,6 +527,9 @@ Type *struct_or_union_specifier() {
     Type *specifier = type_specifier();
     do {
       Symbol *symbol = declarator(specifier);
+      if (symbol->value_type->incomplete) {
+        error(symbol->token, "declaration with incomplete type.");
+      }
       vector_push(identifiers, symbol->identifier);
       map_put(members, symbol->identifier, symbol->value_type);
     } while (read_token(tCOMMA));
@@ -604,10 +612,10 @@ Type *declaration_specifiers() {
 
 Type *direct_declarator(Type *type) {
   if (read_token(tLBRACKET)) {
-    int size = 0;
-    if (check_token(tINT_CONST)) {
-      size = get_token()->int_value;
+    if (read_token(tRBRACKET)) {
+      return type_incomplete_array_of(direct_declarator(type));
     }
+    int size = expect_token(tINT_CONST)->int_value;
     expect_token(tRBRACKET);
     return type_array_of(direct_declarator(type), size);
   }
@@ -644,101 +652,96 @@ Symbol *declarator(Type *specifier) {
   Token *token = expect_token(tIDENTIFIER);
   type = direct_declarator(type);
 
-  if (!specifier->definition && type->incomplete) {
-    error(token, "declaration with incomplete type.");
-  }
-
   Symbol *symbol = symbol_new();
   symbol->token = token;
   symbol->identifier = token->identifier;
   symbol->value_type = type;
+  symbol->defined = type->type != FUNCTION;
 
   return symbol;
 }
 
-Node *initializer(Symbol *symbol) {
-  Node *id = node_identifier(symbol->identifier, symbol, symbol->token);
-
-  Node *node;
+Initializer *initializer() {
+  Initializer *initializer = initializer_new();
   if (!read_token(tLBRACE)) {
-    Node *assign = node_assign(ASSIGN, id, assignment_expression(), symbol->token);
-
-    node = node_new();
-    node->type = VAR_INIT;
-    node->expr = assign;
+    initializer->node = assignment_expression();
   } else {
     Vector *elements = vector_new();
     do {
-      Node *index = node_int_const(elements->length, symbol->token);
-      Node *add = node_additive(ADD, id, index, symbol->token);
-      Node *lvalue = node_indirect(add, symbol->token);
-      Node *assign = node_assign(ASSIGN, lvalue, assignment_expression(), symbol->token);
-      vector_push(elements, assign);
+      vector_push(elements, assignment_expression());
     } while (read_token(tCOMMA));
     expect_token(tRBRACE);
 
-    node = node_new();
-    node->type = VAR_ARRAY_INIT;
-    node->array_elements = elements;
+    initializer->array = true;
+    initializer->elements = elements;
   }
 
-  return node;
+  return initializer;
 }
 
-Node *init_declarator(Type *specifier, Symbol *symbol) {
-  Node *node = node_new();
-  node->type = VAR_INIT_DECL;
-  node->symbol = symbol;
+Symbol *init_declarator(Type *specifier, Symbol *symbol) {
   if (read_token(tASSIGN)) {
-    node->initializer = initializer(symbol);
-    if (symbol->value_type->size == 0 && node->initializer->type == VAR_ARRAY_INIT) {
-      int length = node->initializer->array_elements->length;
-      symbol->value_type->array_size = length;
-      symbol->value_type->size = length * symbol->value_type->array_of->size;
-    }
-    if (node->initializer->array_elements) {
-      if (node->initializer->array_elements->length > symbol->value_type->array_size) {
+    symbol->initializer = initializer();
+    if (symbol->value_type->type == ARRAY) {
+      if (symbol->value_type->incomplete) {
+        Type *type = type_array_of(symbol->value_type->array_of, symbol->initializer->elements->length);
+        type_copy(symbol->value_type, type);
+      }
+      if (symbol->value_type->array_size < symbol->initializer->elements->length) {
         error(symbol->token, "too many initializers.");
       }
     }
   }
 
-  return node;
+  return symbol;
 }
 
-Node *declaration(Type *specifier, Symbol *first_decl) {
-  Vector *declarations = vector_new();
-
-  if (first_decl || !read_token(tSEMICOLON)) {
-    if (!first_decl) first_decl = declarator(specifier);
-    if (specifier->definition) {
-      map_put(typedef_names, first_decl->identifier, first_decl->value_type);
-    } else {
-      Node *first_init_decl = init_declarator(specifier, first_decl);
-      first_decl->declaration = specifier->external || first_decl->value_type->type == FUNCTION;
-      vector_push(declarations, first_init_decl);
-      symbol_put(first_decl->identifier, first_decl);
+Vector *declaration(Type *specifier, Symbol *first_symbol) {
+  Vector *symbols = vector_new();
+  if (first_symbol) {
+    Symbol *symbol = init_declarator(specifier, first_symbol);
+    if (!specifier->definition && symbol->value_type->incomplete) {
+      error(symbol->token, "declaration with incomplete type.");
     }
-
-    while (read_token(tCOMMA)) {
-      Symbol *decl = declarator(specifier);
-      if (specifier->definition) {
-        map_put(typedef_names, decl->identifier, decl->value_type);
-      } else {
-        Node *init_decl = init_declarator(specifier, decl);
-        decl->declaration = specifier->external || decl->value_type->type == FUNCTION;
-        vector_push(declarations, init_decl);
-        symbol_put(decl->identifier, decl);
+    if (specifier->definition) {
+      map_put(typedef_names, symbol->identifier, symbol->value_type);
+    } else {
+      symbol_put(symbol->identifier, symbol);
+      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+        vector_push(symbols, symbol);
       }
     }
-    expect_token(tSEMICOLON);
+  } else if (!check_token(tSEMICOLON)) {
+    Symbol *symbol = init_declarator(specifier, declarator(specifier));
+    if (!specifier->definition && symbol->value_type->incomplete) {
+      error(symbol->token, "declaration with incomplete type.");
+    }
+    if (specifier->definition) {
+      map_put(typedef_names, symbol->identifier, symbol->value_type);
+    } else {
+      symbol_put(symbol->identifier, symbol);
+      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+        vector_push(symbols, symbol);
+      }
+    }
   }
+  while (read_token(tCOMMA)) {
+    Symbol *symbol = init_declarator(specifier, declarator(specifier));
+    if (!specifier->definition && symbol->value_type->incomplete) {
+      error(symbol->token, "declaration with incomplete type.");
+    }
+    if (specifier->definition) {
+      map_put(typedef_names, symbol->identifier, symbol->value_type);
+    } else {
+      symbol_put(symbol->identifier, symbol);
+      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+        vector_push(symbols, symbol);
+      }
+    }
+  }
+  expect_token(tSEMICOLON);
 
-  Node *node = node_new();
-  node->type = VAR_DECL;
-  node->declarations = declarations;
-
-  return node;
+  return symbols;
 }
 
 Node *statement();
@@ -748,7 +751,32 @@ Node *compound_statement() {
   expect_token(tLBRACE);
   while (!check_token(tRBRACE) && !check_token(tEND)) {
     if (check_declaration_specifier()) {
-      vector_push(statements, declaration(declaration_specifiers(), NULL));
+      Vector *declarations = declaration(declaration_specifiers(), NULL);
+      for (int i = 0; i < declarations->length; i++) {
+        Symbol *symbol = declarations->array[i];
+        if (symbol->initializer) {
+          Initializer *init = symbol->initializer;
+          if (!init->array) {
+            Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
+            Node *assign = node_assign(ASSIGN, identifier, init->node, identifier->token);
+            Node *stmt_expr = node_expr_stmt(assign);
+            vector_push(statements, stmt_expr);
+          } else {
+            Initializer *init = symbol->initializer;
+            Vector *elements = init->elements;
+            for (int j = 0; j < elements->length; j++) {
+              Node *node = elements->array[j];
+              Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
+              Node *index = node_int_const(j, symbol->token);
+              Node *add = node_additive(ADD, identifier, index, symbol->token);
+              Node *lvalue = node_indirect(add, symbol->token);
+              Node *assign = node_assign(ASSIGN, lvalue, node, identifier->token);
+              Node *stmt_expr = node_expr_stmt(assign);
+              vector_push(statements, stmt_expr);
+            }
+          }
+        }
+      }
     } else {
       vector_push(statements, statement());
     }
@@ -809,7 +837,34 @@ Node *for_statement() {
   expect_token(tLPAREN);
   Node *init;
   if (check_declaration_specifier()) {
-    init = declaration(declaration_specifiers(), NULL);
+    Vector *declarations = declaration(declaration_specifiers(), NULL);
+    Vector *statements = vector_new();
+    for (int i = 0; i < declarations->length; i++) {
+      Symbol *symbol = declarations->array[i];
+      if (symbol->initializer) {
+        Initializer *init = symbol->initializer;
+        if (!init->array) {
+          Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
+          Node *assign = node_assign(ASSIGN, identifier, init->node, identifier->token);
+          Node *stmt_expr = node_expr_stmt(assign);
+          vector_push(statements, stmt_expr);
+        } else {
+          Initializer *init = symbol->initializer;
+          Vector *elements = init->elements;
+          for (int j = 0; j < elements->length; j++) {
+            Node *node = elements->array[j];
+            Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
+            Node *index = node_int_const(j, symbol->token);
+            Node *add = node_additive(ADD, identifier, index, symbol->token);
+            Node *lvalue = node_indirect(add, symbol->token);
+            Node *assign = node_assign(ASSIGN, lvalue, node, identifier->token);
+            Node *stmt_expr = node_expr_stmt(assign);
+            vector_push(statements, stmt_expr);
+          }
+        }
+      }
+    }
+    init = node_comp_stmt(statements);
   } else {
     init = !check_token(tSEMICOLON) ? expression() : NULL;
     expect_token(tSEMICOLON);
@@ -866,6 +921,7 @@ Node *statement() {
 }
 
 Node *function_definition(Symbol *symbol) {
+  symbol->defined = true;
   begin_function_scope(symbol);
   Node *function_body = compound_statement();
   int local_vars_size = get_local_vars_size();
@@ -881,16 +937,18 @@ Node *translate_unit() {
   while (!check_token(tEND)) {
     Type *specifier = declaration_specifiers();
     if (check_token(tSEMICOLON)) {
-      Node *node = declaration(specifier, NULL);
-      vector_push(declarations, node);
+      declaration(specifier, NULL);
     } else {
-      Symbol *first_decl = declarator(specifier);
-      if (check_token(tLBRACE)) {
-        Node *node = function_definition(first_decl);
-        vector_push(definitions, node);
+      Symbol *first_symbol = declarator(specifier);
+      if (!check_token(tLBRACE)) {
+        Vector *symbols = declaration(specifier, first_symbol);
+        for (int i = 0; i < symbols->length; i++) {
+          Symbol *symbol = symbols->array[i];
+          vector_push(declarations, symbol);
+        }
       } else {
-        Node *node = declaration(specifier, first_decl);
-        vector_push(declarations, node);
+        Node *node = function_definition(first_symbol);
+        vector_push(definitions, node);
       }
     }
   }

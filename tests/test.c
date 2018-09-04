@@ -21,7 +21,7 @@ _Bool bool_ret(int b);
   do { \
     int actual = (expr); \
     if (actual != (expected)) { \
-      printf("\"%s\" should be %d, but got %d.\n", #expr, (expected), actual); \
+      printf("%d: \"%s\" should be %d, but got %d.\n", __LINE__, #expr, (expected), actual); \
       return 1; \
     } \
   } while (0)

@@ -89,6 +89,17 @@ Type *type_array_of(Type *type, int array_size) {
   return array;
 }
 
+Type *type_incomplete_array_of(Type *type) {
+  Type *array = type_new();
+  array->type = ARRAY;
+  array->align = type->align;
+  array->array_of = type;
+  array->array_pointer = false;
+  array->definition = false;
+  array->incomplete = true;
+  return array;
+}
+
 Type *type_struct(Vector *identifiers, Map *members) {
   Map *offsets = map_new();
   int align = 0, size = 0;

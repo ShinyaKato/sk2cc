@@ -690,36 +690,12 @@ void gen_expr(Node *node) {
   else if (node->type == MUL_ASSIGN) gen_mul_assign(node);
 }
 
-void gen_var_decl(Node *node) {
-  for (int i = 0; i < node->declarations->length; i++) {
-    Node *init_decl = node->declarations->array[i];
-    Symbol *symbol = init_decl->symbol;
-    if (symbol->value_type->type == FUNCTION) continue;
-    Node *init = init_decl->initializer;
-    if (init) {
-      if (init->type == VAR_INIT) {
-        gen_expr(init->expr);
-        gen_pop("rax");
-      } else if (init->type == VAR_ARRAY_INIT) {
-        for (int i = 0; i < init->array_elements->length; i++) {
-          gen_expr(init->array_elements->array[i]);
-          gen_pop("rax");
-        }
-      }
-    }
-  }
-}
-
 void gen_stmt(Node *node);
 
 void gen_comp_stmt(Node *node) {
   for (int i = 0; i < node->statements->length; i++) {
     Node *stmt = node->statements->array[i];
-    if (stmt->type == VAR_DECL) {
-      gen_var_decl(stmt);
-    } else {
-      gen_stmt(stmt);
-    }
+    gen_stmt(stmt);
   }
 }
 
@@ -794,8 +770,8 @@ void gen_for_stmt(Node *node) {
   vector_push(break_labels, &label_end);
 
   if (node->init) {
-    if (node->init->type == VAR_DECL) {
-      gen_var_decl(node->init);
+    if (node->init->type == COMP_STMT) {
+      gen_comp_stmt(node->init);
     } else {
       gen_expr(node->init);
       gen_pop("rax");
@@ -847,47 +823,6 @@ void gen_stmt(Node *node) {
   else if (node->type == CONTINUE_STMT) gen_continue_stmt(node);
   else if (node->type == BREAK_STMT) gen_break_stmt(node);
   else if (node->type == RETURN_STMT) gen_return_stmt(node);
-}
-
-void gen_gvar_decl(Node *node) {
-  for (int i = 0; i < node->declarations->length; i++) {
-    Node *init_decl = node->declarations->array[i];
-    Symbol *symbol = init_decl->symbol;
-    if (symbol->declaration) continue;
-    printf("%s:\n", symbol->identifier);
-
-    Node *init = init_decl->initializer;
-    if (init) {
-      if (init->type == VAR_INIT) {
-        Node *value = init->expr->right;
-        if (value->type == INT_CONST) {
-          printf("  .long %d\n", value->int_value);
-        } else if (value->type == STRING_LITERAL) {
-          printf("  .quad .S%d\n", value->string_label);
-        }
-      } else if (init->type == VAR_ARRAY_INIT) {
-        Vector *elements = init->array_elements;
-        for (int i = 0; i < elements->length; i++) {
-          Node *element = elements->array[i];
-          Node *value = element->right;
-          if (value->type == INT_CONST) {
-            printf("  .long %d\n", value->int_value);
-          } else if (value->type == STRING_LITERAL) {
-            printf("  .quad .S%d\n", value->string_label);
-          }
-        }
-
-        int array_size = symbol->value_type->array_of->size;
-        int init_length = init->array_elements->length;
-        int pad_size = array_size * init_length;
-        if (pad_size > 0) {
-          printf("  .zero %d\n", pad_size);
-        }
-      }
-    } else {
-      printf("  .zero %d\n", symbol->value_type->size);
-    }
-  }
 }
 
 void gen_func_def(Node *node) {
@@ -976,16 +911,44 @@ void gen_trans_unit(Node *node) {
   if (node->declarations->length > 0) {
     printf("  .data\n");
     for (int i = 0; i < node->declarations->length; i++) {
-      Node *def = node->declarations->array[i];
-      gen_gvar_decl(def);
+      Symbol *symbol = node->declarations->array[i];
+      Initializer *initializer = symbol->initializer;
+      printf("%s:\n", symbol->identifier);
+      if (symbol->initializer) {
+        if (symbol->value_type->type == ARRAY) {
+          for (int j = 0; j < initializer->elements->length; j++) {
+            Node *element = initializer->elements->array[j];
+            if (element->type == INT_CONST) {
+              printf("  .long %d\n", element->int_value);
+            } else if (element->type == STRING_LITERAL) {
+              printf("  .quad .S%d\n", element->string_label);
+            }
+          }
+          Type *type = symbol->value_type;
+          int length = initializer->elements->length;
+          int padding = type->size - length * type->array_of->size;
+          if (padding > 0) {
+            printf("  .zero %d\n", padding);
+          }
+        } else {
+          Node *node = initializer->node;
+          if (node->type == INT_CONST) {
+            printf("  .long %d\n", node->int_value);
+          } else if (node->type == STRING_LITERAL) {
+            printf("  .quad .S%d\n", node->string_label);
+          }
+        }
+      } else {
+        printf("  .zero %d\n", symbol->value_type->size);
+      }
     }
   }
 
   if (node->definitions->length > 0) {
     printf("  .text\n");
     for (int i = 0; i < node->definitions->length; i++) {
-      Node *def = node->definitions->array[i];
-      gen_func_def(def);
+      Node *func_def = node->definitions->array[i];
+      gen_func_def(func_def);
     }
   }
 }
