@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 int buffer_pos, lineno, column;
 char *buffer, *source;

@@ -1,33 +1,66 @@
-cc: cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c
-	gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -ggdb string.c vector.c map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c -o cc
+CC = gcc
+CFLAGS = -std=c11 -Wall -Wno-builtin-declaration-mismatch -ggdb # TODO removing -Wno-builtin-declaration-mismatch
 
-self: tmp cc cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c
-	./cc string.c > tmp/string.s
-	./cc vector.c > tmp/vector.s
-	./cc map.c > tmp/map.s
-	./cc error.c > tmp/error.s
-	./cc scan.c > tmp/scan.s
-	./cc lex.c > tmp/lex.s
-	./cc cpp.c > tmp/cpp.s
-	./cc type.c > tmp/type.s
-	./cc symbol.c > tmp/symbol.s
-	./cc node.c > tmp/node.s
-	./cc parse.c > tmp/parse.s
-	./cc gen.c > tmp/gen.s
-	./cc main.c > tmp/main.s
-	gcc -no-pie tmp/string.s tmp/vector.s tmp/map.s tmp/error.s tmp/scan.s tmp/lex.s tmp/cpp.s tmp/type.s tmp/symbol.s tmp/node.s tmp/parse.s tmp/gen.s tmp/main.s -o self
+.PHONY: all
+all:
+	make sk2cc
+
+sk2cc: sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c
+	$(CC) $(CFLAGS) string.c vector.c map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c -o sk2cc
+
+sk2cc_self: tmp sk2cc sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c
+	./sk2cc string.c > tmp/string.s
+	./sk2cc vector.c > tmp/vector.s
+	./sk2cc map.c > tmp/map.s
+	./sk2cc error.c > tmp/error.s
+	./sk2cc scan.c > tmp/scan.s
+	./sk2cc lex.c > tmp/lex.s
+	./sk2cc cpp.c > tmp/cpp.s
+	./sk2cc type.c > tmp/type.s
+	./sk2cc symbol.c > tmp/symbol.s
+	./sk2cc node.c > tmp/node.s
+	./sk2cc parse.c > tmp/parse.s
+	./sk2cc gen.c > tmp/gen.s
+	./sk2cc main.c > tmp/main.s
+	gcc tmp/string.s tmp/vector.s tmp/map.s tmp/error.s tmp/scan.s tmp/lex.s tmp/cpp.s tmp/type.s tmp/symbol.s tmp/node.s tmp/parse.s tmp/gen.s tmp/main.s -o sk2cc_self
+
+sk2cc_self2: tmp sk2cc_self sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c symbol.c node.c parse.c gen.c main.c
+	./sk2cc_self string.c > tmp/string2.s
+	./sk2cc_self vector.c > tmp/vector2.s
+	./sk2cc_self map.c > tmp/map2.s
+	./sk2cc_self error.c > tmp/error2.s
+	./sk2cc_self scan.c > tmp/scan2.s
+	./sk2cc_self lex.c > tmp/lex2.s
+	./sk2cc_self cpp.c > tmp/cpp2.s
+	./sk2cc_self type.c > tmp/type2.s
+	./sk2cc_self symbol.c > tmp/symbol2.s
+	./sk2cc_self node.c > tmp/node2.s
+	./sk2cc_self parse.c > tmp/parse2.s
+	./sk2cc_self gen.c > tmp/gen2.s
+	./sk2cc_self main.c > tmp/main2.s
+	gcc tmp/string2.s tmp/vector2.s tmp/map2.s tmp/error2.s tmp/scan2.s tmp/lex2.s tmp/cpp2.s tmp/type2.s tmp/symbol2.s tmp/node2.s tmp/parse2.s tmp/gen2.s tmp/main2.s -o sk2cc_self2
 
 tmp:
 	mkdir tmp
 
 .PHONY: test
-test: tmp cc
-	./tests/test.sh ./cc
+test: tmp sk2cc
+	./tests/test.sh ./sk2cc
 
 .PHONY: self_test
-self_test: self
-	./tests/test.sh ./self
+self_test: sk2cc_self
+	./tests/test.sh ./sk2cc_self
+
+.PHONY: self_self_test
+self2_test: sk2cc_self2
+	./tests/test.sh ./sk2cc_self2
+
+.PHONY: full_test
+full_test:
+	make test
+	make self_test
+	make self2_test
 
 .PHONY: clean
 clean:
-	rm -rf cc self tmp
+	rm -rf sk2cc sk2cc_self sk2cc_self2 tmp

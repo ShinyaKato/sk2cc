@@ -1,8 +1,8 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    printf("[usage] ./cc filename\n");
+    printf("[usage] ./sk2cc filename\n");
     return 0;
   }
 

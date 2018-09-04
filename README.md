@@ -4,22 +4,23 @@ Simple C compiler developed by @ShinyaKato
 
 ## build
 
-Run make command, then `cc` is generated.
+Run make command, then `sk2cc` is generated.
 
 ```
-$ make cc
+$ make sk2cc
 ```
 
 ## compilation
 
-Compiler `cc` recieves source file name and generates assembly to stdout.
-To generate executable, use gcc with `-no-pie` option.
+Compiler `sk2cc` recieves path to a source file and generates assembly to stdout.
+To generate executable, use gcc.
 
 ```
-$ ./cc examples/queen.c > queen.s
-$ gcc -no-pie queen.s
+$ ./sk2cc examples/queen.c > queen.s
+$ gcc queen.s -o queen
+$ ./queen
 ```
 
 ## example
 
-See example programs that can be compiled with `cc` in [examples](https://github.com/ShinyaKato/sk2cc/tree/master/examples).
+See example programs that can be compiled with `sk2cc` in [examples](https://github.com/ShinyaKato/sk2cc/tree/master/examples).

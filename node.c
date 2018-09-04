@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 bool node_lvalue(Node *node) {
   return node->type == IDENTIFIER || node->type == INDIRECT || node->type == DOT;

@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 char *token_type_name[] = {
   "void",

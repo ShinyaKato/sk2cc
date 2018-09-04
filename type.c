@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 Type *type_new() {
   Type *type = (Type *) calloc(1, sizeof(Type));

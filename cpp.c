@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 Map *macros;
 

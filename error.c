@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 noreturn void error(Token *token, char *format, ...) {
   va_list ap;

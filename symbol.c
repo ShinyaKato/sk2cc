@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 Vector *scopes;
 int local_vars_size;

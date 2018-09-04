@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "../cc.h"
+#include "../sk2cc.h"
 
 char keys[1025][8];
 int values[1025];

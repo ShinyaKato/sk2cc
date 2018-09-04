@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
@@ -103,7 +103,7 @@ void gen_float_const(Node *node) {
 }
 
 void gen_string_literal(Node *node) {
-  printf("  movq $.S%d, %%rax\n", node->string_label);
+  printf("  leaq .S%d(%%rip), %%rax\n", node->string_label);
   gen_push("rax");
 }
 
@@ -160,7 +160,7 @@ void gen_func_call(Node *node) {
     printf("  subq $%d, %%rsp\n", 16 - top);
   }
   printf("  movl $%d, %%eax\n", float_reg);
-  printf("  call %s\n", node->expr->identifier);
+  printf("  call %s@PLT\n", node->expr->identifier);
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }

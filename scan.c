@@ -1,4 +1,4 @@
-#include "cc.h"
+#include "sk2cc.h"
 
 char *scan(char *filename) {
   FILE *fp = fopen(filename, "r");
