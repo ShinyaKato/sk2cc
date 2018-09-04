@@ -65,6 +65,7 @@ char *token_type_name[] = {
   "*=",
   ",",
   "#",
+  "space",
   "new line",
   "end of file"
 };
