@@ -3,7 +3,7 @@
 char *scan(char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) {
-    fprintf(stderr, "%s: failed to open file.", filename);
+    fprintf(stderr, "%s: failed to open file.\n", filename);
     exit(1);
   }
 
