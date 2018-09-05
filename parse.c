@@ -192,8 +192,8 @@ Node *primary_expression() {
   error(token, "invalid primary expression.");
 }
 
-Node *postfix_expression() {
-  Node *node = primary_expression();
+Node *postfix_expression(Node *primary_expr) {
+  Node *node = primary_expr;
 
   while (1) {
     Token *token = peek_token();
@@ -282,7 +282,7 @@ Node *unary_expression() {
     return node_unary_arithmetic(LNOT, unary_expression(), token);
   }
 
-  return postfix_expression();
+  return postfix_expression(primary_expression());
 }
 
 Node *cast_expression() {
@@ -290,9 +290,9 @@ Node *cast_expression() {
     return unary_expression();
   }
   if (!check_type_specifier()) {
-    Node *node = expression();
+    Node *expr = expression();
     expect_token(tRPAREN);
-    return node;
+    return postfix_expression(expr);
   }
 
   Token *token = peek_token();
