@@ -26,3 +26,10 @@ void vector_push(Vector *vector, void *value) {
 void *vector_pop(Vector *vector) {
   return vector->array[--vector->length];
 }
+
+void vector_merge(Vector *dest, Vector *src) {
+  for (int i = 0; i < src->length; i++) {
+    void *value = src->array[i];
+    vector_push(dest, value);
+  }
+}

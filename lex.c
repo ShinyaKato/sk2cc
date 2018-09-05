@@ -278,12 +278,24 @@ Vector *tokenize(Vector *input_src) {
   src = input_src;
   src_pos = 0;
 
-  Vector *pp_tokens = vector_new();
+  Vector *_pp_tokens = vector_new();
   while (1) {
     Token *pp_token = lex();
-    if (pp_token->type == tSPACE) continue;
-    vector_push(pp_tokens, pp_token);
+    vector_push(_pp_tokens, pp_token);
     if (pp_token->type == tEND) break;
+  }
+
+  Vector *pp_tokens = vector_new();
+  for (int i = 0; i < _pp_tokens->length; i++) {
+    Token *token = _pp_tokens->array[i];
+    vector_push(pp_tokens, token);
+    if (token->type == tSPACE) {
+      while (1) {
+        Token *next = _pp_tokens->array[i + 1];
+        if (next->type != tSPACE) break;
+        i++;
+      }
+    }
   }
 
   return pp_tokens;
