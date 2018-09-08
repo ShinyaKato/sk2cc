@@ -230,6 +230,14 @@ int main() {
 }
 " 0
 
+test_return "
+#define func() (a + b)
+int main() {
+  int a = 2, b = 3;
+  return func();
+}
+" 5
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"

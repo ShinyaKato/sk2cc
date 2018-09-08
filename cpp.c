@@ -65,8 +65,28 @@ bool read_directive(char *directive) {
   return false;
 }
 
-bool check_object_macro(Token *token) {
-  return token->type == tIDENTIFIER && map_lookup(macros, token->identifier);
+bool check_object_macro(Vector *tokens, int p) {
+  Token *token = tokens->array[p];
+  if (token->type != tIDENTIFIER) return false;
+
+  Macro *macro = map_lookup(macros, token->identifier);
+  return macro && macro->type == OBJECT_MACRO;
+}
+
+bool check_function_macro(Vector *tokens, int p) {
+  Token *token = tokens->array[p];
+  if (token->type != tIDENTIFIER) return false;
+
+  Macro *macro = map_lookup(macros, token->identifier);
+  if (macro && macro->type == FUNCTION_MACRO) {
+    for (int i = p + 1; i < tokens->length; i++) {
+      Token *next = tokens->array[i];
+      if (next->type == tLPAREN) return true;
+      if (next->type != tSPACE && next->type != tNEWLINE) break;
+    }
+  }
+
+  return false;
 }
 
 Vector *replace_macro(Vector *tokens) {
@@ -74,9 +94,20 @@ Vector *replace_macro(Vector *tokens) {
 
   for (int i = 0; i < tokens->length; i++) {
     Token *token = tokens->array[i];
-    if (check_object_macro(token)) {
-      Vector *replace_list = map_lookup(macros, token->identifier);
-      vector_merge(result, replace_list);
+    if (check_object_macro(tokens, i)) {
+      Macro *macro = map_lookup(macros, token->identifier);
+      vector_merge(result, macro->replace);
+    } else if (check_function_macro(tokens, i)) {
+      Macro *macro = map_lookup(macros, token->identifier);
+      for (i++; i < tokens->length; i++) {
+        Token *token = tokens->array[i];
+        if (token->type == tLPAREN) break;
+      }
+      for (i++; i < tokens->length; i++) {
+        Token *token = tokens->array[i];
+        if (token->type == tRPAREN) break;
+      }
+      vector_merge(result, macro->replace);
     } else {
       vector_push(result, token);
     }
@@ -88,17 +119,32 @@ Vector *replace_macro(Vector *tokens) {
 Vector *preprocessing_unit();
 
 void define_directive() {
+  MacroType type = OBJECT_MACRO;
   char *identifier = expect_pp_token(tIDENTIFIER)->identifier;
+
+  Vector *params;
+  if (read_pp_token(tLPAREN)) {
+    type = FUNCTION_MACRO;
+    params = vector_new();
+    expect_pp_token(tRPAREN);
+  }
   expect_pp_token(tSPACE);
-  Vector *replace_list = vector_new();
+
+  Vector *replace = vector_new();
   while (1) {
     Token *token = get_pp_token();
     if (token->type == tNEWLINE) break;
-    vector_push(replace_list, token);
+    vector_push(replace, token);
   }
-  Token *last = replace_list->array[replace_list->length - 1];
-  if (last->type == tSPACE) vector_pop(replace_list);
-  map_put(macros, identifier, replace_list);
+  Token *last = replace->array[replace->length - 1];
+  if (last->type == tSPACE) vector_pop(replace);
+
+  Macro *macro = (Macro *) calloc(1, sizeof(Macro));
+  macro->type = type;
+  macro->params = params;
+  macro->replace = replace;
+
+  map_put(macros, identifier, macro);
 }
 
 Vector *include_directive() {
