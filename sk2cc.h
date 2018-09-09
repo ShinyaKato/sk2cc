@@ -117,11 +117,6 @@ typedef enum token_type {
   tEND
 } TokenType;
 
-typedef enum macro_type {
-  OBJECT_MACRO,
-  FUNCTION_MACRO
-} MacroType;
-
 typedef enum type_type {
   VOID,
   BOOL,
@@ -196,7 +191,6 @@ typedef enum symbol_type {
 
 typedef struct source_char SourceChar;
 typedef struct token Token;
-typedef struct macro Macro;
 typedef struct type Type;
 typedef struct initializer Initializer;
 typedef struct symbol Symbol;
@@ -214,12 +208,6 @@ struct token {
   String *string_value;
   char *identifier;
   SourceChar *schar;
-};
-
-struct macro {
-  MacroType type;
-  Vector *params;
-  Vector *replace;
 };
 
 struct type {
