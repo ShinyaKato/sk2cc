@@ -74,6 +74,48 @@ bool check_function_macro(Token *token, Scanner *sc) {
   return macro && macro->type == FUNCTION_MACRO && scanner_check(sc, tLPAREN);
 }
 
+Vector *expand_object_macro(Token *token) {
+  Macro *macro = map_lookup(macros, token->identifier);
+  return macro->replace;
+}
+
+Vector *expand_function_macro(Token *token, Scanner *sc) {
+  Macro *macro = map_lookup(macros, token->identifier);
+  Map *args = map_new();
+  int args_count = 0;
+
+  scanner_expect(sc, tLPAREN);
+  if (!scanner_check(sc, tRPAREN)) {
+    do {
+      Vector *arg = vector_new();
+      scanner_read(sc, tSPACE);
+      while (1) {
+        Token *token = scanner_get(sc);
+        if (token->type == tSPACE && (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN))) break;
+        vector_push(arg, token);
+        if (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN)) break;
+      }
+      Token *param = macro->params->array[args_count++];
+      map_put(args, param->identifier, arg);
+    } while (scanner_read(sc, tCOMMA));
+  }
+  scanner_expect(sc, tRPAREN);
+
+  Vector *result = vector_new();
+  Scanner *macro_sc = scanner_new(macro->replace);
+  while (macro_sc->pos < macro_sc->tokens->length) {
+    Token *token = scanner_get(macro_sc);
+    if (token->type == tIDENTIFIER && map_lookup(args, token->identifier)) {
+      Vector *arg = map_lookup(args, token->identifier);
+      vector_merge(result, arg);
+      continue;
+    }
+    vector_push(result, token);
+  }
+
+  return result;
+}
+
 Vector *replace_macro(Vector *tokens) {
   Scanner *sc = scanner_new(tokens);
   Vector *result = vector_new();
@@ -81,37 +123,9 @@ Vector *replace_macro(Vector *tokens) {
   while (sc->pos < sc->tokens->length) {
     Token *token = scanner_get(sc);
     if (check_object_macro(token)) {
-      Macro *macro = map_lookup(macros, token->identifier);
-      vector_merge(result, macro->replace);
+      vector_merge(result, expand_object_macro(token));
     } else if (check_function_macro(token, sc)) {
-      Macro *macro = map_lookup(macros, token->identifier);
-      Map *args = map_new();
-      int args_count = 0;
-      scanner_expect(sc, tLPAREN);
-      if (!scanner_check(sc, tRPAREN)) {
-        do {
-          Vector *arg = vector_new();
-          scanner_read(sc, tSPACE);
-          while (1) {
-            if (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN)) break;
-            Token *token = scanner_get(sc);
-            vector_push(arg, token);
-          }
-          Token *param = macro->params->array[args_count++];
-          map_put(args, param->identifier, arg);
-        } while (scanner_read(sc, tCOMMA));
-      }
-      scanner_expect(sc, tRPAREN);
-      Scanner *macro_sc = scanner_new(macro->replace);
-      while (macro_sc->pos < macro_sc->tokens->length) {
-        Token *token = scanner_get(macro_sc);
-        if (token->type == tIDENTIFIER && map_lookup(args, token->identifier)) {
-          Vector *arg = map_lookup(args, token->identifier);
-          vector_merge(result, arg);
-          continue;
-        }
-        vector_push(result, token);
-      }
+      vector_merge(result, expand_function_macro(token, sc));
     } else {
       vector_push(result, token);
     }
