@@ -231,15 +231,8 @@ Vector *preprocess(Vector *pp_tokens) {
 
   Scanner *sc = scanner_new(pp_tokens);
 
-  Vector *_tokens = preprocessing_unit(sc);
-  vector_push(_tokens, pp_tokens->array[pp_tokens->length - 1]);
-
-  Vector *tokens = vector_new();
-  for (int i = 0; i < _tokens->length; i++) {
-    Token *token = _tokens->array[i];
-    if (token->type == tSPACE || token->type == tNEWLINE) continue;
-    vector_push(tokens, token);
-  }
+  Vector *tokens = preprocessing_unit(sc);
+  vector_push(tokens, pp_tokens->array[pp_tokens->length - 1]);
 
   return tokens;
 }

@@ -969,8 +969,14 @@ Node *translate_unit() {
 }
 
 Node *parse(Vector *input_tokens) {
+  tokens = vector_new();
   tokens_pos = 0;
-  tokens = input_tokens;
+
+  for (int i = 0; i < input_tokens->length; i++) {
+    Token *token = input_tokens->array[i];
+    if (token->type == tSPACE || token->type == tNEWLINE) continue;
+    vector_push(tokens, token);
+  }
 
   string_literals = vector_new();
 

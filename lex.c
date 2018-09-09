@@ -5,7 +5,7 @@ int src_pos;
 
 Token *token_new() {
   Token *token = (Token *) calloc(1, sizeof(Token));
-  token->schar = src->array[src_pos];
+  token->schar = (SourceChar **) &(src->array[src_pos]);
   return token;
 }
 
@@ -271,6 +271,8 @@ Token *lex() {
     error(token, "unexpected character: %c.", peek_char());
   }
 
+  token->schar_end = (SourceChar **) &(src->array[src_pos]);
+
   return token;
 }
 
@@ -278,24 +280,11 @@ Vector *tokenize(Vector *input_src) {
   src = input_src;
   src_pos = 0;
 
-  Vector *_pp_tokens = vector_new();
+  Vector *pp_tokens = vector_new();
   while (1) {
     Token *pp_token = lex();
-    vector_push(_pp_tokens, pp_token);
+    vector_push(pp_tokens, pp_token);
     if (pp_token->type == tEND) break;
-  }
-
-  Vector *pp_tokens = vector_new();
-  for (int i = 0; i < _pp_tokens->length; i++) {
-    Token *token = _pp_tokens->array[i];
-    vector_push(pp_tokens, token);
-    if (token->type == tSPACE) {
-      while (1) {
-        Token *next = _pp_tokens->array[i + 1];
-        if (next->type != tSPACE) break;
-        i++;
-      }
-    }
   }
 
   return pp_tokens;

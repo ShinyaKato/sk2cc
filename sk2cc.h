@@ -207,7 +207,7 @@ struct token {
   double double_value;
   String *string_value;
   char *identifier;
-  SourceChar *schar;
+  SourceChar **schar, **schar_end;
 };
 
 struct type {

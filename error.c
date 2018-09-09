@@ -3,7 +3,7 @@
 noreturn void error(Token *token, char *format, ...) {
   va_list ap;
 
-  SourceChar *schar = token->schar;
+  SourceChar *schar = *(token->schar);
   char *filename = schar->filename;
   char *line_ptr = schar->line_ptr;
   int lineno = schar->lineno;
