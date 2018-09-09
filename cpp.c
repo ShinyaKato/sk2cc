@@ -40,7 +40,7 @@ Token *scanner_expect(Scanner *sc, TokenType type) {
     if (token->type == type) return token;
     if (token->type != tSPACE) break;
   }
-  error(token, "unexpected token. (%d)", type);
+  error(token, "unexpected token.");
 }
 
 bool scanner_check(Scanner *sc, TokenType type) {
@@ -85,9 +85,33 @@ Vector *replace_macro(Vector *tokens) {
       vector_merge(result, macro->replace);
     } else if (check_function_macro(token, sc)) {
       Macro *macro = map_lookup(macros, token->identifier);
+      Map *args = map_new();
+      int args_count = 0;
       scanner_expect(sc, tLPAREN);
+      if (!scanner_check(sc, tRPAREN)) {
+        do {
+          Vector *arg = vector_new();
+          scanner_read(sc, tSPACE);
+          while (1) {
+            if (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN)) break;
+            Token *token = scanner_get(sc);
+            vector_push(arg, token);
+          }
+          Token *param = macro->params->array[args_count++];
+          map_put(args, param->identifier, arg);
+        } while (scanner_read(sc, tCOMMA));
+      }
       scanner_expect(sc, tRPAREN);
-      vector_merge(result, macro->replace);
+      Scanner *macro_sc = scanner_new(macro->replace);
+      while (macro_sc->pos < macro_sc->tokens->length) {
+        Token *token = scanner_get(macro_sc);
+        if (token->type == tIDENTIFIER && map_lookup(args, token->identifier)) {
+          Vector *arg = map_lookup(args, token->identifier);
+          vector_merge(result, arg);
+          continue;
+        }
+        vector_push(result, token);
+      }
     } else {
       vector_push(result, token);
     }
@@ -109,6 +133,12 @@ void define_directive(Scanner *sc) {
     scanner_get(sc);
     type = FUNCTION_MACRO;
     params = vector_new();
+    if (!scanner_check(sc, tRPAREN)) {
+      do {
+        Token *param = scanner_expect(sc, tIDENTIFIER);
+        vector_push(params, param);
+      } while (scanner_read(sc, tCOMMA));
+    }
     scanner_expect(sc, tRPAREN);
   }
   scanner_expect(sc, tSPACE);

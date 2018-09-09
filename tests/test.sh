@@ -238,6 +238,13 @@ int main() {
 }
 " 5
 
+test_return "
+#define func(a, b) ((a) * (b) + 1)
+int main() {
+  return func(3, 4);
+}
+" 13
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"
