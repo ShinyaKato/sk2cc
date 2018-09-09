@@ -60,52 +60,33 @@ bool scanner_read(Scanner *sc, TokenType type) {
   return false;
 }
 
-bool check_object_macro(Vector *tokens, int p) {
-  Token *token = tokens->array[p];
+bool check_object_macro(Token *token) {
   if (token->type != tIDENTIFIER) return false;
 
   Macro *macro = map_lookup(macros, token->identifier);
   return macro && macro->type == OBJECT_MACRO;
 }
 
-bool check_function_macro(Vector *tokens, int p) {
-  Token *token = tokens->array[p];
+bool check_function_macro(Token *token, Scanner *sc) {
   if (token->type != tIDENTIFIER) return false;
 
   Macro *macro = map_lookup(macros, token->identifier);
-  if (macro && macro->type == FUNCTION_MACRO) {
-    for (int i = p + 1; i < tokens->length; i++) {
-      Token *next = tokens->array[i];
-      if (next->type == tLPAREN) return true;
-      if (next->type != tSPACE && next->type != tNEWLINE) break;
-    }
-  }
-
-  return false;
+  return macro && macro->type == FUNCTION_MACRO && scanner_check(sc, tLPAREN);
 }
 
 Vector *replace_macro(Vector *tokens) {
+  Scanner *sc = scanner_new(tokens);
   Vector *result = vector_new();
 
-  for (int i = 0; i < tokens->length; i++) {
-    Token *token = tokens->array[i];
-    if (check_object_macro(tokens, i)) {
+  while (sc->pos < sc->tokens->length) {
+    Token *token = scanner_get(sc);
+    if (check_object_macro(token)) {
       Macro *macro = map_lookup(macros, token->identifier);
       vector_merge(result, macro->replace);
-    } else if (check_function_macro(tokens, i)) {
+    } else if (check_function_macro(token, sc)) {
       Macro *macro = map_lookup(macros, token->identifier);
-      for (i++; i < tokens->length; i++) {
-        Token *next = tokens->array[i];
-        if (next->type == tSPACE || next->type == tNEWLINE) continue;
-        if (next->type == tLPAREN) break;
-        error(next, "'(' is expected.");
-      }
-      for (i++; i < tokens->length; i++) {
-        Token *next = tokens->array[i];
-        if (next->type == tSPACE || next->type == tNEWLINE) continue;
-        if (next->type == tRPAREN) break;
-        error(next, "')' is expected.");
-      }
+      scanner_expect(sc, tLPAREN);
+      scanner_expect(sc, tRPAREN);
       vector_merge(result, macro->replace);
     } else {
       vector_push(result, token);
