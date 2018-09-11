@@ -251,6 +251,16 @@ int f(int x, int y) { return x * y; }
 int main() { return func(f(2, 3), 4); }
 " 10
 
+test_return "
+#define empty1
+#define empty2 
+#define empty3  
+#define empty4(a, b)
+#define empty5(a, b) 
+#define empty6(a, b)  
+int main() { empty1; empty2; empty3; empty4(1, 2); empty5(1, 2); empty6(1, 2); return 0; }
+" 0
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"

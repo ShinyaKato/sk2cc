@@ -148,7 +148,7 @@ void define_directive(Scanner *sc) {
 
   MacroType type;
   Vector *params;
-  if (scanner_peek(sc)->type == tSPACE) {
+  if (scanner_peek(sc)->type == tSPACE || scanner_peek(sc)->type == tNEWLINE) {
     type = OBJECT_MACRO;
   } else if (scanner_peek(sc)->type == tLPAREN) {
     scanner_get(sc);
@@ -162,14 +162,16 @@ void define_directive(Scanner *sc) {
     }
     scanner_expect(sc, tRPAREN);
   }
-  scanner_expect(sc, tSPACE);
 
   Vector *replace = vector_new();
-  while (1) {
-    Token *token = scanner_get(sc);
-    if (token->type == tSPACE && scanner_check(sc, tNEWLINE)) break;
-    vector_push(replace, token);
-    if (scanner_check(sc, tNEWLINE)) break;
+  if (!scanner_check(sc, tNEWLINE)) {
+    scanner_expect(sc, tSPACE);
+    while (1) {
+      Token *token = scanner_get(sc);
+      if (token->type == tSPACE && scanner_check(sc, tNEWLINE)) break;
+      vector_push(replace, token);
+      if (scanner_check(sc, tNEWLINE)) break;
+    }
   }
   scanner_expect(sc, tNEWLINE);
 
