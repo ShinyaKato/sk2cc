@@ -245,6 +245,12 @@ int main() {
 }
 " 13
 
+test_return "
+#define func(a, b) ((a) + (b))
+int f(int x, int y) { return x * y; }
+int main() { return func(f(2, 3), 4); }
+" 10
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"

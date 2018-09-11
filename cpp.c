@@ -88,13 +88,20 @@ Vector *expand_function_macro(Token *token, Scanner *sc) {
   if (!scanner_check(sc, tRPAREN)) {
     do {
       Vector *arg = vector_new();
+      int depth = 0;
+
       scanner_read(sc, tSPACE);
       while (1) {
         Token *token = scanner_get(sc);
-        if (token->type == tSPACE && (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN))) break;
+        if (token->type == tLPAREN) depth++;
+        if (token->type == tRPAREN) depth--;
+
+        bool end = depth == 0 && (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN));
+        if (token->type == tSPACE && end) break;
         vector_push(arg, token);
-        if (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN)) break;
+        if (end) break;
       }
+
       Token *param = macro->params->array[args_count++];
       map_put(args, param->identifier, arg);
     } while (scanner_read(sc, tCOMMA));
