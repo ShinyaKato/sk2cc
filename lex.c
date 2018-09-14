@@ -110,6 +110,8 @@ Token *lex() {
       token->type = tINT;
     } else if (strcmp(identifier->buffer, "double") == 0) {
       token->type = tDOUBLE;
+    } else if (strcmp(identifier->buffer, "unsigned") == 0) {
+      token->type = tUNSIGNED;
     } else if (strcmp(identifier->buffer, "struct") == 0) {
       token->type = tSTRUCT;
     } else if (strcmp(identifier->buffer, "enum") == 0) {

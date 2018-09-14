@@ -6,6 +6,7 @@ char *token_type_name[] = {
   "char",
   "int",
   "double",
+  "unsigned",
   "struct",
   "enum",
   "typedef",
@@ -117,8 +118,8 @@ bool check_strage_class_specifier() {
 }
 
 bool check_type_specifier() {
-  TokenType specifiers[7] = { tVOID, tBOOL, tCHAR, tINT, tDOUBLE, tSTRUCT, tENUM };
-  for (int i = 0; i < 7; i++) {
+  TokenType specifiers[] = { tVOID, tBOOL, tCHAR, tINT, tDOUBLE, tUNSIGNED, tSTRUCT, tENUM };
+  for (int i = 0; i < sizeof(specifiers) / sizeof(specifiers[0]); i++) {
     if (check_token(specifiers[i])) {
       return true;
     }
@@ -597,6 +598,14 @@ Type *type_specifier() {
     return type_int();
   } else if (read_token(tDOUBLE)) {
     return type_double();
+  } else if (read_token(tUNSIGNED)) {
+    if (read_token(tCHAR)) {
+      return type_uchar();
+    } else if (read_token(tINT)) {
+      return type_uint();
+    } else {
+      return type_uint();
+    }
   } else if (check_token(tSTRUCT)) {
     return struct_or_union_specifier();
   } else if (check_token(tENUM)) {

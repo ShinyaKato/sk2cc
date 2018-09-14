@@ -38,6 +38,18 @@ Type *type_char() {
   return char_type;
 }
 
+Type *type_uchar() {
+  Type *uchar_type = type_new();
+  uchar_type->type = UCHAR;
+  uchar_type->size = 1;
+  uchar_type->align = 1;
+  uchar_type->original_size = 1;
+  uchar_type->array_pointer = false;
+  uchar_type->definition = false;
+  uchar_type->incomplete = false;
+  return uchar_type;
+}
+
 Type *type_int() {
   Type *int_type = type_new();
   int_type->type = INT;
@@ -48,6 +60,18 @@ Type *type_int() {
   int_type->definition = false;
   int_type->incomplete = false;
   return int_type;
+}
+
+Type *type_uint() {
+  Type *uint_type = type_new();
+  uint_type->type = UINT;
+  uint_type->size = 4;
+  uint_type->align = 4;
+  uint_type->original_size = 4;
+  uint_type->array_pointer = false;
+  uint_type->definition = false;
+  uint_type->incomplete = false;
+  return uint_type;
 }
 
 Type *type_double() {
@@ -177,7 +201,7 @@ void type_copy(Type *dest, Type *src) {
 }
 
 bool type_integer(Type *type) {
-  return type->type == CHAR || type->type == INT || type->type == BOOL;
+  return type->type == CHAR || type->type == UCHAR || type->type == INT || type->type == UINT || type->type == BOOL;
 }
 
 bool type_pointer(Type *type) {

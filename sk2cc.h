@@ -53,6 +53,7 @@ typedef enum token_type {
   tCHAR,
   tINT,
   tDOUBLE,
+  tUNSIGNED,
   tSTRUCT,
   tENUM,
   tTYPEDEF,
@@ -121,7 +122,9 @@ typedef enum type_type {
   VOID,
   BOOL,
   CHAR,
+  UCHAR,
   INT,
+  UINT,
   DOUBLE,
   POINTER,
   ARRAY,
@@ -275,7 +278,9 @@ extern Type *type_new();
 extern Type *type_void();
 extern Type *type_bool();
 extern Type *type_char();
+extern Type *type_uchar();
 extern Type *type_int();
+extern Type *type_uint();
 extern Type *type_double();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);

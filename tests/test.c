@@ -348,5 +348,9 @@ int main() {
 
   { int x = 41, *p = &x; (*p)++; test(x, 42); }
 
+  { unsigned int x = 12; test(x, 12); }
+  { unsigned int x = 12, y = 34; test(x + y, 46); }
+  { unsigned int x = 12, y = 34; test(x * y, 408); }
+
   return 0;
 }
