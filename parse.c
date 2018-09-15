@@ -76,7 +76,7 @@ int tokens_pos;
 Vector *tokens;
 
 Vector *string_literals;
-Map *tags, *enum_constants;
+Map *tags;
 int continue_level, break_level;
 
 Vector *scopes;
@@ -108,7 +108,7 @@ Symbol *symbol_lookup(char *identifier) {
 void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->array[scopes->length - 1];
 
-  if (symbol->type != TYPENAME) {
+  if (symbol->type != TYPENAME && symbol->type != ENUM_CONST) {
     Symbol *previous = map_lookup(map, identifier);
     if (previous && previous->defined) {
       error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
@@ -243,11 +243,10 @@ Node *primary_expression() {
     return node_string_literal(token->string_value, string_label, token);
   }
   if (token->type == tIDENTIFIER) {
-    int *enum_value = map_lookup(enum_constants, token->identifier);
-    if (enum_value) {
-      return node_int_const(*enum_value, token);
-    }
     Symbol *symbol = symbol_lookup(token->identifier);
+    if (symbol && symbol->type == ENUM_CONST) {
+      return node_int_const(symbol->enum_value, token);
+    }
     if (!check_token(tLPAREN) && !symbol) {
       error(token, "undefined identifier.");
     }
@@ -643,9 +642,13 @@ Type *enum_specifier() {
   int enum_value = 0;
   do {
     Token *token = expect_token(tIDENTIFIER);
-    int *enum_const = calloc(1, sizeof(int));
-    *enum_const = enum_value++;
-    map_put(enum_constants, token->identifier, enum_const);
+    Symbol *symbol = symbol_new();
+    symbol->type = ENUM_CONST;
+    symbol->identifier = token->identifier;
+    symbol->token = token;
+    symbol->value_type = type_int();
+    symbol->enum_value = enum_value++;
+    symbol_put(token->identifier, symbol);
   } while (read_token(tCOMMA));
   expect_token(tRBRACE);
 
@@ -1068,7 +1071,6 @@ Node *parse(Vector *input_tokens) {
   string_literals = vector_new();
 
   tags = map_new();
-  enum_constants = map_new();
 
   continue_level = 0;
   break_level = 0;

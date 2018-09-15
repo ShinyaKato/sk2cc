@@ -360,5 +360,10 @@ int main() {
     int a = 12, b = 34; test(a * b, 408);
   }
 
+  {
+    { enum { X, Y, Z } t = Y; test(t, 1); }
+    int Z = 123; test(Z, 123);
+  }
+
   return 0;
 }

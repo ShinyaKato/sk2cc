@@ -193,7 +193,8 @@ typedef enum node_type {
 typedef enum symbol_type {
   GLOBAL,
   LOCAL,
-  TYPENAME
+  TYPENAME,
+  ENUM_CONST
 } SymbolType;
 
 typedef struct source_char SourceChar;
@@ -246,6 +247,7 @@ struct symbol {
   char *identifier;
   Type *value_type;
   Initializer *initializer;
+  int enum_value;
   int offset;
   bool defined;
 };
