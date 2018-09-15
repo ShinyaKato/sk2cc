@@ -92,10 +92,6 @@ Symbol *symbol_new() {
   return symbol;
 }
 
-int get_local_vars_size() {
-  return local_vars_size;
-}
-
 Symbol *symbol_lookup(char *identifier) {
   for (int i = scopes->length - 1; i >= 0; i--) {
     Map *map = scopes->array[i];
@@ -1025,7 +1021,6 @@ Node *function_definition(Symbol *symbol) {
   symbol->defined = true;
   begin_function_scope(symbol);
   Node *function_body = compound_statement();
-  int local_vars_size = get_local_vars_size();
   end_scope();
 
   return node_func_def(symbol, function_body, local_vars_size, symbol->token);
