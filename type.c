@@ -50,6 +50,30 @@ Type *type_uchar() {
   return uchar_type;
 }
 
+Type *type_short() {
+  Type *short_type = type_new();
+  short_type->type = SHORT;
+  short_type->size = 2;
+  short_type->align = 2;
+  short_type->original_size = 2;
+  short_type->array_pointer = false;
+  short_type->definition = false;
+  short_type->incomplete = false;
+  return short_type;
+}
+
+Type *type_ushort() {
+  Type *ushort_type = type_new();
+  ushort_type->type = USHORT;
+  ushort_type->size = 2;
+  ushort_type->align = 2;
+  ushort_type->original_size = 2;
+  ushort_type->array_pointer = false;
+  ushort_type->definition = false;
+  ushort_type->incomplete = false;
+  return ushort_type;
+}
+
 Type *type_int() {
   Type *int_type = type_new();
   int_type->type = INT;
@@ -201,7 +225,14 @@ void type_copy(Type *dest, Type *src) {
 }
 
 bool type_integer(Type *type) {
-  return type->type == CHAR || type->type == UCHAR || type->type == INT || type->type == UINT || type->type == BOOL;
+  if (type->type == BOOL) return true;
+  if (type->type == CHAR) return true;
+  if (type->type == UCHAR) return true;
+  if (type->type == SHORT) return true;
+  if (type->type == USHORT) return true;
+  if (type->type == INT) return true;
+  if (type->type == UINT) return true;
+  return false;
 }
 
 bool type_pointer(Type *type) {

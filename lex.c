@@ -106,6 +106,8 @@ Token *lex() {
       token->type = tBOOL;
     } else if (strcmp(identifier->buffer, "char") == 0) {
       token->type = tCHAR;
+    } else if (strcmp(identifier->buffer, "short") == 0) {
+      token->type = tSHORT;
     } else if (strcmp(identifier->buffer, "int") == 0) {
       token->type = tINT;
     } else if (strcmp(identifier->buffer, "double") == 0) {

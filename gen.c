@@ -58,6 +58,11 @@ void gen_load_lvalue(Node *node) {
     gen_pop("rcx");
     printf("  movsbl (%%rcx), %%eax\n");
     gen_push("rax");
+  } else if (node->value_type->type == SHORT || node->value_type->type == USHORT) {
+    gen_lvalue(node);
+    gen_pop("rcx");
+    printf("  movswl (%%rcx), %%eax\n");
+    gen_push("rax");
   } else if (node->value_type->type == INT || node->value_type->type == UINT) {
     gen_lvalue(node);
     gen_pop("rcx");
@@ -513,6 +518,12 @@ void gen_assign(Node *node) {
     gen_pop("rax");
     printf("  movb %%cl, (%%rax)\n");
     gen_push("rcx");
+  } else if (node->left->value_type->type == SHORT || node->left->value_type->type == USHORT) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rcx");
+    gen_pop("rax");
+    printf("  movw %%cx, (%%rax)\n");
+    gen_push("rcx");
   } else if (node->left->value_type->type == INT || node->left->value_type->type == UINT) {
     gen_lvalue(node->left);
     gen_operand(node->right, "rcx");
@@ -552,6 +563,13 @@ void gen_add_assign(Node *node) {
       gen_pop("rcx");
       printf("  addl (%%rcx), %%eax\n");
       printf("  movb %%al, (%%rcx)\n");
+      gen_push("rax");
+    } else if (node->left->value_type->type == SHORT || node->left->value_type->type == USHORT) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  addw (%%rcx), %%ax\n");
+      printf("  movw %%ax, (%%rcx)\n");
       gen_push("rax");
     } else if (node->left->value_type->type == INT || node->left->value_type->type == UINT) {
       gen_lvalue(node->left);
@@ -594,6 +612,14 @@ void gen_sub_assign(Node *node) {
       printf("  subl %%eax, %%edx\n");
       printf("  movb %%dl, (%%rcx)\n");
       gen_push("rdx");
+    } else if (node->left->value_type->type == SHORT || node->left->value_type->type == USHORT) {
+      gen_lvalue(node->left);
+      gen_operand(node->right, "rax");
+      gen_pop("rcx");
+      printf("  movw (%%rcx), %%dx\n");
+      printf("  subw %%ax, %%dx\n");
+      printf("  movw %%dx, (%%rcx)\n");
+      gen_push("rdx");
     } else if (node->left->value_type->type == INT || node->left->value_type->type == UINT) {
       gen_lvalue(node->left);
       gen_operand(node->right, "rax");
@@ -635,6 +661,14 @@ void gen_mul_assign(Node *node) {
     printf("  movl (%%rcx), %%edx\n");
     printf("  imull %%edx\n");
     printf("  movb %%al, (%%rcx)\n");
+    gen_push("rcx");
+  } else if (node->left->value_type->type == SHORT || node->left->value_type->type == USHORT) {
+    gen_lvalue(node->left);
+    gen_operand(node->right, "rax");
+    gen_pop("rcx");
+    printf("  movw (%%rcx), %%dx\n");
+    printf("  imulw %%dx\n");
+    printf("  mowl %%ax, (%%rcx)\n");
     gen_push("rcx");
   } else if (node->left->value_type->type == INT || node->left->value_type->type == UINT) {
     gen_lvalue(node->left);
@@ -858,6 +892,9 @@ void gen_func_def(Node *node) {
     } else if (symbol->value_type->type == CHAR || symbol->value_type->type == UCHAR) {
       printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
+    } else if (symbol->value_type->type == SHORT || symbol->value_type->type == USHORT) {
+      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movw %%ax, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->value_type->type == INT || symbol->value_type->type == UINT) {
       printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);

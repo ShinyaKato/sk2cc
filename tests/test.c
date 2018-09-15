@@ -352,5 +352,8 @@ int main() {
   { unsigned int x = 12, y = 34; test(x + y, 46); }
   { unsigned int x = 12, y = 34; test(x * y, 408); }
 
+  { short x = 12, y = x + 1; test(x * y, 156); }
+  { unsigned short x = 12, y = x + 1; test(x * y, 156); }
+
   return 0;
 }

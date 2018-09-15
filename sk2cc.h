@@ -51,6 +51,7 @@ typedef enum token_type {
   tVOID,
   tBOOL,
   tCHAR,
+  tSHORT,
   tINT,
   tDOUBLE,
   tUNSIGNED,
@@ -123,6 +124,8 @@ typedef enum type_type {
   BOOL,
   CHAR,
   UCHAR,
+  SHORT,
+  USHORT,
   INT,
   UINT,
   DOUBLE,
@@ -279,6 +282,8 @@ extern Type *type_void();
 extern Type *type_bool();
 extern Type *type_char();
 extern Type *type_uchar();
+extern Type *type_short();
+extern Type *type_ushort();
 extern Type *type_int();
 extern Type *type_uint();
 extern Type *type_double();

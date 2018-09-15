@@ -4,6 +4,7 @@ char *token_type_name[] = {
   "void",
   "bool",
   "char",
+  "short",
   "int",
   "double",
   "unsigned",
@@ -118,7 +119,7 @@ bool check_strage_class_specifier() {
 }
 
 bool check_type_specifier() {
-  TokenType specifiers[] = { tVOID, tBOOL, tCHAR, tINT, tDOUBLE, tUNSIGNED, tSTRUCT, tENUM };
+  TokenType specifiers[] = { tVOID, tBOOL, tCHAR, tSHORT, tINT, tDOUBLE, tUNSIGNED, tSTRUCT, tENUM };
   for (int i = 0; i < sizeof(specifiers) / sizeof(specifiers[0]); i++) {
     if (check_token(specifiers[i])) {
       return true;
@@ -592,6 +593,8 @@ Type *type_specifier() {
     return type_void();
   } else if (read_token(tBOOL)) {
     return type_bool();
+  } else if (read_token(tSHORT)) {
+    return type_short();
   } else if (read_token(tCHAR)) {
     return type_char();
   } else if (read_token(tINT)) {
@@ -601,6 +604,8 @@ Type *type_specifier() {
   } else if (read_token(tUNSIGNED)) {
     if (read_token(tCHAR)) {
       return type_uchar();
+    } else if (read_token(tSHORT)) {
+      return type_ushort();
     } else if (read_token(tINT)) {
       return type_uint();
     } else {
