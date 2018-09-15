@@ -105,7 +105,7 @@ int main() {
   test(~183 & 255, 72);
 
   { int x = 123; test(100 <= x && x < 200, 1); }
-  { int x= 3; x = x * x + 1; test(x + 3, 13); }
+  { int x = 3; x = x * x + 1; test(x + 3, 13); }
   { int x; test(x = 2 * 3 * 4, 24); }
   { int x = 2, y = x + 5; test(y, 7); }
   { int x, y, z; test(x = y = z = 3, 3); }
@@ -354,6 +354,11 @@ int main() {
 
   { short x = 12, y = x + 1; test(x * y, 156); }
   { unsigned short x = 12, y = x + 1; test(x * y, 156); }
+
+  {
+    { typedef int a, b; a x = 12; b y = 34; test(x * y, 408); }
+    int a = 12, b = 34; test(a * b, 408);
+  }
 
   return 0;
 }

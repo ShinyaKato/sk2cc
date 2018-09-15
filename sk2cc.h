@@ -192,7 +192,8 @@ typedef enum node_type {
 
 typedef enum symbol_type {
   GLOBAL,
-  LOCAL
+  LOCAL,
+  TYPENAME
 } SymbolType;
 
 typedef struct source_char SourceChar;
@@ -298,14 +299,6 @@ extern bool type_integer(Type *type);
 extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
 extern bool type_same(Type *type1, Type *type2);
-
-extern int get_local_vars_size();
-extern Symbol *symbol_lookup(char *identifier);
-extern void symbol_put(char *identifier, Symbol *symbol);
-extern void begin_scope();
-extern void end_scope();
-extern void begin_function_scope(Symbol *symbol);
-extern void begin_global_scope();
 
 extern Node *node_new();
 extern Node *node_int_const(int int_value, Token *token);

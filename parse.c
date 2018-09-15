@@ -76,8 +76,84 @@ int tokens_pos;
 Vector *tokens;
 
 Vector *string_literals;
-Map *tags, *typedef_names, *enum_constants;
+Map *tags, *enum_constants;
 int continue_level, break_level;
+
+Vector *scopes;
+int local_vars_size;
+
+Initializer *initializer_new() {
+  Initializer *initializer = (Initializer *) calloc(1, sizeof(Initializer));
+  return initializer;
+}
+
+Symbol *symbol_new() {
+  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
+  return symbol;
+}
+
+int get_local_vars_size() {
+  return local_vars_size;
+}
+
+Symbol *symbol_lookup(char *identifier) {
+  for (int i = scopes->length - 1; i >= 0; i--) {
+    Map *map = scopes->array[i];
+    Symbol *symbol = map_lookup(map, identifier);
+    if (symbol) return symbol;
+  }
+  return NULL;
+}
+
+void symbol_put(char *identifier, Symbol *symbol) {
+  Map *map = scopes->array[scopes->length - 1];
+
+  if (symbol->type != TYPENAME) {
+    Symbol *previous = map_lookup(map, identifier);
+    if (previous && previous->defined) {
+      error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
+    }
+
+    if (scopes->length == 1) {
+      symbol->type = GLOBAL;
+    } else {
+      int size = symbol->value_type->size;
+      if (size % 8 != 0) size = size / 8 * 8 + 8;
+      local_vars_size += size;
+
+      symbol->type = LOCAL;
+      symbol->offset = local_vars_size;
+    }
+  }
+
+  map_put(map, identifier, symbol);
+}
+
+void begin_scope() {
+  vector_push(scopes, map_new());
+}
+
+void end_scope() {
+  vector_pop(scopes);
+}
+
+void begin_function_scope(Symbol *symbol) {
+  symbol_put(symbol->identifier, symbol);
+
+  local_vars_size = symbol->value_type->ellipsis ? 176 : 0;
+  begin_scope();
+
+  Vector *params = symbol->value_type->params;
+  for (int i = 0; i < params->length; i++) {
+    Symbol *param = params->array[i];
+    symbol_put(param->identifier, param);
+  }
+}
+
+void begin_global_scope() {
+  scopes = vector_new();
+  begin_scope();
+}
 
 Token *peek_token() {
   return tokens->array[tokens_pos];
@@ -125,7 +201,9 @@ bool check_type_specifier() {
       return true;
     }
   }
-  return check_token(tIDENTIFIER) && map_lookup(typedef_names, peek_token()->identifier);
+  if (!check_token(tIDENTIFIER)) return false;
+  Symbol *symbol = symbol_lookup(peek_token()->identifier);
+  return symbol && symbol->type == TYPENAME;
 }
 
 bool check_function_specifier() {
@@ -144,16 +222,6 @@ void begin_loop() {
 void end_loop() {
   continue_level--;
   break_level--;
-}
-
-Initializer *initializer_new() {
-  Initializer *initializer = (Initializer *) calloc(1, sizeof(Initializer));
-  return initializer;
-}
-
-Symbol *symbol_new() {
-  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
-  return symbol;
 }
 
 Node *assignment_expression();
@@ -617,10 +685,12 @@ Type *type_specifier() {
     return enum_specifier();
   }
 
-  Token *token = get_token();
-  Type *type = map_lookup(typedef_names, token->identifier);
-  if (!type) error(token, "type specifier is expected.");
-  return type;
+  Token *token = expect_token(tIDENTIFIER);
+  Symbol *symbol = symbol_lookup(token->identifier);
+  if (symbol && symbol->type == TYPENAME) {
+    return symbol->value_type;
+  }
+  error(token, "type specifier is expected.");
 }
 
 Type *declaration_specifiers() {
@@ -729,7 +799,8 @@ Vector *declaration(Type *specifier, Symbol *first_symbol) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      map_put(typedef_names, symbol->identifier, symbol->value_type);
+      symbol->type = TYPENAME;
+      symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
       if (!specifier->external && symbol->value_type->type != FUNCTION) {
@@ -742,7 +813,8 @@ Vector *declaration(Type *specifier, Symbol *first_symbol) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      map_put(typedef_names, symbol->identifier, symbol->value_type);
+      symbol->type = TYPENAME;
+      symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
       if (!specifier->external && symbol->value_type->type != FUNCTION) {
@@ -756,7 +828,8 @@ Vector *declaration(Type *specifier, Symbol *first_symbol) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      map_put(typedef_names, symbol->identifier, symbol->value_type);
+      symbol->type = TYPENAME;
+      symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
       if (!specifier->external && symbol->value_type->type != FUNCTION) {
@@ -995,7 +1068,6 @@ Node *parse(Vector *input_tokens) {
   string_literals = vector_new();
 
   tags = map_new();
-  typedef_names = map_new();
   enum_constants = map_new();
 
   continue_level = 0;
