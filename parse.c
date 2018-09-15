@@ -186,28 +186,34 @@ bool check_token(TokenType type) {
   return peek_token()->type == type;
 }
 
-bool check_strage_class_specifier() {
-  return check_token(tTYPEDEF);
-}
-
 bool check_type_specifier() {
-  TokenType specifiers[] = { tVOID, tBOOL, tCHAR, tSHORT, tINT, tDOUBLE, tUNSIGNED, tSTRUCT, tENUM };
-  for (int i = 0; i < sizeof(specifiers) / sizeof(specifiers[0]); i++) {
-    if (check_token(specifiers[i])) {
-      return true;
-    }
-  }
-  if (!check_token(tIDENTIFIER)) return false;
-  Symbol *symbol = symbol_lookup(peek_token()->identifier);
-  return symbol && symbol->type == TYPENAME;
-}
+  if (check_token(tVOID)) return true;
+  if (check_token(tBOOL)) return true;
+  if (check_token(tCHAR)) return true;
+  if (check_token(tSHORT)) return true;
+  if (check_token(tINT)) return true;
+  if (check_token(tDOUBLE)) return true;
+  if (check_token(tUNSIGNED)) return true;
+  if (check_token(tSTRUCT)) return true;
+  if (check_token(tENUM)) return true;
 
-bool check_function_specifier() {
-  return check_token(tNORETURN);
+  if (check_token(tIDENTIFIER)) {
+    Symbol *symbol = symbol_lookup(peek_token()->identifier);
+    return symbol && symbol->type == TYPENAME;
+  }
+
+  return false;
 }
 
 bool check_declaration_specifier() {
-  return check_strage_class_specifier() || check_type_specifier() || check_function_specifier();
+  if (check_type_specifier()) return true;
+
+  if (check_token(tTYPEDEF)) return true;
+  if (check_token(tEXTERN)) return true;
+
+  if (check_token(tNORETURN)) return true;
+
+  return false;
 }
 
 void begin_loop() {
