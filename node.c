@@ -432,37 +432,37 @@ Node *node_expr_stmt(Node *expr) {
   return node;
 }
 
-Node *node_if_stmt(Node *control, Node *if_body, Node *else_body) {
+Node *node_if_stmt(Node *if_control, Node *if_body, Node *else_body) {
   Node *node = node_new();
   node->type = IF_STMT;
-  node->control = control;
+  node->if_control = if_control;
   node->if_body = if_body;
   node->else_body = else_body;
   return node;
 }
 
-Node *node_while_stmt(Node *control, Node *loop_body) {
+Node *node_while_stmt(Node *loop_control, Node *loop_body) {
   Node *node = node_new();
   node->type = WHILE_STMT;
-  node->control = control;
+  node->loop_control = loop_control;
   node->loop_body = loop_body;
   return node;
 }
 
-Node *node_do_while_stmt(Node *control, Node *loop_body) {
+Node *node_do_while_stmt(Node *loop_control, Node *loop_body) {
   Node *node = node_new();
   node->type = DO_WHILE_STMT;
-  node->control = control;
+  node->loop_control = loop_control;
   node->loop_body = loop_body;
   return node;
 }
 
-Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *loop_body) {
+Node *node_for_stmt(Node *loop_init, Node *loop_control, Node *loop_afterthrough, Node *loop_body) {
   Node *node = node_new();
   node->type = FOR_STMT;
-  node->init = init;
-  node->control = control;
-  node->afterthrough = afterthrough;
+  node->loop_init = loop_init;
+  node->loop_control = loop_control;
+  node->loop_afterthrough = loop_afterthrough;
   node->loop_body = loop_body;
   return node;
 }

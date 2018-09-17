@@ -264,10 +264,12 @@ struct node {
   Symbol *symbol;
   Vector *args;
   int member_offset;
-  Node *left, *right, *init, *control, *afterthrough, *expr;
+  Node *expr, *left, *right, *control;
   Vector *array_elements;
   Vector *statements;
-  Node *if_body, *else_body, *loop_body, *function_body;
+  Node *if_control, *if_body, *else_body;
+  Node *loop_init, *loop_control, *loop_afterthrough, *loop_body;
+  Node *function_body;
   int local_vars_size;
   Vector *string_literals, *declarations, *definitions;
 };

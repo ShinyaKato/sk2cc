@@ -899,24 +899,24 @@ Node *expression_statement() {
 Node *if_statement() {
   expect_token(tIF);
   expect_token(tLPAREN);
-  Node *control = expression();
+  Node *if_control = expression();
   expect_token(tRPAREN);
   Node *if_body = statement();
   Node *else_body = read_token(tELSE) ? statement() : NULL;
 
-  return node_if_stmt(control, if_body, else_body);
+  return node_if_stmt(if_control, if_body, else_body);
 }
 
 Node *while_statement() {
   begin_loop();
   expect_token(tWHILE);
   expect_token(tLPAREN);
-  Node *control = expression();
+  Node *loop_control = expression();
   expect_token(tRPAREN);
   Node *loop_body = statement();
   end_loop();
 
-  return node_while_stmt(control, loop_body);
+  return node_while_stmt(loop_control, loop_body);
 }
 
 Node *do_while_statement() {
@@ -925,12 +925,12 @@ Node *do_while_statement() {
   Node *loop_body = statement();
   expect_token(tWHILE);
   expect_token(tLPAREN);
-  Node *control = expression();
+  Node *loop_control = expression();
   expect_token(tRPAREN);
   expect_token(tSEMICOLON);
   end_loop();
 
-  return node_do_while_stmt(control, loop_body);
+  return node_do_while_stmt(loop_control, loop_body);
 }
 
 Node *for_statement() {
@@ -938,7 +938,7 @@ Node *for_statement() {
   begin_loop();
   expect_token(tFOR);
   expect_token(tLPAREN);
-  Node *init;
+  Node *loop_init;
   if (check_declaration_specifier()) {
     Vector *declarations = declaration(declaration_specifiers(), NULL);
     Vector *statements = vector_new();
@@ -967,20 +967,20 @@ Node *for_statement() {
         }
       }
     }
-    init = node_comp_stmt(statements);
+    loop_init = node_comp_stmt(statements);
   } else {
-    init = !check_token(tSEMICOLON) ? expression() : NULL;
+    loop_init = !check_token(tSEMICOLON) ? expression() : NULL;
     expect_token(tSEMICOLON);
   }
-  Node *control = !check_token(tSEMICOLON) ? expression() : NULL;
+  Node *loop_control = !check_token(tSEMICOLON) ? expression() : NULL;
   expect_token(tSEMICOLON);
-  Node *afterthrough = !check_token(tRPAREN) ? expression() : NULL;
+  Node *loop_afterthrough = !check_token(tRPAREN) ? expression() : NULL;
   expect_token(tRPAREN);
   Node *loop_body = statement();
   end_loop();
   end_scope();
 
-  return node_for_stmt(init, control, afterthrough, loop_body);
+  return node_for_stmt(loop_init, loop_control, loop_afterthrough, loop_body);
 }
 
 Node *continue_statement() {

@@ -751,7 +751,7 @@ void gen_if_stmt(Node *node) {
   int label_else = label_no++;
   int label_end = label_no++;
 
-  gen_operand(node->control, "rax");
+  gen_operand(node->if_control, "rax");
   printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_else);
   gen_stmt(node->if_body);
@@ -771,7 +771,7 @@ void gen_while_stmt(Node *node) {
   vector_push(break_labels, &label_end);
 
   gen_label(label_begin);
-  gen_operand(node->control, "rax");
+  gen_operand(node->loop_control, "rax");
   printf("  cmpq $0, %%rax\n");
   gen_jump("je", label_end);
   gen_stmt(node->loop_body);
@@ -793,7 +793,7 @@ void gen_do_while_stmt(Node *node) {
   gen_label(label_begin);
   gen_stmt(node->loop_body);
   gen_label(label_control);
-  gen_operand(node->control, "rax");
+  gen_operand(node->loop_control, "rax");
   printf("  cmpq $0, %%rax\n");
   gen_jump("jne", label_begin);
   gen_label(label_end);
@@ -810,24 +810,24 @@ void gen_for_stmt(Node *node) {
   vector_push(continue_labels, &label_afterthrough);
   vector_push(break_labels, &label_end);
 
-  if (node->init) {
-    if (node->init->type == COMP_STMT) {
-      gen_comp_stmt(node->init);
+  if (node->loop_init) {
+    if (node->loop_init->type == COMP_STMT) {
+      gen_comp_stmt(node->loop_init);
     } else {
-      gen_expr(node->init);
+      gen_expr(node->loop_init);
       gen_pop("rax");
     }
   }
   gen_label(label_begin);
-  if (node->control) {
-    gen_operand(node->control, "rax");
+  if (node->loop_control) {
+    gen_operand(node->loop_control, "rax");
     printf("  cmpq $0, %%rax\n");
     gen_jump("je", label_end);
   }
   gen_stmt(node->loop_body);
   gen_label(label_afterthrough);
-  if (node->afterthrough) {
-    gen_expr(node->afterthrough);
+  if (node->loop_afterthrough) {
+    gen_expr(node->loop_afterthrough);
     gen_pop("rax");
   }
   gen_jump("jmp", label_begin);
