@@ -177,6 +177,9 @@ typedef enum node_type {
   SUB_ASSIGN,
   MUL_ASSIGN,
   COMMA,
+  INIT,
+  ARRAY_INIT,
+  VAR_DECL,
   COMP_STMT,
   EXPR_STMT,
   IF_STMT,
@@ -200,7 +203,6 @@ typedef enum symbol_type {
 typedef struct source_char SourceChar;
 typedef struct token Token;
 typedef struct type Type;
-typedef struct initializer Initializer;
 typedef struct symbol Symbol;
 typedef struct node Node;
 
@@ -235,25 +237,19 @@ struct type {
   bool incomplete;
 };
 
-struct initializer {
-  bool array;
-  Node *node;
-  Vector *elements;
-};
-
 struct symbol {
   SymbolType type;
   Token *token;
   char *identifier;
   Type *value_type;
-  Initializer *initializer;
+  Node *initializer;
   int enum_value;
   int offset;
   bool defined;
 };
 
 struct node {
-  enum node_type type;
+  NodeType type;
   Token *token;
   Type *value_type;
   int int_value;
@@ -265,7 +261,8 @@ struct node {
   Vector *args;
   int member_offset;
   Node *expr, *left, *right, *control;
-  Vector *array_elements;
+  Node *init;
+  Vector *array_init;
   Vector *statements;
   Node *if_control, *if_body, *else_body;
   Node *loop_init, *loop_control, *loop_afterthrough, *loop_body;
@@ -327,6 +324,9 @@ extern Node *node_logical(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
 extern Node *node_assign(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_comma(Node *left, Node *right, Token *token);
+extern Node *node_init(Node *init, Type *value_type);
+extern Node *node_array_init(Vector *array_init, Type *value_type);
+extern Node *node_decl(Vector *declarations);
 extern Node *node_comp_stmt(Vector *statements);
 extern Node *node_expr_stmt(Node *expr);
 extern Node *node_if_stmt(Node *control, Node *if_body, Node *else_body);

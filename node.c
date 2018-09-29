@@ -418,6 +418,29 @@ Node *node_comma(Node *left, Node *right, Token *token) {
   return node_binary_expr(COMMA, right->value_type, left, right, token);
 }
 
+Node *node_init(Node *init, Type *value_type) {
+  Node *node = node_new();
+  node->type = INIT;
+  node->value_type = value_type;
+  node->init = init;
+  return node;
+}
+
+Node *node_array_init(Vector *array_init, Type *value_type) {
+  Node *node = node_new();
+  node->type = ARRAY_INIT;
+  node->value_type = value_type;
+  node->array_init = array_init;
+  return node;
+}
+
+Node *node_decl(Vector *declarations) {
+  Node *node = node_new();
+  node->type = VAR_DECL;
+  node->declarations = declarations;
+  return node;
+}
+
 Node *node_comp_stmt(Vector *statements) {
   Node *node = node_new();
   node->type = COMP_STMT;

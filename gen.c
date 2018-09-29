@@ -733,6 +733,49 @@ void gen_expr(Node *node) {
 
 void gen_stmt(Node *node);
 
+void gen_var_decl_init(Node *node, int offset) {
+  if (node->type == ARRAY_INIT) {
+    int size = node->value_type->array_of->size;
+    for (int i = 0; i < node->array_init->length; i++) {
+      Node *init = node->array_init->array[i];
+      gen_var_decl_init(init, offset + size * i);
+    }
+  } else if (node->type == INIT) {
+    Node *init = node->init;
+    if (init->value_type->type == BOOL) {
+      gen_operand(init, "rax");
+      printf("  cmpl $0, %%eax\n");
+      printf("  setne %%al\n");
+      printf("  movb %%al, %d(%%rbp)\n", offset);
+    } else if (init->value_type->type == CHAR || init->value_type->type == UCHAR) {
+      gen_operand(init, "rax");
+      printf("  movb %%al, %d(%%rbp)\n", offset);
+    } else if (init->value_type->type == SHORT || init->value_type->type == USHORT) {
+      gen_operand(init, "rax");
+      printf("  movw %%ax, %d(%%rbp)\n", offset);
+    } else if (init->value_type->type == INT || init->value_type->type == UINT) {
+      gen_operand(init, "rax");
+      printf("  movl %%eax, %d(%%rbp)\n", offset);
+    } else if (init->value_type->type == DOUBLE) {
+      gen_operand(init, "rax");
+      printf("  movq %%rax, %%xmm0\n");
+      printf("  movsd %%xmm0, %d(%%rbp)\n", offset);
+    } else if (init->value_type->type == POINTER) {
+      gen_operand(init, "rax");
+      printf("  movq %%rax, %d(%%rbp)\n", offset);
+    }
+  }
+}
+
+void gen_var_decl(Node *node) {
+  for (int i = 0; i < node->declarations->length; i++) {
+    Symbol *symbol = node->declarations->array[i];
+    if (symbol->initializer) {
+      gen_var_decl_init(symbol->initializer, -symbol->offset);
+    }
+  }
+}
+
 void gen_comp_stmt(Node *node) {
   for (int i = 0; i < node->statements->length; i++) {
     Node *stmt = node->statements->array[i];
@@ -810,14 +853,7 @@ void gen_for_stmt(Node *node) {
   vector_push(continue_labels, &label_afterthrough);
   vector_push(break_labels, &label_end);
 
-  if (node->loop_init) {
-    if (node->loop_init->type == COMP_STMT) {
-      gen_comp_stmt(node->loop_init);
-    } else {
-      gen_expr(node->loop_init);
-      gen_pop("rax");
-    }
-  }
+  gen_stmt(node->loop_init);
   gen_label(label_begin);
   if (node->loop_control) {
     gen_operand(node->loop_control, "rax");
@@ -826,10 +862,7 @@ void gen_for_stmt(Node *node) {
   }
   gen_stmt(node->loop_body);
   gen_label(label_afterthrough);
-  if (node->loop_afterthrough) {
-    gen_expr(node->loop_afterthrough);
-    gen_pop("rax");
-  }
+  gen_stmt(node->loop_afterthrough);
   gen_jump("jmp", label_begin);
   gen_label(label_end);
 
@@ -855,7 +888,8 @@ void gen_return_stmt(Node *node) {
 }
 
 void gen_stmt(Node *node) {
-  if (node->type == COMP_STMT) gen_comp_stmt(node);
+  if (node->type == VAR_DECL) gen_var_decl(node);
+  else if (node->type == COMP_STMT) gen_comp_stmt(node);
   else if (node->type == EXPR_STMT) gen_expr_stmt(node);
   else if (node->type == IF_STMT) gen_if_stmt(node);
   else if (node->type == WHILE_STMT) gen_while_stmt(node);
@@ -926,6 +960,40 @@ void gen_func_def(Node *node) {
   printf("  ret\n");
 }
 
+void gen_gvar_init(Node *node) {
+  if (node->type == ARRAY_INIT) {
+    Type *type = node->value_type;
+    int length = node->array_init->length;
+    int padding = type->size - type->array_of->size * length;
+    for (int i = 0; i < length; i++) {
+      gen_gvar_init(node->array_init->array[i]);
+    }
+    if (padding > 0) {
+      printf("  .zero %d\n", padding);
+    }
+  } else if (node->type == INIT) {
+    if (node->init->type == INT_CONST) {
+      printf("  .long %d\n", node->init->int_value);
+    } else if (node->init->type == STRING_LITERAL) {
+      printf("  .quad .S%d\n", node->init->string_label);
+    }
+  }
+}
+
+void gen_gvar_decl(Vector *declarations) {
+  printf("  .data\n");
+  for (int i = 0; i < declarations->length; i++) {
+    Symbol *symbol = declarations->array[i];
+    printf("  .global %s\n", symbol->identifier);
+    printf("%s:\n", symbol->identifier);
+    if (symbol->initializer) {
+      gen_gvar_init(symbol->initializer);
+    } else {
+      printf("  .zero %d\n", symbol->value_type->size);
+    }
+  }
+}
+
 void gen_trans_unit(Node *node) {
   if (node->string_literals->length > 0) {
     printf("  .text\n");
@@ -953,40 +1021,7 @@ void gen_trans_unit(Node *node) {
   }
 
   if (node->declarations->length > 0) {
-    printf("  .data\n");
-    for (int i = 0; i < node->declarations->length; i++) {
-      Symbol *symbol = node->declarations->array[i];
-      Initializer *initializer = symbol->initializer;
-      printf("  .global %s\n", symbol->identifier);
-      printf("%s:\n", symbol->identifier);
-      if (symbol->initializer) {
-        if (symbol->value_type->type == ARRAY) {
-          for (int j = 0; j < initializer->elements->length; j++) {
-            Node *element = initializer->elements->array[j];
-            if (element->type == INT_CONST) {
-              printf("  .long %d\n", element->int_value);
-            } else if (element->type == STRING_LITERAL) {
-              printf("  .quad .S%d\n", element->string_label);
-            }
-          }
-          Type *type = symbol->value_type;
-          int length = initializer->elements->length;
-          int padding = type->size - length * type->array_of->size;
-          if (padding > 0) {
-            printf("  .zero %d\n", padding);
-          }
-        } else {
-          Node *node = initializer->node;
-          if (node->type == INT_CONST) {
-            printf("  .long %d\n", node->int_value);
-          } else if (node->type == STRING_LITERAL) {
-            printf("  .quad .S%d\n", node->string_label);
-          }
-        }
-      } else {
-        printf("  .zero %d\n", symbol->value_type->size);
-      }
-    }
+    gen_gvar_decl(node->declarations);
   }
 
   if (node->definitions->length > 0) {

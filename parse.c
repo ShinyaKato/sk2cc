@@ -82,11 +82,6 @@ int continue_level, break_level;
 Vector *scopes;
 int local_vars_size;
 
-Initializer *initializer_new() {
-  Initializer *initializer = (Initializer *) calloc(1, sizeof(Initializer));
-  return initializer;
-}
-
 Symbol *symbol_new() {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   return symbol;
@@ -761,34 +756,32 @@ Symbol *declarator(Type *specifier) {
   return symbol;
 }
 
-Initializer *initializer() {
-  Initializer *initializer = initializer_new();
-  if (!read_token(tLBRACE)) {
-    initializer->node = assignment_expression();
-  } else {
-    Vector *elements = vector_new();
+Node *initializer(Type *type) {
+  if (type->type == ARRAY) {
+    Vector *array_init = vector_new();
+    expect_token(tLBRACE);
     do {
-      vector_push(elements, assignment_expression());
+      vector_push(array_init, initializer(type->array_of));
     } while (read_token(tCOMMA));
     expect_token(tRBRACE);
-
-    initializer->array = true;
-    initializer->elements = elements;
+    return node_array_init(array_init, type);
   }
 
-  return initializer;
+  return node_init(assignment_expression(), type);
 }
 
 Symbol *init_declarator(Type *specifier, Symbol *symbol) {
   if (read_token(tASSIGN)) {
-    symbol->initializer = initializer();
+    symbol->initializer = initializer(symbol->value_type);
     if (symbol->value_type->type == ARRAY) {
+      int length = symbol->initializer->array_init->length;
       if (symbol->value_type->incomplete) {
-        Type *type = type_array_of(symbol->value_type->array_of, symbol->initializer->elements->length);
+        Type *type = type_array_of(symbol->value_type->array_of, length);
         type_copy(symbol->value_type, type);
-      }
-      if (symbol->value_type->array_size < symbol->initializer->elements->length) {
-        error(symbol->token, "too many initializers.");
+      } else {
+        if (symbol->value_type->array_size < length) {
+          error(symbol->token, "too many array elements.");
+        }
       }
     }
   }
@@ -855,31 +848,7 @@ Node *compound_statement() {
   while (!check_token(tRBRACE) && !check_token(tEND)) {
     if (check_declaration_specifier()) {
       Vector *declarations = declaration(declaration_specifiers(), NULL);
-      for (int i = 0; i < declarations->length; i++) {
-        Symbol *symbol = declarations->array[i];
-        if (symbol->initializer) {
-          Initializer *init = symbol->initializer;
-          if (!init->array) {
-            Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
-            Node *assign = node_assign(ASSIGN, identifier, init->node, identifier->token);
-            Node *stmt_expr = node_expr_stmt(assign);
-            vector_push(statements, stmt_expr);
-          } else {
-            Initializer *init = symbol->initializer;
-            Vector *elements = init->elements;
-            for (int j = 0; j < elements->length; j++) {
-              Node *node = elements->array[j];
-              Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
-              Node *index = node_int_const(j, symbol->token);
-              Node *add = node_additive(ADD, identifier, index, symbol->token);
-              Node *lvalue = node_indirect(add, symbol->token);
-              Node *assign = node_assign(ASSIGN, lvalue, node, identifier->token);
-              Node *stmt_expr = node_expr_stmt(assign);
-              vector_push(statements, stmt_expr);
-            }
-          }
-        }
-      }
+      vector_push(statements, node_decl(declarations));
     } else {
       vector_push(statements, statement());
     }
@@ -941,40 +910,14 @@ Node *for_statement() {
   Node *loop_init;
   if (check_declaration_specifier()) {
     Vector *declarations = declaration(declaration_specifiers(), NULL);
-    Vector *statements = vector_new();
-    for (int i = 0; i < declarations->length; i++) {
-      Symbol *symbol = declarations->array[i];
-      if (symbol->initializer) {
-        Initializer *init = symbol->initializer;
-        if (!init->array) {
-          Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
-          Node *assign = node_assign(ASSIGN, identifier, init->node, identifier->token);
-          Node *stmt_expr = node_expr_stmt(assign);
-          vector_push(statements, stmt_expr);
-        } else {
-          Initializer *init = symbol->initializer;
-          Vector *elements = init->elements;
-          for (int j = 0; j < elements->length; j++) {
-            Node *node = elements->array[j];
-            Node *identifier = node_identifier(symbol->identifier, symbol, symbol->token);
-            Node *index = node_int_const(j, symbol->token);
-            Node *add = node_additive(ADD, identifier, index, symbol->token);
-            Node *lvalue = node_indirect(add, symbol->token);
-            Node *assign = node_assign(ASSIGN, lvalue, node, identifier->token);
-            Node *stmt_expr = node_expr_stmt(assign);
-            vector_push(statements, stmt_expr);
-          }
-        }
-      }
-    }
-    loop_init = node_comp_stmt(statements);
+    loop_init = node_decl(declarations);
   } else {
-    loop_init = !check_token(tSEMICOLON) ? expression() : NULL;
+    loop_init = node_expr_stmt(!check_token(tSEMICOLON) ? expression() : NULL);
     expect_token(tSEMICOLON);
   }
   Node *loop_control = !check_token(tSEMICOLON) ? expression() : NULL;
   expect_token(tSEMICOLON);
-  Node *loop_afterthrough = !check_token(tRPAREN) ? expression() : NULL;
+  Node *loop_afterthrough = node_expr_stmt(!check_token(tRPAREN) ? expression() : NULL);
   expect_token(tRPAREN);
   Node *loop_body = statement();
   end_loop();
