@@ -65,6 +65,27 @@ void gen_load(Type *type) {
   gen_push("rax");
 }
 
+void gen_store(Type *type) {
+  gen_pop("rax");
+  gen_pop("rcx");
+  if (type->type == BOOL) {
+    printf("  cmpl $0, %%eax\n");
+    printf("  setne %%al\n");
+    printf("  movb %%al, (%%rcx)\n");
+  } else if (type->type == CHAR || type->type == UCHAR) {
+    printf("  movb %%al, (%%rcx)\n");
+  } else if (type->type == SHORT || type->type == USHORT) {
+    printf("  movw %%ax, (%%rcx)\n");
+  } else if (type->type == INT || type->type == UINT) {
+    printf("  movl %%eax, (%%rcx)\n");
+  } else if (type->type == DOUBLE) {
+    printf("  movq %%rax, (%%rcx)\n");
+  } else if (type->type == POINTER) {
+    printf("  movq %%rax, (%%rcx)\n");
+  }
+  gen_push("rax");
+}
+
 void gen_operand(Node *node, char *reg) {
   gen_expr(node);
   gen_pop(reg);
@@ -488,46 +509,9 @@ void gen_condition(Node *node) {
 }
 
 void gen_assign(Node *node) {
-  if (node->left->value_type->type == BOOL) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  cmpl $0, %%ecx\n");
-    printf("  setne %%cl\n");
-    printf("  movb %%cl, (%%rax)\n");
-    gen_push("rcx");
-  } else if (node->left->value_type->type == CHAR || node->left->value_type->type == UCHAR) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  movb %%cl, (%%rax)\n");
-    gen_push("rcx");
-  } else if (node->left->value_type->type == SHORT || node->left->value_type->type == USHORT) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  movw %%cx, (%%rax)\n");
-    gen_push("rcx");
-  } else if (node->left->value_type->type == INT || node->left->value_type->type == UINT) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  movl %%ecx, (%%rax)\n");
-    gen_push("rcx");
-  } else if (node->left->value_type->type == DOUBLE) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  movq %%rcx, %%xmm0\n");
-    printf("  movsd %%xmm0, (%%rax)\n");
-    gen_push("rcx");
-  } else if (node->left->value_type->type == POINTER) {
-    gen_lvalue(node->left);
-    gen_operand(node->right, "rcx");
-    gen_pop("rax");
-    printf("  movq %%rcx, (%%rax)\n");
-    gen_push("rcx");
-  }
+  gen_lvalue(node->left);
+  gen_expr(node->right);
+  gen_store(node->left->value_type);
 }
 
 void gen_add_assign(Node *node) {
