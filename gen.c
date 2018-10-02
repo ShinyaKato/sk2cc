@@ -225,44 +225,6 @@ void gen_post_dec(Node *node) {
   }
 }
 
-void gen_pre_inc(Node *node) {
-  if (type_integer(node->expr->value_type)) {
-    gen_lvalue(node->expr);
-    gen_pop("rcx");
-    printf("  movl (%%rcx), %%eax\n");
-    printf("  addl $1, %%eax\n");
-    printf("  movl %%eax, (%%rcx)\n");
-    gen_push("rax");
-  } else if (type_pointer(node->expr->value_type)) {
-    int size = node->expr->value_type->pointer_to->size;
-    gen_lvalue(node->expr);
-    gen_pop("rcx");
-    printf("  movq (%%rcx), %%rax\n");
-    printf("  addq $%d, %%rax\n", size);
-    printf("  movq %%rax, (%%rcx)\n");
-    gen_push("rax");
-  }
-}
-
-void gen_pre_dec(Node *node) {
-  if (type_integer(node->expr->value_type)) {
-    gen_lvalue(node->expr);
-    gen_pop("rcx");
-    printf("  movl (%%rcx), %%eax\n");
-    printf("  subl $1, %%eax\n");
-    printf("  movl %%eax, (%%rcx)\n");
-    gen_push("rax");
-  } else if (type_pointer(node->expr->value_type)) {
-    int size = node->expr->value_type->pointer_to->size;
-    gen_lvalue(node->expr);
-    gen_pop("rcx");
-    printf("  movq (%%rcx), %%rax\n");
-    printf("  subq $%d, %%rax\n", size);
-    printf("  movq %%rax, (%%rcx)\n");
-    gen_push("rax");
-  }
-}
-
 void gen_address(Node *node) {
   gen_lvalue(node->expr);
 }
@@ -529,8 +491,6 @@ void gen_expr(Node *node) {
   else if (node->type == DOT) gen_dot(node);
   else if (node->type == POST_INC) gen_post_inc(node);
   else if (node->type == POST_DEC) gen_post_dec(node);
-  else if (node->type == PRE_INC) gen_pre_inc(node);
-  else if (node->type == PRE_DEC) gen_pre_dec(node);
   else if (node->type == ADDRESS) gen_address(node);
   else if (node->type == INDIRECT) gen_indirect(node);
   else if (node->type == UPLUS) gen_uplus(node);

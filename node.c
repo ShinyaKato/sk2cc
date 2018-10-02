@@ -119,16 +119,7 @@ Node *node_dot(Node *expr, char *member, Token *token) {
   return node;
 }
 
-Node *node_unary_expr(NodeType type, Type *value_type, Node *expr, Token *token) {
-  Node *node = node_new();
-  node->type = type;
-  node->value_type = value_type;
-  node->expr = expr;
-  node->token = token;
-  return node;
-}
-
-Node *node_inc(NodeType type, Node *expr, Token *token) {
+Node *node_post_inc(Node *expr, Token *token) {
   if (!node_lvalue(expr)) {
     error(token, "operand of ++ operator should be lvalue.");
   }
@@ -142,10 +133,15 @@ Node *node_inc(NodeType type, Node *expr, Token *token) {
     error(token, "invalid operand type for ++ operator.");
   }
 
-  return node_unary_expr(type, value_type, expr, token);
+  Node *node = node_new();
+  node->type = POST_INC;
+  node->value_type = value_type;
+  node->expr = expr;
+  node->token = token;
+  return node;
 }
 
-Node *node_dec(NodeType type, Node *expr, Token *token) {
+Node *node_post_dec(Node *expr, Token *token) {
   if (!node_lvalue(expr)) {
     error(token, "operand of -- operator should be lvalue.");
   }
@@ -159,7 +155,29 @@ Node *node_dec(NodeType type, Node *expr, Token *token) {
     error(token, "invalid operand type for -- operator.");
   }
 
-  return node_unary_expr(type, value_type, expr, token);
+  Node *node = node_new();
+  node->type = POST_DEC;
+  node->value_type = value_type;
+  node->expr = expr;
+  node->token = token;
+  return node;
+}
+
+Node *node_unary_expr(NodeType type, Type *value_type, Node *expr, Token *token) {
+  Node *node = node_new();
+  node->type = type;
+  node->value_type = value_type;
+  node->expr = expr;
+  node->token = token;
+  return node;
+}
+
+Node *node_pre_inc(Node *expr, Token *token) {
+  return node_add_assign(expr, node_int_const(1, token), token);
+}
+
+Node *node_pre_dec(Node *expr, Token *token) {
+  return node_sub_assign(expr, node_int_const(1, token), token);
 }
 
 Node *node_address(Node *expr, Token *token) {

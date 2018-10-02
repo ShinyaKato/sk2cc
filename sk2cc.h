@@ -146,8 +146,6 @@ typedef enum node_type {
   DOT,
   POST_INC,
   POST_DEC,
-  PRE_INC,
-  PRE_DEC,
   ADDRESS,
   INDIRECT,
   UPLUS,
@@ -308,8 +306,10 @@ extern Node *node_string_literal(String *string_value, int string_label, Token *
 extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Node *node_func_call(Node *expr, Vector *args, Token *token);
 extern Node *node_dot(Node *expr, char *identifier, Token *token);
-extern Node *node_inc(NodeType type, Node *expr, Token *token);
-extern Node *node_dec(NodeType type, Node *expr, Token *token);
+extern Node *node_post_inc(Node *expr, Token *token);
+extern Node *node_post_dec(Node *expr, Token *token);
+extern Node *node_pre_inc(Node *expr, Token *token);
+extern Node *node_pre_dec(Node *expr, Token *token);
 extern Node *node_address(Node *expr, Token *token);
 extern Node *node_indirect(Node *expr, Token *token);
 extern Node *node_unary_arithmetic(NodeType type, Node *expr, Token *token);

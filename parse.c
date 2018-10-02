@@ -215,9 +215,9 @@ Node *postfix_expression(Node *primary_expr) {
       Node *expr = node_indirect(node, token);
       node = node_dot(expr, member, token);
     } else if (read_token(tINC)) {
-      node = node_inc(POST_INC, node, token);
+      node = node_post_inc(node, token);
     } else if (read_token(tDEC)) {
-      node = node_dec(POST_DEC, node, token);
+      node = node_post_dec(node, token);
     } else {
       break;
     }
@@ -252,10 +252,10 @@ Node *unary_expression() {
   }
 
   if (read_token(tINC)) {
-    return node_inc(PRE_INC, unary_expression(), token);
+    return node_pre_inc(unary_expression(), token);
   }
   if (read_token(tDEC)) {
-    return node_dec(PRE_DEC, unary_expression(), token);
+    return node_pre_dec(unary_expression(), token);
   }
 
   if (read_token(tAND)) {
