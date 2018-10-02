@@ -175,7 +175,9 @@ Token *lex() {
       token->type = tMUL;
     }
   } else if (read_char('/')) {
-    if (read_char('/')) {
+    if (read_char('=')) {
+      token->type = tDIV_ASSIGN;
+    } else if (read_char('/')) {
       while (1) {
         char c = get_char();
         if (c == '\n') break;
@@ -191,7 +193,11 @@ Token *lex() {
       token->type = tDIV;
     }
   } else if (read_char('%')) {
-    token->type = tMOD;
+    if (read_char('=')) {
+      token->type = tMOD_ASSIGN;
+    } else {
+      token->type = tMOD;
+    }
   } else if (read_char('<')) {
     if (read_char('=')) {
       token->type = tLTE;

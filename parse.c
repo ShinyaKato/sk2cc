@@ -65,6 +65,8 @@ char *token_type_name[] = {
   "+=",
   "-=",
   "*=",
+  "/=",
+  "%=",
   ",",
   "#",
   "space",
@@ -553,6 +555,10 @@ Node *assignment_expression() {
     return node_sub_assign(left, assignment_expression(), token);
   } else if (read_token(tMUL_ASSIGN)) {
     return node_mul_assign(left, assignment_expression(), token);
+  } else if (read_token(tDIV_ASSIGN)) {
+    return node_div_assign(left, assignment_expression(), token);
+  } else if (read_token(tMOD_ASSIGN)) {
+    return node_mod_assign(left, assignment_expression(), token);
   }
 
   return conditional_expression(left);

@@ -412,6 +412,8 @@ Node *node_compound_assign(NodeType type, Node *left, Node *right, Token *token)
   if (type == ADD) op = node_add(indirect, right, token);
   else if (type == SUB) op = node_sub(indirect, right, token);
   else if (type == MUL) op = node_mul(indirect, right, token);
+  else if (type == DIV) op = node_div(indirect, right, token);
+  else if (type == MOD) op = node_mod(indirect, right, token);
 
   return node_comma(assign, node_assign(indirect, op, token), token);
 }
@@ -426,6 +428,14 @@ Node *node_sub_assign(Node *left, Node *right, Token *token) {
 
 Node *node_mul_assign(Node *left, Node *right, Token *token) {
   return node_compound_assign(MUL, left, right, token);
+}
+
+Node *node_div_assign(Node *left, Node *right, Token *token) {
+  return node_compound_assign(DIV, left, right, token);
+}
+
+Node *node_mod_assign(Node *left, Node *right, Token *token) {
+  return node_compound_assign(MOD, left, right, token);
 }
 
 Node *node_comma(Node *left, Node *right, Token *token) {

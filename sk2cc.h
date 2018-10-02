@@ -112,6 +112,8 @@ typedef enum token_type {
   tADD_ASSIGN,
   tSUB_ASSIGN,
   tMUL_ASSIGN,
+  tDIV_ASSIGN,
+  tMOD_ASSIGN,
   tCOMMA,
   tHASH,
   tSPACE,
@@ -326,6 +328,8 @@ extern Node *node_assign(Node *left, Node *right, Token *token);
 extern Node *node_add_assign(Node *left, Node *right, Token *token);
 extern Node *node_sub_assign(Node *left, Node *right, Token *token);
 extern Node *node_mul_assign(Node *left, Node *right, Token *token);
+extern Node *node_div_assign(Node *left, Node *right, Token *token);
+extern Node *node_mod_assign(Node *left, Node *right, Token *token);
 extern Node *node_comma(Node *left, Node *right, Token *token);
 extern Node *node_init(Node *init, Type *value_type);
 extern Node *node_array_init(Vector *array_init, Type *value_type);

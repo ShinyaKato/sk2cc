@@ -387,5 +387,8 @@ int main() {
     test(s[1][1][1], 'h');
   }
 
+  { int x = 19; test(x /= 3, 6); test(x, 6); }
+  { int x = 19; test(x %= 3, 1); test(x, 1); }
+
   return 0;
 }
