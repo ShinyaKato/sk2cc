@@ -375,14 +375,15 @@ Node *multiplicative_expression(Node *cast_expr) {
 
   while (1) {
     Token *token = peek_token();
-    NodeType type;
-    if (read_token(tMUL)) type = MUL;
-    else if (read_token(tDIV)) type = DIV;
-    else if (read_token(tMOD)) type = MOD;
-    else break;
-
-    Node *right = cast_expression();
-    node = node_multiplicative(type, node, right, token);
+    if (read_token(tMUL)) {
+      node = node_mul(node, cast_expression(), token);
+    } else if (read_token(tDIV)) {
+      node = node_div(node, cast_expression(), token);
+    } else if (read_token(tMOD)) {
+      node = node_mod(node, cast_expression(), token);
+    } else {
+      break;
+    }
   }
 
   return node;

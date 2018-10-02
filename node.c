@@ -223,27 +223,33 @@ Node *node_binary_expr(NodeType type, Type *value_type, Node *left, Node *right,
   return node;
 }
 
-Node *node_multiplicative(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type == MUL || type == DIV) {
-    if (type_integer(left->value_type) && type_integer(right->value_type)) {
-      value_type = type_int();
-    } else {
-      if (type == MUL) {
-        error(token, "operands of * operator should have integer type.");
-      } else if (DIV) {
-        error(token, "operands of / operator should have integer type.");
-      }
-    }
-  } else if (type == MOD) {
-    if (type_integer(left->value_type) && type_integer(right->value_type)) {
-      value_type = type_int();
-    } else {
-      error(token, "operands of %% operator should have integer type.");
-    }
+Type *semantics_mul(Node *left, Node *right, Token *token) {
+  if (type_integer(left->value_type) && type_integer(right->value_type)) {
+    return type_int();
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  error(token, "operands of * or / operator should have integer type.");
+}
+
+Node *node_mul(Node *left, Node *right, Token *token) {
+  Type *type = semantics_mul(left, right, token);
+  return node_binary_expr(MUL, type, left, right, token);
+}
+
+Node *node_div(Node *left, Node *right, Token *token) {
+  Type *type = semantics_mul(left, right, token);
+  return node_binary_expr(DIV, type, left, right, token);
+}
+
+Node *node_mod(Node *left, Node *right, Token *token) {
+  Type *value_type;
+  if (type_integer(left->value_type) && type_integer(right->value_type)) {
+    value_type = type_int();
+  } else {
+    error(token, "operands of %% operator should have integer type.");
+  }
+
+  return node_binary_expr(MOD, value_type, left, right, token);
 }
 
 Node *node_add(Node *left, Node *right, Token *token) {
@@ -405,7 +411,7 @@ Node *node_compound_assign(NodeType type, Node *left, Node *right, Token *token)
   Node *op;
   if (type == ADD) op = node_add(indirect, right, token);
   else if (type == SUB) op = node_sub(indirect, right, token);
-  else if (type == MUL) op = node_multiplicative(MUL, indirect, right, token);
+  else if (type == MUL) op = node_mul(indirect, right, token);
 
   return node_comma(assign, node_assign(indirect, op, token), token);
 }
