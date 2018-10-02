@@ -212,6 +212,7 @@ struct source_char {
 
 struct token {
   TokenType type;
+  char *type_name;
   int int_value;
   double double_value;
   String *string_value;

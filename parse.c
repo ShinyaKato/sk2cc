@@ -1,79 +1,5 @@
 #include "sk2cc.h"
 
-char *token_type_name[] = {
-  "void",
-  "bool",
-  "char",
-  "short",
-  "int",
-  "double",
-  "unsigned",
-  "struct",
-  "enum",
-  "typedef",
-  "extern",
-  "_Noreturn",
-  "sizeof",
-  "_Alignof",
-  "if",
-  "else",
-  "while",
-  "do",
-  "for",
-  "continue",
-  "break",
-  "return",
-  "identifier",
-  "integer constant",
-  "floating point constant",
-  "string literal",
-  "[",
-  "]",
-  "(",
-  ")",
-  "{",
-  "}",
-  ".",
-  "->",
-  "++",
-  "--",
-  "~",
-  "!",
-  "*",
-  "/",
-  "%",
-  "+",
-  "-",
-  "<<",
-  ">>",
-  "<",
-  ">",
-  "<=",
-  ">=",
-  "==",
-  "!=",
-  "&",
-  "^",
-  "|",
-  "&&",
-  "||",
-  "?",
-  ":",
-  ";",
-  "...",
-  "=",
-  "+=",
-  "-=",
-  "*=",
-  "/=",
-  "%=",
-  ",",
-  "#",
-  "space",
-  "new line",
-  "end of file"
-};
-
 int tokens_pos;
 Vector *tokens;
 
@@ -161,7 +87,7 @@ Token *get_token() {
 Token *expect_token(TokenType type) {
   Token *token = get_token();
   if (token->type != type) {
-    error(token, "%s is expected.", token_type_name[type]);
+    error(token, "%s is expected.", token->type_name);
   }
   return token;
 }

@@ -1,5 +1,79 @@
 #include "sk2cc.h"
 
+char *token_type_name[] = {
+  "void",
+  "bool",
+  "char",
+  "short",
+  "int",
+  "double",
+  "unsigned",
+  "struct",
+  "enum",
+  "typedef",
+  "extern",
+  "_Noreturn",
+  "sizeof",
+  "_Alignof",
+  "if",
+  "else",
+  "while",
+  "do",
+  "for",
+  "continue",
+  "break",
+  "return",
+  "identifier",
+  "integer constant",
+  "floating point constant",
+  "string literal",
+  "[",
+  "]",
+  "(",
+  ")",
+  "{",
+  "}",
+  ".",
+  "->",
+  "++",
+  "--",
+  "~",
+  "!",
+  "*",
+  "/",
+  "%",
+  "+",
+  "-",
+  "<<",
+  ">>",
+  "<",
+  ">",
+  "<=",
+  ">=",
+  "==",
+  "!=",
+  "&",
+  "^",
+  "|",
+  "&&",
+  "||",
+  "?",
+  ":",
+  ";",
+  "...",
+  "=",
+  "+=",
+  "-=",
+  "*=",
+  "/=",
+  "%=",
+  ",",
+  "#",
+  "space",
+  "new line",
+  "end of file"
+};
+
 Vector *src;
 int src_pos;
 
@@ -281,6 +355,7 @@ Token *lex() {
     error(token, "unexpected character: %c.", peek_char());
   }
 
+  token->type_name = token_type_name[token->type];
   token->schar_end = (SourceChar **) &(src->array[src_pos]);
 
   return token;

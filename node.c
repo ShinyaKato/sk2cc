@@ -164,7 +164,7 @@ Node *node_dec(NodeType type, Node *expr, Token *token) {
 
 Node *node_address(Node *expr, Token *token) {
   if (!node_lvalue(expr)) {
-    error(token, "operand of unary & operator should be identifier.");
+    error(token, "operand of %s operator should be lvalue.", token->type_name);
   }
 
   return node_unary_expr(ADDRESS, type_pointer_to(expr->value_type), expr, token);
@@ -172,7 +172,7 @@ Node *node_address(Node *expr, Token *token) {
 
 Node *node_indirect(Node *expr, Token *token) {
   if (!type_pointer(expr->value_type)) {
-    error(token, "operand of unary * operator should have pointer type.");
+    error(token, "operand of %s operator should have pointer type.", token->type_name);
   }
 
   return node_unary_expr(INDIRECT, type_convert(expr->value_type->pointer_to), expr, token);
@@ -228,7 +228,7 @@ Type *semantics_mul(Node *left, Node *right, Token *token) {
     return type_int();
   }
 
-  error(token, "operands of * or / operator should have integer type.");
+  error(token, "operands of %s operator should have integer type.", token->type_name);
 }
 
 Node *node_mul(Node *left, Node *right, Token *token) {
@@ -246,7 +246,7 @@ Node *node_mod(Node *left, Node *right, Token *token) {
   if (type_integer(left->value_type) && type_integer(right->value_type)) {
     value_type = type_int();
   } else {
-    error(token, "operands of %% operator should have integer type.");
+    error(token, "operands of %s operator should have integer type.", token->type_name);
   }
 
   return node_binary_expr(MOD, value_type, left, right, token);
@@ -264,7 +264,7 @@ Node *node_add(Node *left, Node *right, Token *token) {
     right = temp;
     value_type = left->value_type;
   } else {
-    error(token, "invalid operand types for + operator.");
+    error(token, "invalid operand types for %s operator.", token->type_name);
   }
 
   return node_binary_expr(ADD, value_type, left, right, token);
@@ -277,7 +277,7 @@ Node *node_sub(Node *left, Node *right, Token *token) {
   } else if (type_pointer(left->value_type) && type_integer(right->value_type)) {
     value_type = left->value_type;
   } else {
-    error(token, "invalid operand types for - operator.");
+    error(token, "invalid operand types for %s operator.", token->type_name);
   }
 
   return node_binary_expr(SUB, value_type, left, right, token);
@@ -390,7 +390,7 @@ Node *node_conditional(Node *control, Node *left, Node *right, Token *token) {
 
 Node *node_assign(Node *left, Node *right, Token *token) {
   if (!node_lvalue(left)) {
-    error(token, "left side of = operator should be lvalue.");
+    error(token, "left side of %s operator should be lvalue.", token->type_name);
   }
 
   return node_binary_expr(ASSIGN, left->value_type, left, right, token);
