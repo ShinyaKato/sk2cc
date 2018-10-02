@@ -390,53 +390,36 @@ Node *node_assign(Node *left, Node *right, Token *token) {
   return node_binary_expr(ASSIGN, left->value_type, left, right, token);
 }
 
+Node *node_compound_assign(NodeType type, Node *left, Node *right, Token *token) {
+  Symbol *symbol = symbol_new();
+  symbol->token = token;
+  symbol->identifier = NULL;
+  symbol->value_type = type_pointer_to(left->value_type);
+  symbol_put(NULL, symbol);
+
+  Node *id = node_identifier(NULL, symbol, token);
+  Node *addr = node_address(left, token);
+  Node *assign = node_assign(id, addr, token);
+  Node *indirect = node_indirect(id, token);
+
+  Node *op;
+  if (type == ADD) op = node_add(indirect, right, token);
+  else if (type == SUB) op = node_sub(indirect, right, token);
+  else if (type == MUL) op = node_multiplicative(MUL, indirect, right, token);
+
+  return node_comma(assign, node_assign(indirect, op, token), token);
+}
+
 Node *node_add_assign(Node *left, Node *right, Token *token) {
-  if (!node_lvalue(left)) {
-    error(token, "left side of = operator should be lvalue.");
-  }
-
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_integer(right->value_type)) {
-    value_type = left->value_type;
-  } else {
-    error(token, "invalid operand types for += operator.");
-  }
-
-  return node_binary_expr(ADD_ASSIGN, value_type, left, right, token);
+  return node_compound_assign(ADD, left, right, token);
 }
 
 Node *node_sub_assign(Node *left, Node *right, Token *token) {
-  if (!node_lvalue(left)) {
-    error(token, "left side of = operator should be lvalue.");
-  }
-
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_integer(right->value_type)) {
-    value_type = left->value_type;
-  } else {
-    error(token, "invalid operand types for -= operator.");
-  }
-
-  return node_binary_expr(SUB_ASSIGN, value_type, left, right, token);
+  return node_compound_assign(SUB, left, right, token);
 }
 
 Node *node_mul_assign(Node *left, Node *right, Token *token) {
-  if (!node_lvalue(left)) {
-    error(token, "left side of = operator should be lvalue.");
-  }
-
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else {
-    error(token, "invalid operand types for *= operator.");
-  }
-
-  return node_binary_expr(MUL_ASSIGN, value_type, left, right, token);
+  return node_compound_assign(MUL, left, right, token);
 }
 
 Node *node_comma(Node *left, Node *right, Token *token) {

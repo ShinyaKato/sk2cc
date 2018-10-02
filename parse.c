@@ -100,9 +100,11 @@ void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->array[scopes->length - 1];
 
   if (symbol->type != TYPENAME && symbol->type != ENUM_CONST) {
-    Symbol *previous = map_lookup(map, identifier);
-    if (previous && previous->defined) {
-      error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
+    if (identifier) {
+      Symbol *previous = map_lookup(map, identifier);
+      if (previous && previous->defined) {
+        error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
+      }
     }
 
     if (scopes->length == 1) {
@@ -117,7 +119,7 @@ void symbol_put(char *identifier, Symbol *symbol) {
     }
   }
 
-  map_put(map, identifier, symbol);
+  if (identifier) map_put(map, identifier, symbol);
 }
 
 void begin_scope() {

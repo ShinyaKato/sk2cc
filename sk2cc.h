@@ -173,9 +173,6 @@ typedef enum node_type {
   LOR,
   CONDITION,
   ASSIGN,
-  ADD_ASSIGN,
-  SUB_ASSIGN,
-  MUL_ASSIGN,
   COMMA,
   INIT,
   ARRAY_INIT,
@@ -343,6 +340,8 @@ extern Node *node_return_stmt(Node *node);
 extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token);
 extern Node *node_trans_unit(Vector *string_literals, Vector *declarations, Vector *definitions);
 
+extern Symbol *symbol_new();
+extern void symbol_put(char *identifier, Symbol *symbol);
 extern Node *parse(Vector *tokens);
 
 extern void gen(Node *node);
