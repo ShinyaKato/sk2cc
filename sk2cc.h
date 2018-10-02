@@ -322,7 +322,10 @@ extern Node *node_equality(NodeType type, Node *left, Node *right, Token *token)
 extern Node *node_bitwise(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_logical(NodeType type, Node *left, Node *right, Token *token);
 extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
-extern Node *node_assign(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_assign(Node *left, Node *right, Token *token);
+extern Node *node_add_assign(Node *left, Node *right, Token *token);
+extern Node *node_sub_assign(Node *left, Node *right, Token *token);
+extern Node *node_mul_assign(Node *left, Node *right, Token *token);
 extern Node *node_comma(Node *left, Node *right, Token *token);
 extern Node *node_init(Node *init, Type *value_type);
 extern Node *node_array_init(Vector *array_init, Type *value_type);

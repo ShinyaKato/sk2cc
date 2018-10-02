@@ -542,14 +542,17 @@ Node *assignment_expression() {
   Node *left = cast_expression();
 
   Token *token = peek_token();
-  NodeType type;
-  if (read_token(tASSIGN)) type = ASSIGN;
-  else if (read_token(tADD_ASSIGN)) type = ADD_ASSIGN;
-  else if (read_token(tSUB_ASSIGN)) type = SUB_ASSIGN;
-  else if (read_token(tMUL_ASSIGN)) type = MUL_ASSIGN;
-  else return conditional_expression(left);
+  if (read_token(tASSIGN)) {
+    return node_assign(left, assignment_expression(), token);
+  } else if (read_token(tADD_ASSIGN)) {
+    return node_add_assign(left, assignment_expression(), token);
+  } else if (read_token(tSUB_ASSIGN)) {
+    return node_sub_assign(left, assignment_expression(), token);
+  } else if (read_token(tMUL_ASSIGN)) {
+    return node_mul_assign(left, assignment_expression(), token);
+  }
 
-  return node_assign(type, left, assignment_expression(), token);
+  return conditional_expression(left);
 }
 
 Node *expression() {
