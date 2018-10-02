@@ -47,41 +47,22 @@ void gen_lvalue(Node *node) {
   }
 }
 
-void gen_load_lvalue(Node *node) {
-  if (node->value_type->type == BOOL) {
-    gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movzbl (%%rcx), %%eax\n");
-    gen_push("rax");
-  } else if (node->value_type->type == CHAR || node->value_type->type == UCHAR) {
-    gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movsbl (%%rcx), %%eax\n");
-    gen_push("rax");
-  } else if (node->value_type->type == SHORT || node->value_type->type == USHORT) {
-    gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movswl (%%rcx), %%eax\n");
-    gen_push("rax");
-  } else if (node->value_type->type == INT || node->value_type->type == UINT) {
-    gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movl (%%rcx), %%eax\n");
-    gen_push("rax");
-  } else if (node->value_type->type == DOUBLE) {
-    gen_lvalue(node);
-    gen_pop("rcx");
-    printf("  movsd (%%rcx), %%xmm0\n");
-    printf("  movq %%xmm0, %%rax\n");
-    gen_push("rax");
-  } else if (node->value_type->type == POINTER) {
-    gen_lvalue(node);
-    if (!node->value_type->array_pointer) {
-      gen_pop("rcx");
-      printf("  movq (%%rcx), %%rax\n");
-      gen_push("rax");
-    }
+void gen_load(Type *type) {
+  gen_pop("rax");
+  if (type->type == BOOL) {
+    printf("  movzbl (%%rax), %%eax\n");
+  } else if (type->type == CHAR || type->type == UCHAR) {
+    printf("  movsbl (%%rax), %%eax\n");
+  } else if (type->type == SHORT || type->type == USHORT) {
+    printf("  movswl (%%rax), %%eax\n");
+  } else if (type->type == INT || type->type == UINT) {
+    printf("  movl (%%rax), %%eax\n");
+  } else if (type->type == DOUBLE) {
+    printf("  movq (%%rax), %%rax\n");
+  } else if (type->type == POINTER && !type->array_pointer) {
+    printf("  movq (%%rax), %%rax\n");
   }
+  gen_push("rax");
 }
 
 void gen_operand(Node *node, char *reg) {
@@ -113,7 +94,8 @@ void gen_string_literal(Node *node) {
 }
 
 void gen_identifier(Node *node) {
-  gen_load_lvalue(node);
+  gen_lvalue(node);
+  gen_load(node->value_type);
 }
 
 void gen_func_call(Node *node) {
@@ -180,7 +162,8 @@ void gen_func_call(Node *node) {
 }
 
 void gen_dot(Node *node) {
-  gen_load_lvalue(node);
+  gen_lvalue(node);
+  gen_load(node->value_type);
 }
 
 void gen_post_inc(Node *node) {
@@ -264,7 +247,8 @@ void gen_address(Node *node) {
 }
 
 void gen_indirect(Node *node) {
-  gen_load_lvalue(node);
+  gen_lvalue(node);
+  gen_load(node->value_type);
 }
 
 void gen_uplus(Node *node) {
