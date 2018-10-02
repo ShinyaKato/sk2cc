@@ -275,7 +275,7 @@ Node *postfix_expression(Node *primary_expr) {
     } else if (read_token(tLBRACKET)) {
       Node *index = expression();
       expect_token(tRBRACKET);
-      Node *expr = node_additive(ADD, node, index, token);
+      Node *expr = node_add(node, index, token);
       node = node_indirect(expr, token);
     } else if (read_token(tDOT)) {
       char *member = expect_token(tIDENTIFIER)->identifier;
@@ -391,13 +391,13 @@ Node *additive_expression(Node *cast_expr) {
 
   while (1) {
     Token *token = peek_token();
-    NodeType type;
-    if (read_token(tADD)) type = ADD;
-    else if (read_token(tSUB)) type = SUB;
-    else break;
-
-    Node *right = multiplicative_expression(cast_expression());
-    node = node_additive(type, node, right, token);
+    if (read_token(tADD)) {
+      node = node_add(node, multiplicative_expression(cast_expression()), token);
+    } else if (read_token(tSUB)) {
+      node = node_sub(node, multiplicative_expression(cast_expression()), token);
+    } else {
+      break;
+    }
   }
 
   return node;
