@@ -492,28 +492,11 @@ void gen_var_decl_init(Node *node, int offset) {
     }
   } else if (node->type == INIT) {
     Node *init = node->init;
-    if (init->value_type->type == BOOL) {
-      gen_operand(init, "rax");
-      printf("  cmpl $0, %%eax\n");
-      printf("  setne %%al\n");
-      printf("  movb %%al, %d(%%rbp)\n", offset);
-    } else if (init->value_type->type == CHAR || init->value_type->type == UCHAR) {
-      gen_operand(init, "rax");
-      printf("  movb %%al, %d(%%rbp)\n", offset);
-    } else if (init->value_type->type == SHORT || init->value_type->type == USHORT) {
-      gen_operand(init, "rax");
-      printf("  movw %%ax, %d(%%rbp)\n", offset);
-    } else if (init->value_type->type == INT || init->value_type->type == UINT) {
-      gen_operand(init, "rax");
-      printf("  movl %%eax, %d(%%rbp)\n", offset);
-    } else if (init->value_type->type == DOUBLE) {
-      gen_operand(init, "rax");
-      printf("  movq %%rax, %%xmm0\n");
-      printf("  movsd %%xmm0, %d(%%rbp)\n", offset);
-    } else if (init->value_type->type == POINTER) {
-      gen_operand(init, "rax");
-      printf("  movq %%rax, %d(%%rbp)\n", offset);
-    }
+    printf("  leaq %d(%%rbp), %%rax\n", offset);
+    gen_push("rax");
+    gen_expr(init);
+    gen_store(init->value_type);
+    gen_pop("rax");
   }
 }
 
