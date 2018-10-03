@@ -120,47 +120,51 @@ Node *node_dot(Node *expr, char *member, Token *token) {
 }
 
 Node *node_post_inc(Node *expr, Token *token) {
-  if (!node_lvalue(expr)) {
-    error(token, "operand of ++ operator should be lvalue.");
-  }
+  Symbol *sym_addr = symbol_new();
+  sym_addr->token = token;
+  sym_addr->identifier = NULL;
+  sym_addr->value_type = type_pointer_to(expr->value_type);
+  symbol_put(NULL, sym_addr);
 
-  Type *value_type;
-  if (type_integer(expr->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(expr->value_type)) {
-    value_type = expr->value_type;
-  } else {
-    error(token, "invalid operand type for ++ operator.");
-  }
+  Symbol *sym_val = symbol_new();
+  sym_val->token = token;
+  sym_val->identifier = NULL;
+  sym_val->value_type = expr->value_type;
+  symbol_put(NULL, sym_val);
 
-  Node *node = node_new();
-  node->type = POST_INC;
-  node->value_type = value_type;
-  node->expr = expr;
-  node->token = token;
-  return node;
+  Node *addr_id = node_identifier(NULL, sym_addr, token);
+  Node *addr = node_address(expr, token);
+  Node *addr_assign = node_assign(addr_id, addr, token);
+  Node *val_id = node_identifier(NULL, sym_val, token);
+  Node *val = node_indirect(addr_id, token);
+  Node *val_assign = node_assign(val_id, val, token);
+  Node *inc = node_pre_inc(val, token);
+
+  return node_comma(node_comma(node_comma(addr_assign, val_assign, token), inc, token), val_id, token);
 }
 
 Node *node_post_dec(Node *expr, Token *token) {
-  if (!node_lvalue(expr)) {
-    error(token, "operand of -- operator should be lvalue.");
-  }
+  Symbol *sym_addr = symbol_new();
+  sym_addr->token = token;
+  sym_addr->identifier = NULL;
+  sym_addr->value_type = type_pointer_to(expr->value_type);
+  symbol_put(NULL, sym_addr);
 
-  Type *value_type;
-  if (type_integer(expr->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(expr->value_type)) {
-    value_type = expr->value_type;
-  } else {
-    error(token, "invalid operand type for -- operator.");
-  }
+  Symbol *sym_val = symbol_new();
+  sym_val->token = token;
+  sym_val->identifier = NULL;
+  sym_val->value_type = expr->value_type;
+  symbol_put(NULL, sym_val);
 
-  Node *node = node_new();
-  node->type = POST_DEC;
-  node->value_type = value_type;
-  node->expr = expr;
-  node->token = token;
-  return node;
+  Node *addr_id = node_identifier(NULL, sym_addr, token);
+  Node *addr = node_address(expr, token);
+  Node *addr_assign = node_assign(addr_id, addr, token);
+  Node *val_id = node_identifier(NULL, sym_val, token);
+  Node *val = node_indirect(addr_id, token);
+  Node *val_assign = node_assign(val_id, val, token);
+  Node *dec = node_pre_dec(val, token);
+
+  return node_comma(node_comma(node_comma(addr_assign, val_assign, token), dec, token), val_id, token);
 }
 
 Node *node_unary_expr(NodeType type, Type *value_type, Node *expr, Token *token) {

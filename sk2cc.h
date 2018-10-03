@@ -144,8 +144,6 @@ typedef enum node_type {
   IDENTIFIER,
   FUNC_CALL,
   DOT,
-  POST_INC,
-  POST_DEC,
   ADDRESS,
   INDIRECT,
   UPLUS,
