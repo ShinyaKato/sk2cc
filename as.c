@@ -210,55 +210,61 @@ Binary *gen_text(Vector *lines) {
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
-    Token **tokens = (Token **) line->array;
-    int length = line->length;
-    if (length == 0) continue;
+    if (line->length == 0) continue;
 
-    switch (tokens[0]->type) {
+    int len = line->length - 1;
+    Token **tok = (Token **) line->array;
+    Token *head = *tok++;
+
+    switch (head->type) {
       case IDENT: {
-        if (strcmp(tokens[0]->ident, "movq") == 0) {
-          if (length < 4) {
-            ERROR(tokens[0], "'movq' expects 2 operands.\n");
+        if (strcmp(head->ident, "movq") == 0) {
+          if (len == 3 && tok[0]->type == IMM && tok[1]->type == ',' && tok[2]->type == REG) {
+            int imm = tok[0]->imm;
+            int reg = tok[2]->reg;
+
+            // REX.W + C7 /0 id
+            Byte rex = REX_PRE(0, 0, reg);
+            Byte opcode = 0xc7;
+            Byte mod_rm = MOD_RM(MOD_REG, 0, reg);
+            Byte imm0 = IMM_ID0(imm);
+            Byte imm1 = IMM_ID1(imm);
+            Byte imm2 = IMM_ID2(imm);
+            Byte imm3 = IMM_ID3(imm);
+            Byte byte[7] = { rex, opcode, mod_rm, imm0, imm1, imm2, imm3 };
+
+            binary_write(text, byte, 7);
+          } else if (len == 3 && tok[0]->type == REG && tok[1]->type == ',' && tok[2]->type == REG) {
+            int src = tok[0]->reg;
+            int dest = tok[2]->reg;
+
+            // REX.W + 8B /r
+            Byte rex = REX_PRE(dest, 0, src);
+            Byte opcode = 0x8b;
+            Byte mod_rm = MOD_RM(MOD_REG, dest, src);
+            Byte byte[3] = { rex, opcode, mod_rm };
+
+            binary_write(text, byte, 3);
+          } else {
+            ERROR(head, "'movq' expects 2 operands.\n");
           }
-          if (tokens[1]->type != IMM) {
-            ERROR(tokens[1], "'movq' expects first operand to be immediate.\n");
-          }
-          if (tokens[2]->type != ',') {
-            ERROR(tokens[2], "'movq' expects ',' between operands.\n");
-          }
-          if (tokens[3]->type != REG) {
-            ERROR(tokens[3], "'movq' expects second operand to be 'rax'.\n");
-          }
-          if (length > 4) {
-            ERROR(tokens[4], "'movq' expects 2 operands.\n");
+        } else if (strcmp(head->ident, "ret") == 0) {
+          if (len > 0) {
+            ERROR(head, "'ret' expects no operand.\n");
           }
 
-          int imm = tokens[1]->imm;
-          int reg = tokens[3]->reg;
+          // C3
+          Byte opcode = 0xc3;
+          Byte byte[1] = { opcode };
 
-          // REX.W + C7 /0 id
-          Byte rex = REX_PRE(0, 0, reg);
-          Byte opcode = 0xc7;
-          Byte mod_rm = MOD_RM(MOD_REG, 0, reg);
-          Byte imm0 = IMM_ID0(imm);
-          Byte imm1 = IMM_ID1(imm);
-          Byte imm2 = IMM_ID2(imm);
-          Byte imm3 = IMM_ID3(imm);
-          Byte byte[7] = { rex, opcode, mod_rm, imm0, imm1, imm2, imm3 };
-
-          binary_write(text, byte, 7);
-        } else if (strcmp(tokens[0]->ident, "ret") == 0) {
-          if (length > 1) {
-            ERROR(tokens[1], "'ret' expects no operand.\n");
-          }
-          binary_push(text, 0xc3);
+          binary_write(text, byte, 1);
         } else {
-          ERROR(tokens[0], "invalid instruction.\n");
+          ERROR(head, "invalid instruction.\n");
         }
         break;
       }
       default: {
-        ERROR(tokens[0], "invalid instruction.\n");
+        ERROR(head, "invalid instruction.\n");
       }
     }
   }
