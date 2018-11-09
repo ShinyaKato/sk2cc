@@ -83,6 +83,7 @@ typedef struct token Token;
 struct token {
   TokenType type;
   char *ident;
+  int reg;
   int imm;
   char *file;
   int lineno;
@@ -125,11 +126,16 @@ Vector *tokenize(char *file, Vector *source) {
         while (isalnum(line[column])) {
           string_push(text, line[column++]);
         }
-        if (strcmp(text->buffer, "rax") == 0) {
-          token->type = REG;
-        } else {
+        char *regs[8] = { "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi" };
+        int reg = 0;
+        for (; reg < 8; reg++) {
+          if (strcmp(text->buffer, regs[reg]) == 0) break;
+        }
+        if (reg == 8) {
           ERROR(token, "invalid register: %s.\n", text->buffer);
         }
+        token->type = REG;
+        token->reg = reg;
       } else if (c == '$') {
         int imm = 0;
         if (!isdigit(line[column])) {
@@ -183,6 +189,11 @@ void binary_write(Binary *binary, void *buffer, int size) {
   }
 }
 
+#define MOD_RM(Mod, RegOpcode, RM) \
+  (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
+
+#define MOD_REG 3
+
 Binary *gen_text(Vector *lines) {
   Binary *text = binary_new();
 
@@ -210,8 +221,17 @@ Binary *gen_text(Vector *lines) {
           if (length > 4) {
             ERROR(tokens[4], "'movq' expects 2 operands.\n");
           }
-          Byte byte[7] = { 0x48, 0xc7, 0xc0 };
-          *((int *) &byte[3]) = tokens[1]->imm;
+
+          int imm = tokens[1]->imm;
+          int imm0 = imm & 0xff;
+          int imm1 = (imm >> 8) & 0xff;
+          int imm2 = (imm >> 16) & 0xff;
+          int imm3 = imm >> 24;
+          int reg = tokens[3]->reg;
+
+          // REX.W + C7 /0 id
+          Byte byte[7] = { 0x48, 0xc7, MOD_RM(MOD_REG, 0, reg), imm0, imm1, imm2, imm3 };
+
           binary_write(text, byte, 7);
         } else if (strcmp(tokens[0]->ident, "ret") == 0) {
           if (length > 1) {
