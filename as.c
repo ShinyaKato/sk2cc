@@ -202,13 +202,19 @@ void binary_write(Binary *binary, void *buffer, int size) {
   }
 }
 
-#define REX_PRE(R, X, B) \
+#define REXW_PRE(R, X, B) \
   (0x48 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
+
+#define REX_PRE(R, X, B) \
+  (0x40 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
 
 #define MOD_RM(Mod, RegOpcode, RM) \
   (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
 
 #define MOD_REG 3
+
+#define OPCODE_REG(Opcode, Reg) \
+  ((Opcode & 0xf8) | (Reg & 0x07))
 
 #define IMM_ID0(id) (id & 0xff)
 #define IMM_ID1(id) ((id >> 8) & 0xff)
@@ -228,13 +234,43 @@ Binary *gen_text(Vector *lines) {
 
     switch (head->type) {
       case IDENT: {
-        if (strcmp(head->ident, "movq") == 0) {
+        if (strcmp(head->ident, "pushq") == 0) {
+          if (len == 1 && tok[0]->type == REG) {
+            int reg = tok[0]->reg;
+
+            // 50 +rd
+            Byte rex = REX_PRE(0, 0, reg);
+            Byte opcode = OPCODE_REG(0x50, reg);
+            if (reg < 8) {
+              binary_append(text, 1, opcode);
+            } else {
+              binary_append(text, 2, rex, opcode);
+            }
+          } else {
+            ERROR(head, "'pushq' expects 1 operand.\n");
+          }
+        } else if (strcmp(head->ident, "popq") == 0) {
+          if (len == 1 && tok[0]->type == REG) {
+            int reg = tok[0]->reg;
+
+            // 58 +rd
+            Byte rex = REX_PRE(0, 0, reg);
+            Byte opcode = OPCODE_REG(0x58, reg);
+            if (reg < 8) {
+              binary_append(text, 1, opcode);
+            } else {
+              binary_append(text, 2, rex, opcode);
+            }
+          } else {
+            ERROR(head, "'popq' expects 1 operand.\n");
+          }
+        } else if (strcmp(head->ident, "movq") == 0) {
           if (len == 3 && tok[0]->type == IMM && tok[1]->type == ',' && tok[2]->type == REG) {
             int imm = tok[0]->imm;
             int reg = tok[2]->reg;
 
             // REX.W + C7 /0 id
-            Byte rex = REX_PRE(0, 0, reg);
+            Byte rex = REXW_PRE(0, 0, reg);
             Byte opcode = 0xc7;
             Byte mod_rm = MOD_RM(MOD_REG, 0, reg);
             Byte imm0 = IMM_ID0(imm);
@@ -247,7 +283,7 @@ Binary *gen_text(Vector *lines) {
             int dest = tok[2]->reg;
 
             // REX.W + 8B /r
-            Byte rex = REX_PRE(dest, 0, src);
+            Byte rex = REXW_PRE(dest, 0, src);
             Byte opcode = 0x8b;
             Byte mod_rm = MOD_RM(MOD_REG, dest, src);
             binary_append(text, 3, rex, opcode, mod_rm);

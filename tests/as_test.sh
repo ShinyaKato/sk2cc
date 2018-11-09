@@ -45,4 +45,16 @@ gcc tmp/as_test.o -o tmp/as_test
 ./tmp/as_test
 [ $? -ne 34 ] && exit 1
 
+cat << EOS | ./as /dev/stdin tmp/as_test.o
+  movq \$63, %rbx
+  pushq %rbx
+  popq %rax
+  pushq %r13
+  popq %r14
+  ret
+EOS
+gcc tmp/as_test.o -o tmp/as_test
+./tmp/as_test
+[ $? -ne 63 ] && exit 1
+
 exit 0
