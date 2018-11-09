@@ -126,12 +126,15 @@ Vector *tokenize(char *file, Vector *source) {
         while (isalnum(line[column])) {
           string_push(text, line[column++]);
         }
-        char *regs[8] = { "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi" };
+        char *regs[16] = {
+          "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+          "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
+        };
         int reg = 0;
-        for (; reg < 8; reg++) {
+        for (; reg < 16; reg++) {
           if (strcmp(text->buffer, regs[reg]) == 0) break;
         }
-        if (reg == 8) {
+        if (reg == 16) {
           ERROR(token, "invalid register: %s.\n", text->buffer);
         }
         token->type = REG;
@@ -189,10 +192,18 @@ void binary_write(Binary *binary, void *buffer, int size) {
   }
 }
 
+#define REX_PRE(R, X, B) \
+  (0x48 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
+
 #define MOD_RM(Mod, RegOpcode, RM) \
   (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
 
 #define MOD_REG 3
+
+#define IMM_ID0(id) (id & 0xff)
+#define IMM_ID1(id) ((id >> 8) & 0xff)
+#define IMM_ID2(id) ((id >> 16) & 0xff)
+#define IMM_ID3(id) (id >> 24)
 
 Binary *gen_text(Vector *lines) {
   Binary *text = binary_new();
@@ -223,14 +234,17 @@ Binary *gen_text(Vector *lines) {
           }
 
           int imm = tokens[1]->imm;
-          int imm0 = imm & 0xff;
-          int imm1 = (imm >> 8) & 0xff;
-          int imm2 = (imm >> 16) & 0xff;
-          int imm3 = imm >> 24;
           int reg = tokens[3]->reg;
 
           // REX.W + C7 /0 id
-          Byte byte[7] = { 0x48, 0xc7, MOD_RM(MOD_REG, 0, reg), imm0, imm1, imm2, imm3 };
+          Byte rex = REX_PRE(0, 0, reg);
+          Byte opcode = 0xc7;
+          Byte mod_rm = MOD_RM(MOD_REG, 0, reg);
+          Byte imm0 = IMM_ID0(imm);
+          Byte imm1 = IMM_ID1(imm);
+          Byte imm2 = IMM_ID2(imm);
+          Byte imm3 = IMM_ID3(imm);
+          Byte byte[7] = { rex, opcode, mod_rm, imm0, imm1, imm2, imm3 };
 
           binary_write(text, byte, 7);
         } else if (strcmp(tokens[0]->ident, "ret") == 0) {
