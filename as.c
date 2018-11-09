@@ -186,6 +186,16 @@ void binary_push(Binary *binary, Byte byte) {
   binary->buffer[binary->length++] = byte;
 }
 
+void binary_append(Binary *binary, int size, ...) {
+  va_list ap;
+  va_start(ap, size);
+  for (int i = 0; i < size; i++) {
+    Byte byte = va_arg(ap, int);
+    binary_push(binary, byte);
+  }
+  va_end(ap);
+}
+
 void binary_write(Binary *binary, void *buffer, int size) {
   for (int i = 0; i < size; i++) {
     binary_push(binary, ((Byte *) buffer)[i]);
@@ -231,9 +241,7 @@ Binary *gen_text(Vector *lines) {
             Byte imm1 = IMM_ID1(imm);
             Byte imm2 = IMM_ID2(imm);
             Byte imm3 = IMM_ID3(imm);
-            Byte byte[7] = { rex, opcode, mod_rm, imm0, imm1, imm2, imm3 };
-
-            binary_write(text, byte, 7);
+            binary_append(text, 7, rex, opcode, mod_rm, imm0, imm1, imm2, imm3);
           } else if (len == 3 && tok[0]->type == REG && tok[1]->type == ',' && tok[2]->type == REG) {
             int src = tok[0]->reg;
             int dest = tok[2]->reg;
@@ -242,9 +250,7 @@ Binary *gen_text(Vector *lines) {
             Byte rex = REX_PRE(dest, 0, src);
             Byte opcode = 0x8b;
             Byte mod_rm = MOD_RM(MOD_REG, dest, src);
-            Byte byte[3] = { rex, opcode, mod_rm };
-
-            binary_write(text, byte, 3);
+            binary_append(text, 3, rex, opcode, mod_rm);
           } else {
             ERROR(head, "'movq' expects 2 operands.\n");
           }
@@ -255,9 +261,7 @@ Binary *gen_text(Vector *lines) {
 
           // C3
           Byte opcode = 0xc3;
-          Byte byte[1] = { opcode };
-
-          binary_write(text, byte, 1);
+          binary_append(text, 1, opcode);
         } else {
           ERROR(head, "invalid instruction.\n");
         }
