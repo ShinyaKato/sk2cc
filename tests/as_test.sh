@@ -1,5 +1,6 @@
 cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq \$42, %rax
+  ret
 EOS
 gcc tmp/as_test.o -o tmp/as_test
 ./tmp/as_test
@@ -7,6 +8,7 @@ gcc tmp/as_test.o -o tmp/as_test
 
 cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq \$123, %rax
+  ret
 EOS
 gcc tmp/as_test.o -o tmp/as_test
 ./tmp/as_test
@@ -16,6 +18,7 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq \$42, %rax
   movq \$123, %rax
   movq \$34, %rax
+  ret
 EOS
 gcc tmp/as_test.o -o tmp/as_test
 ./tmp/as_test

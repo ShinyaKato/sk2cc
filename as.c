@@ -213,6 +213,11 @@ Binary *gen_text(Vector *lines) {
           Byte byte[7] = { 0x48, 0xc7, 0xc0 };
           *((int *) &byte[3]) = tokens[1]->imm;
           binary_write(text, byte, 7);
+        } else if (strcmp(tokens[0]->ident, "ret") == 0) {
+          if (length > 1) {
+            ERROR(tokens[1], "'ret' expects no operand.\n");
+          }
+          binary_push(text, 0xc3);
         } else {
           ERROR(tokens[0], "invalid instruction.\n");
         }
@@ -223,9 +228,6 @@ Binary *gen_text(Vector *lines) {
       }
     }
   }
-
-  // ret
-  binary_push(text, 0xc3);
 
   return text;
 }
