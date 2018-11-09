@@ -38,8 +38,8 @@ sk2cc_self2: tmp sk2cc_self sk2cc.h string.h string.c vector.h vector.c map.h ma
 	./sk2cc_self main.c > tmp/main2.s
 	gcc tmp/string2.s tmp/vector2.s tmp/map2.s tmp/error2.s tmp/scan2.s tmp/lex2.s tmp/cpp2.s tmp/type2.s tmp/node2.s tmp/parse2.s tmp/gen2.s tmp/main2.s -o sk2cc_self2
 
-as: as.c
-	$(CC) $(CFLAGS) as.c -o as
+as: string.h string.c vector.h vector.c as.c
+	$(CC) $(CFLAGS) string.c vector.c as.c -o as
 
 tmp:
 	mkdir tmp
