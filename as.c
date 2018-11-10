@@ -290,6 +290,14 @@ Binary *gen_text(Vector *lines) {
           } else {
             ERROR(head, "'movq' expects 2 operands.\n");
           }
+        } else if (strcmp(head->ident, "leave") == 0) {
+          if (len > 0) {
+            ERROR(head, "'leave' expects no operand.\n");
+          }
+
+          // C9
+          Byte opcode = 0xc9;
+          binary_append(text, 1, opcode);
         } else if (strcmp(head->ident, "ret") == 0) {
           if (len > 0) {
             ERROR(head, "'ret' expects no operand.\n");
