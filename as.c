@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdarg.h>
 #include <stdnoreturn.h>
 #include <elf.h>
@@ -14,6 +15,12 @@ typedef struct string {
 extern String *string_new();
 extern void string_push(String *string, char c);
 
+void string_write(String *string, char *buffer) {
+  for (int i = 0; buffer[i]; i++) {
+    string_push(string, buffer[i]);
+  }
+}
+
 typedef struct vector {
   int size, length;
   void **array;
@@ -21,6 +28,54 @@ typedef struct vector {
 
 extern Vector *vector_new();
 extern void vector_push(Vector *vector, void *value);
+
+typedef struct map {
+  int count;
+  char *keys[1024];
+  void *values[1024];
+} Map;
+
+extern Map *map_new();
+extern bool map_put(Map *map, char *key, void *value);
+extern void *map_lookup(Map *map, char *key);
+
+typedef unsigned char Byte;
+typedef struct {
+  int length, capacity;
+  Byte *buffer;
+} Binary;
+
+Binary *binary_new() {
+  int capacity = 0x100;
+  Binary *binary = (Binary *) calloc(1, sizeof(Binary));
+  binary->capacity = capacity;
+  binary->buffer = (Byte *) calloc(capacity, sizeof(Byte));
+  return binary;
+}
+
+void binary_push(Binary *binary, Byte byte) {
+  if (binary->length >= binary->capacity) {
+    binary->capacity *= 2;
+    binary->buffer = realloc(binary->buffer, binary->capacity);
+  }
+  binary->buffer[binary->length++] = byte;
+}
+
+void binary_append(Binary *binary, int size, ...) {
+  va_list ap;
+  va_start(ap, size);
+  for (int i = 0; i < size; i++) {
+    Byte byte = va_arg(ap, int);
+    binary_push(binary, byte);
+  }
+  va_end(ap);
+}
+
+void binary_write(Binary *binary, void *buffer, int size) {
+  for (int i = 0; i < size; i++) {
+    binary_push(binary, ((Byte *) buffer)[i]);
+  }
+}
 
 #define ERROR(token, ...) \
   errorf((token)->file, (token)->lineno, (token)->column, (token)->line, __VA_ARGS__)
@@ -80,6 +135,7 @@ enum token_type {
   TOK_COMMA,
   TOK_LPAREN,
   TOK_RPAREN,
+  TOK_SEMICOLON,
 };
 
 typedef struct token Token;
@@ -168,6 +224,8 @@ Vector *tokenize(char *file, Vector *source) {
         token->type = TOK_LPAREN;
       } else if (c == ')') {
         token->type = TOK_RPAREN;
+      } else if (c == ':') {
+        token->type = TOK_SEMICOLON;
       } else {
         ERROR(token, "invalid character: %c\n", c);
       }
@@ -243,8 +301,28 @@ Inst *inst_new(InstType type, Vector *ops, Token *token) {
   return inst;
 }
 
-Vector *parse(Vector *lines) {
+typedef struct sym {
+  int inst;
+} Sym;
+
+Sym *sym_new(int inst) {
+  Sym *sym = (Sym *) calloc(1, sizeof(Sym));
+  sym->inst = inst;
+  return sym;
+}
+
+typedef struct unit {
+  Vector *insts;
+  Map *syms;
+  Binary *text;
+  int *addrs;
+  Binary *symtab;
+  String *strtab;
+} Unit;
+
+void parse(Unit *unit, Vector *lines) {
   Vector *insts = vector_new();
+  Map *syms = map_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
@@ -255,6 +333,18 @@ Vector *parse(Vector *lines) {
 
     if (head->type != TOK_IDENT) {
       ERROR(head, "invalid instruction.\n");
+    }
+
+    if (*token && (*token)->type == TOK_SEMICOLON) {
+      token++;
+      if (*token) {
+        ERROR(*token, "invalid symbol declaration.\n");
+      }
+      if (map_lookup(syms, head->ident)) {
+        ERROR(head, "duplicated symbol declaration: %s.\n", head->ident);
+      }
+      map_put(syms, head->ident, sym_new(insts->length));
+      continue;
     }
 
     InstType type;
@@ -347,45 +437,8 @@ Vector *parse(Vector *lines) {
     vector_push(insts, inst_new(type, ops, head));
   }
 
-  return insts;
-}
-
-typedef unsigned char Byte;
-typedef struct {
-  int length, capacity;
-  Byte *buffer;
-} Binary;
-
-Binary *binary_new() {
-  int capacity = 0x100;
-  Binary *binary = (Binary *) calloc(1, sizeof(Binary));
-  binary->capacity = capacity;
-  binary->buffer = (Byte *) calloc(capacity, sizeof(Byte));
-  return binary;
-}
-
-void binary_push(Binary *binary, Byte byte) {
-  if (binary->length >= binary->capacity) {
-    binary->capacity *= 2;
-    binary->buffer = realloc(binary->buffer, binary->capacity);
-  }
-  binary->buffer[binary->length++] = byte;
-}
-
-void binary_append(Binary *binary, int size, ...) {
-  va_list ap;
-  va_start(ap, size);
-  for (int i = 0; i < size; i++) {
-    Byte byte = va_arg(ap, int);
-    binary_push(binary, byte);
-  }
-  va_end(ap);
-}
-
-void binary_write(Binary *binary, void *buffer, int size) {
-  for (int i = 0; i < size; i++) {
-    binary_push(binary, ((Byte *) buffer)[i]);
-  }
+  unit->insts = insts;
+  unit->syms = syms;
 }
 
 #define REXW_PRE(R, X, B) \
@@ -413,11 +466,14 @@ void binary_write(Binary *binary, void *buffer, int size) {
 #define IMM_ID2(id) ((id >> 16) & 0xff)
 #define IMM_ID3(id) (id >> 24)
 
-Binary *gen_text(Vector *insts) {
+void gen_text(Unit *unit) {
+  Vector *insts = unit->insts;
   Binary *text = binary_new();
+  int *addrs = (int *) calloc(insts->length, sizeof(int));
 
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
+    addrs[i] = text->length;
 
     switch (inst->type) {
       case INST_PUSH: {
@@ -543,7 +599,6 @@ Binary *gen_text(Vector *insts) {
         if (inst->ops->length != 0) {
           ERROR(inst->token, "'leave' expects no operand.\n");
         }
-
         // C9
         Byte opcode = 0xc9;
         binary_append(text, 1, opcode);
@@ -554,7 +609,6 @@ Binary *gen_text(Vector *insts) {
         if (inst->ops->length != 0) {
           ERROR(inst->token, "'ret' expects no operand.\n");
         }
-
         // C3
         Byte opcode = 0xc3;
         binary_append(text, 1, opcode);
@@ -567,7 +621,37 @@ Binary *gen_text(Vector *insts) {
     }
   }
 
-  return text;
+  unit->text = text;
+  unit->addrs = addrs;
+}
+
+void gen_symtab(Unit *unit) {
+  Map *syms = unit->syms;
+  int *addrs = unit->addrs;
+  Binary *symtab = binary_new();
+  String *strtab = string_new();
+
+  binary_write(symtab, calloc(1, sizeof(Elf64_Sym)), sizeof(Elf64_Sym));
+  string_push(strtab, '\0');
+
+  for (int i = 0; i < syms->count; i++) {
+    char *key = syms->keys[i];
+    Sym *val = syms->values[i];
+
+    Elf64_Sym *sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
+    sym->st_name = strtab->length;
+    sym->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+    sym->st_other = STV_DEFAULT;
+    sym->st_shndx = 1;
+    sym->st_value = addrs[val->inst];
+
+    binary_write(symtab, sym, sizeof(Elf64_Sym));
+    string_write(strtab, key);
+    string_push(strtab, '\0');
+  }
+
+  unit->symtab = symtab;
+  unit->strtab = strtab;
 }
 
 int main(int argc, char *argv[]) {
@@ -580,21 +664,15 @@ int main(int argc, char *argv[]) {
 
   Vector *source = scan(input);
   Vector *lines = tokenize(input, source);
-  Vector *insts = parse(lines);
+
+  Unit *unit = (Unit *) calloc(1, sizeof(Unit));
+  parse(unit, lines);
 
   // .text
-  Binary *text = gen_text(insts);
+  gen_text(unit);
 
-  // .symtab
-  Elf64_Sym *symtab = (Elf64_Sym *) calloc(2, sizeof(Elf64_Sym));
-  symtab[1].st_name = 1;
-  symtab[1].st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-  symtab[1].st_other = STV_DEFAULT;
-  symtab[1].st_shndx = 1;
-  symtab[1].st_value = 0;
-
-  // .strtab
-  char strtab[6] = "\0main\0";
+  // .symtab, .strtab
+  gen_symtab(unit);
 
   // .shstrtab
   char shstrtab[33] = "\0.text\0.symtab\0.strtab\0.shstrtab\0";
@@ -607,13 +685,13 @@ int main(int argc, char *argv[]) {
   shdrtab[1].sh_type = SHT_PROGBITS;
   shdrtab[1].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
   shdrtab[1].sh_offset = sizeof(Elf64_Ehdr);
-  shdrtab[1].sh_size = text->length;
+  shdrtab[1].sh_size = unit->text->length;
 
   // section header for .symtab
   shdrtab[2].sh_name = 7;
   shdrtab[2].sh_type = SHT_SYMTAB;
-  shdrtab[2].sh_offset = sizeof(Elf64_Ehdr) + text->length;
-  shdrtab[2].sh_size = sizeof(Elf64_Sym) * 2;
+  shdrtab[2].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length;
+  shdrtab[2].sh_size = unit->symtab->length;
   shdrtab[2].sh_link = 3;
   shdrtab[2].sh_info = 1;
   shdrtab[2].sh_entsize = sizeof(Elf64_Sym);
@@ -621,13 +699,13 @@ int main(int argc, char *argv[]) {
   // section header for .strtab
   shdrtab[3].sh_name = 15;
   shdrtab[3].sh_type = SHT_STRTAB;
-  shdrtab[3].sh_offset = sizeof(Elf64_Ehdr) + text->length + sizeof(Elf64_Sym) * 2;
-  shdrtab[3].sh_size = sizeof(strtab);
+  shdrtab[3].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length;
+  shdrtab[3].sh_size = unit->strtab->length;
 
   // section header for .shstrtab
   shdrtab[4].sh_name = 23;
   shdrtab[4].sh_type = SHT_STRTAB;
-  shdrtab[4].sh_offset = sizeof(Elf64_Ehdr) + text->length + sizeof(Elf64_Sym) * 2 + sizeof(strtab);
+  shdrtab[4].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length + unit->strtab->length;
   shdrtab[4].sh_size = sizeof(shstrtab);
 
   // ELF header
@@ -644,7 +722,7 @@ int main(int argc, char *argv[]) {
   ehdr->e_type = ET_REL;
   ehdr->e_machine = EM_X86_64;
   ehdr->e_version = EV_CURRENT;
-  ehdr->e_shoff = sizeof(Elf64_Ehdr) + text->length + sizeof(Elf64_Sym) * 2 + sizeof(strtab) + sizeof(shstrtab);
+  ehdr->e_shoff = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length + unit->strtab->length + sizeof(shstrtab);
   ehdr->e_ehsize = sizeof(Elf64_Ehdr);
   ehdr->e_shentsize = sizeof(Elf64_Shdr);
   ehdr->e_shnum = 5;
@@ -657,9 +735,9 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
   fwrite(ehdr, sizeof(Elf64_Ehdr), 1, out);
-  fwrite(text->buffer, text->length, 1, out);
-  fwrite(symtab, sizeof(Elf64_Sym), 2, out);
-  fwrite(strtab, sizeof(strtab), 1, out);
+  fwrite(unit->text->buffer, unit->text->length, 1, out);
+  fwrite(unit->symtab->buffer, unit->symtab->length, 1, out);
+  fwrite(unit->strtab->buffer, unit->strtab->length, 1, out);
   fwrite(shstrtab, sizeof(shstrtab), 1, out);
   fwrite(shdrtab, sizeof(Elf64_Shdr), 5, out);
   fclose(out);

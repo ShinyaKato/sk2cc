@@ -49,11 +49,13 @@ expect() {
 }
 
 expect 42 << EOS
+main:
   movq \$42, %rax
   ret
 EOS
 
 expect 12 << EOS
+main:
   movq \$12, %rax
   movq \$23, %rcx
   movq \$34, %rdx
@@ -64,6 +66,7 @@ expect 12 << EOS
 EOS
 
 expect 12 << EOS
+main:
   movq \$12, %rax
   movq \$23, %r8
   movq \$34, %r9
@@ -77,6 +80,7 @@ expect 12 << EOS
 EOS
 
 expect 34 << EOS
+main:
   movq \$34, %rdx
   movq %rdx, %r9
   movq %r9, %rax
@@ -84,6 +88,7 @@ expect 34 << EOS
 EOS
 
 expect 63 << EOS
+main:
   movq \$63, %rbx
   pushq %rbx
   popq %rax
@@ -93,6 +98,7 @@ expect 63 << EOS
 EOS
 
 expect 13 << EOS
+main:
   pushq %rbp
   movq %rsp, %rbp
   movq \$13, %rax
@@ -101,6 +107,7 @@ expect 13 << EOS
 EOS
 
 expect 85 << EOS
+main:
   movq %rsp, %rdx
   movq (%rdx), %r11
   movq \$85, %rcx
@@ -111,12 +118,22 @@ expect 85 << EOS
 EOS
 
 expect 39 << EOS
+main:
   movq %rsp, %rdx
   movq \$39, %rsi
   movq %rsi, -8(%rdx)
   movq -8(%rdx), %rdi
   movq %rdi, -144(%rdx)
   movq -144(%rdx), %rax
+  ret
+EOS
+
+expect 46 << EOS
+func:
+  movq %rdi, %rax
+  ret
+main:
+  movq \$46, %rax
   ret
 EOS
 
