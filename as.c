@@ -73,10 +73,12 @@ Vector *scan(char *file) {
 
 typedef enum token_type TokenType;
 enum token_type {
-  COMMA = ',',
-  IDENT = 256,
-  REG,
-  IMM,
+  TOK_IDENT,
+  TOK_REG,
+  TOK_IMM,
+  TOK_COMMA,
+  TOK_LPAREN,
+  TOK_RPAREN,
 };
 
 typedef struct token Token;
@@ -119,7 +121,7 @@ Vector *tokenize(char *file, Vector *source) {
         while (line[column] == '.' || line[column] == '_' || isalnum(line[column])) {
           string_push(text, line[column++]);
         }
-        token->type = IDENT;
+        token->type = TOK_IDENT;
         token->ident = text->buffer;
       } else if (c == '%') {
         String *text = string_new();
@@ -137,7 +139,7 @@ Vector *tokenize(char *file, Vector *source) {
         if (reg == 16) {
           ERROR(token, "invalid register: %s.\n", text->buffer);
         }
-        token->type = REG;
+        token->type = TOK_REG;
         token->reg = reg;
       } else if (c == '$') {
         int imm = 0;
@@ -147,10 +149,14 @@ Vector *tokenize(char *file, Vector *source) {
         while (isdigit(line[column])) {
           imm = imm * 10 + (line[column++] - '0');
         }
-        token->type = IMM;
+        token->type = TOK_IMM;
         token->imm = imm;
       } else if (c == ',') {
-        token->type = c;
+        token->type = TOK_COMMA;
+      } else if (c == '(') {
+        token->type = TOK_LPAREN;
+      } else if (c == ')') {
+        token->type = TOK_RPAREN;
       } else {
         ERROR(token, "invalid character: %c\n", c);
       }
@@ -162,6 +168,150 @@ Vector *tokenize(char *file, Vector *source) {
   }
 
   return lines;
+}
+
+typedef enum op_type {
+  OP_REG,
+  OP_MEM,
+  OP_IMM,
+} OpType;
+
+typedef struct op {
+  OpType type;
+  int reg;
+  int base;
+  int imm;
+  Token *token;
+} Op;
+
+Op *op_new(OpType type, Token *token) {
+  Op *op = (Op *) calloc(1, sizeof(Op));
+  op->type = type;
+  op->token = token;
+  return op;
+}
+
+Op *op_reg(int reg, Token *token) {
+  Op *op = op_new(OP_REG, token);
+  op->reg = reg;
+  return op;
+}
+
+Op *op_mem(int base, Token *token) {
+  Op *op = op_new(OP_MEM, token);
+  op->base = base;
+  return op;
+}
+
+Op *op_imm(int imm, Token *token) {
+  Op *op = op_new(OP_IMM, token);
+  op->imm = imm;
+  return op;
+}
+
+typedef enum inst_type {
+  INST_PUSH,
+  INST_POP,
+  INST_MOV,
+  INST_LEAVE,
+  INST_RET,
+} InstType;
+
+typedef struct inst {
+  InstType type;
+  Vector *ops;
+  Token *token;
+} Inst;
+
+Inst *inst_new(InstType type, Vector *ops, Token *token) {
+  Inst *inst = (Inst *) calloc(1, sizeof(Inst));
+  inst->type = type;
+  inst->ops = ops;
+  return inst;
+}
+
+Vector *parse(Vector *lines) {
+  Vector *insts = vector_new();
+
+  for (int i = 0; i < lines->length; i++) {
+    Vector *line = lines->array[i];
+    if (line->length == 0) continue;
+
+    Token **token = (Token **) line->array;
+    Token *head = *token++;
+
+    if (head->type != TOK_IDENT) {
+      ERROR(head, "invalid instruction.\n");
+    }
+
+    InstType type;
+    if (strcmp(head->ident, "pushq") == 0) {
+      type = INST_PUSH;
+    } else if (strcmp(head->ident, "popq") == 0) {
+      type = INST_POP;
+    } else if (strcmp(head->ident, "movq") == 0) {
+      type = INST_MOV;
+    } else if (strcmp(head->ident, "leave") == 0) {
+      type = INST_LEAVE;
+    } else if (strcmp(head->ident, "ret") == 0) {
+      type = INST_RET;
+    } else {
+      ERROR(head, "invalide instruction.\n");
+    }
+
+    Vector *ops = vector_new();
+    if (*token) {
+      while (1) {
+        Token *op_head = *token;
+        switch ((*token)->type) {
+          case TOK_REG: {
+            int reg = (*token)->reg;
+            vector_push(ops, op_reg(reg, op_head));
+            token++;
+            break;
+          }
+          case TOK_LPAREN: {
+            token++;
+            if ((*token)->type != TOK_REG) {
+              ERROR(*token, "register is expected.\n");
+            }
+            int base = (*token)->reg;
+            vector_push(ops, op_mem(base, op_head));
+            token++;
+            if ((*token)->type != TOK_RPAREN) {
+              ERROR(*token, "')' is expected.\n");
+            }
+            token++;
+            break;
+          }
+          case TOK_IMM: {
+            int imm = (*token)->imm;
+            vector_push(ops, op_imm(imm, op_head));
+            token++;
+            break;
+          }
+          default: {
+            ERROR(*token, "invalid operand.\n");
+          }
+        }
+
+        if (!*token) {
+          break;
+        }
+        if ((*token)->type != TOK_COMMA) {
+          ERROR(*token, "',' is expected.\n");
+        }
+        token++;
+        if (!*token) {
+          ERROR(*token, "invalid operand.\n");
+        }
+      }
+    }
+
+    vector_push(insts, inst_new(type, ops, head));
+  }
+
+  return insts;
 }
 
 typedef unsigned char Byte;
@@ -211,6 +361,7 @@ void binary_write(Binary *binary, void *buffer, int size) {
 #define MOD_RM(Mod, RegOpcode, RM) \
   (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
 
+#define MOD_MEM 0
 #define MOD_REG 3
 
 #define OPCODE_REG(Opcode, Reg) \
@@ -221,98 +372,132 @@ void binary_write(Binary *binary, void *buffer, int size) {
 #define IMM_ID2(id) ((id >> 16) & 0xff)
 #define IMM_ID3(id) (id >> 24)
 
-Binary *gen_text(Vector *lines) {
+Binary *gen_text(Vector *insts) {
   Binary *text = binary_new();
 
-  for (int i = 0; i < lines->length; i++) {
-    Vector *line = lines->array[i];
-    if (line->length == 0) continue;
+  for (int i = 0; i < insts->length; i++) {
+    Inst *inst = insts->array[i];
 
-    int len = line->length - 1;
-    Token **tok = (Token **) line->array;
-    Token *head = *tok++;
-
-    switch (head->type) {
-      case IDENT: {
-        if (strcmp(head->ident, "pushq") == 0) {
-          if (len == 1 && tok[0]->type == REG) {
-            int reg = tok[0]->reg;
-
-            // 50 +rd
-            Byte rex = REX_PRE(0, 0, reg);
-            Byte opcode = OPCODE_REG(0x50, reg);
-            if (reg < 8) {
-              binary_append(text, 1, opcode);
-            } else {
-              binary_append(text, 2, rex, opcode);
-            }
-          } else {
-            ERROR(head, "'pushq' expects 1 operand.\n");
-          }
-        } else if (strcmp(head->ident, "popq") == 0) {
-          if (len == 1 && tok[0]->type == REG) {
-            int reg = tok[0]->reg;
-
-            // 58 +rd
-            Byte rex = REX_PRE(0, 0, reg);
-            Byte opcode = OPCODE_REG(0x58, reg);
-            if (reg < 8) {
-              binary_append(text, 1, opcode);
-            } else {
-              binary_append(text, 2, rex, opcode);
-            }
-          } else {
-            ERROR(head, "'popq' expects 1 operand.\n");
-          }
-        } else if (strcmp(head->ident, "movq") == 0) {
-          if (len == 3 && tok[0]->type == IMM && tok[1]->type == ',' && tok[2]->type == REG) {
-            int imm = tok[0]->imm;
-            int reg = tok[2]->reg;
-
-            // REX.W + C7 /0 id
-            Byte rex = REXW_PRE(0, 0, reg);
-            Byte opcode = 0xc7;
-            Byte mod_rm = MOD_RM(MOD_REG, 0, reg);
-            Byte imm0 = IMM_ID0(imm);
-            Byte imm1 = IMM_ID1(imm);
-            Byte imm2 = IMM_ID2(imm);
-            Byte imm3 = IMM_ID3(imm);
-            binary_append(text, 7, rex, opcode, mod_rm, imm0, imm1, imm2, imm3);
-          } else if (len == 3 && tok[0]->type == REG && tok[1]->type == ',' && tok[2]->type == REG) {
-            int src = tok[0]->reg;
-            int dest = tok[2]->reg;
-
-            // REX.W + 8B /r
-            Byte rex = REXW_PRE(dest, 0, src);
-            Byte opcode = 0x8b;
-            Byte mod_rm = MOD_RM(MOD_REG, dest, src);
-            binary_append(text, 3, rex, opcode, mod_rm);
-          } else {
-            ERROR(head, "'movq' expects 2 operands.\n");
-          }
-        } else if (strcmp(head->ident, "leave") == 0) {
-          if (len > 0) {
-            ERROR(head, "'leave' expects no operand.\n");
-          }
-
-          // C9
-          Byte opcode = 0xc9;
-          binary_append(text, 1, opcode);
-        } else if (strcmp(head->ident, "ret") == 0) {
-          if (len > 0) {
-            ERROR(head, "'ret' expects no operand.\n");
-          }
-
-          // C3
-          Byte opcode = 0xc3;
-          binary_append(text, 1, opcode);
-        } else {
-          ERROR(head, "invalid instruction.\n");
+    switch (inst->type) {
+      case INST_PUSH: {
+        if (inst->ops->length != 1) {
+          ERROR(inst->token, "'pushq' expects 1 operand.\n");
         }
-        break;
+        Op *op = inst->ops->array[0];
+
+        if (op->type == OP_REG) {
+          // 50 +rd
+          Byte rex = REX_PRE(0, 0, op->reg);
+          Byte opcode = OPCODE_REG(0x50, op->reg);
+          if (op->reg < 8) {
+            binary_append(text, 1, opcode);
+          } else {
+            binary_append(text, 2, rex, opcode);
+          }
+        } else {
+          ERROR(op->token, "invalid operand type.\n");
+        }
       }
+      break;
+
+      case INST_POP: {
+        if (inst->ops->length != 1) {
+          ERROR(inst->token, "'popq' expects 1 operand.\n");
+        }
+        Op *op = inst->ops->array[0];
+
+        if (op->type == OP_REG) {
+          // 58 +rd
+          Byte rex = REX_PRE(0, 0, op->reg);
+          Byte opcode = OPCODE_REG(0x58, op->reg);
+          if (op->reg < 8) {
+            binary_append(text, 1, opcode);
+          } else {
+            binary_append(text, 2, rex, opcode);
+          }
+        } else {
+          ERROR(op->token, "invalid operand type.\n");
+        }
+      }
+      break;
+
+      case INST_MOV: {
+        if (inst->ops->length != 2) {
+          ERROR(inst->token, "'movq' expects 2 operands.\n");
+        }
+        Op *src = inst->ops->array[0];
+        Op *dest = inst->ops->array[1];
+
+        if (src->type == OP_IMM && dest->type == OP_REG) {
+          // REX.W + C7 /0 id
+          Byte rex = REXW_PRE(0, 0, dest->reg);
+          Byte opcode = 0xc7;
+          Byte mod_rm = MOD_RM(MOD_REG, 0, dest->reg);
+          Byte imm0 = IMM_ID0(src->imm);
+          Byte imm1 = IMM_ID1(src->imm);
+          Byte imm2 = IMM_ID2(src->imm);
+          Byte imm3 = IMM_ID3(src->imm);
+          binary_append(text, 7, rex, opcode, mod_rm, imm0, imm1, imm2, imm3);
+        } else if (src->type == OP_REG && dest->type == OP_REG) {
+          // REX.W + 8B /r
+          Byte rex = REXW_PRE(dest->reg, 0, src->reg);
+          Byte opcode = 0x8b;
+          Byte mod_rm = MOD_RM(MOD_REG, dest->reg, src->reg);
+          binary_append(text, 3, rex, opcode, mod_rm);
+        } else if (src->type == OP_REG && dest->type == OP_MEM) {
+          if (dest->base == 4) {
+            ERROR(dest->token, "rsp is not supported.\n");
+          }
+          if (dest->base == 5) {
+            ERROR(dest->token, "rbp is not supported.\n");
+          }
+          // REX.W + 89 /r
+          Byte rex = REXW_PRE(src->reg, 0, dest->base);
+          Byte opcode = 0x89;
+          Byte mod_rm = MOD_RM(MOD_MEM, src->reg, dest->base);
+          binary_append(text, 3, rex, opcode, mod_rm);
+        } else if (src->type == OP_MEM && dest->type == OP_REG) {
+          if (src->base == 4) {
+            ERROR(src->token, "rsp is not supported.\n");
+          }
+          if (src->base == 5) {
+            ERROR(src->token, "rbp is not supported.\n");
+          }
+          // REX.W + 8B /r
+          Byte rex = REXW_PRE(dest->reg, 0, src->base);
+          Byte opcode = 0x8b;
+          Byte mod_rm = MOD_RM(MOD_MEM, dest->reg, src->base);
+          binary_append(text, 3, rex, opcode, mod_rm);
+        } else {
+          ERROR(src->token, "invalid operand types.\n");
+        }
+      }
+      break;
+
+      case INST_LEAVE: {
+        if (inst->ops->length != 0) {
+          ERROR(inst->token, "'leave' expects no operand.\n");
+        }
+
+        // C9
+        Byte opcode = 0xc9;
+        binary_append(text, 1, opcode);
+      }
+      break;
+
+      case INST_RET: {
+        if (inst->ops->length != 0) {
+          ERROR(inst->token, "'ret' expects no operand.\n");
+        }
+
+        // C3
+        Byte opcode = 0xc3;
+        binary_append(text, 1, opcode);
+      }
+      break;
+
       default: {
-        ERROR(head, "invalid instruction.\n");
+        ERROR(inst->token, "unknown instruction.\n");
       }
     }
   }
@@ -330,9 +515,10 @@ int main(int argc, char *argv[]) {
 
   Vector *source = scan(input);
   Vector *lines = tokenize(input, source);
+  Vector *insts = parse(lines);
 
   // .text
-  Binary *text = gen_text(lines);
+  Binary *text = gen_text(insts);
 
   // .symtab
   Elf64_Sym *symtab = (Elf64_Sym *) calloc(2, sizeof(Elf64_Sym));
