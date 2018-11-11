@@ -1,12 +1,59 @@
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+#!/bin/bash
+
+count=0
+
+error() {
+  echo "Case: #$count"
+  echo "[failed]"
+  echo "exit with error."
+  echo "[input]"
+  cat tmp/as_test.s
+  echo "[log]"
+  cat tmp/as_test.log
+  exit 1
+}
+
+invalid() {
+  echo "Case: #$count"
+  echo "[failed]"
+  echo "invalid output: failed to link with gcc."
+  echo "[input]"
+  cat tmp/as_test.s
+  echo "[output]"
+  objdump -d tmp/as_test.o | sed '/^$/d'
+  exit 1
+}
+
+failed() {
+  expect=$1
+  actual=$2
+  echo "Case: #$count"
+  echo "[failed]"
+  echo "$expect is expected, but got $actual."
+  echo "[input]"
+  cat tmp/as_test.s
+  echo "[output]"
+  objdump -d tmp/as_test.o | sed '/^$/d'
+  exit 1
+}
+
+expect() {
+  expect=$1
+  cat - > tmp/as_test.s
+  ./as tmp/as_test.s tmp/as_test.o 2> tmp/as_test.log || error
+  gcc tmp/as_test.o -o tmp/as_test || invalid
+  ./tmp/as_test
+  actual=$?
+  [ $actual -ne $expect ] && failed $expect $actual
+  count=$((count+1))
+}
+
+expect 42 << EOS
   movq \$42, %rax
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 42 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 12 << EOS
   movq \$12, %rax
   movq \$23, %rcx
   movq \$34, %rdx
@@ -15,11 +62,8 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq \$67, %rdi
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 12 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 12 << EOS
   movq \$12, %rax
   movq \$23, %r8
   movq \$34, %r9
@@ -31,21 +75,15 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq \$90, %r15
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 12 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 34 << EOS
   movq \$34, %rdx
   movq %rdx, %r9
   movq %r9, %rax
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 34 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 63 << EOS
   movq \$63, %rbx
   pushq %rbx
   popq %rax
@@ -53,22 +91,16 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   popq %r14
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 63 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 13 << EOS
   pushq %rbp
   movq %rsp, %rbp
   movq \$13, %rax
   leave
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 13 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 85 << EOS
   movq %rsp, %rdx
   movq (%rdx), %r11
   movq \$85, %rcx
@@ -77,11 +109,8 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq %r11, (%rdx)
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 85 ] && exit 1
 
-cat << EOS | ./as /dev/stdin tmp/as_test.o
+expect 39 << EOS
   movq %rsp, %rdx
   movq \$39, %rsi
   movq %rsi, -8(%rdx)
@@ -90,8 +119,6 @@ cat << EOS | ./as /dev/stdin tmp/as_test.o
   movq -144(%rdx), %rax
   ret
 EOS
-gcc tmp/as_test.o -o tmp/as_test
-./tmp/as_test
-[ $? -ne 39 ] && exit 1
 
+echo "[OK]"
 exit 0
