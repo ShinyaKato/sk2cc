@@ -75,6 +75,7 @@ typedef enum token_type TokenType;
 enum token_type {
   TOK_IDENT,
   TOK_REG,
+  TOK_DISP,
   TOK_IMM,
   TOK_COMMA,
   TOK_LPAREN,
@@ -86,6 +87,7 @@ struct token {
   TokenType type;
   char *ident;
   int reg;
+  int disp;
   int imm;
   char *file;
   int lineno;
@@ -141,6 +143,15 @@ Vector *tokenize(char *file, Vector *source) {
         }
         token->type = TOK_REG;
         token->reg = reg;
+      } else if (c == '+' || c == '-' || isdigit(c)) {
+        int sign = 1;
+        if (c == '-') sign = -1;
+        int disp = isdigit(c) ? c - '0' : 0;
+        while (isdigit(line[column])) {
+          disp = disp * 10 + (line[column++] - '0');
+        }
+        token->type = TOK_DISP;
+        token->disp = sign * disp;
       } else if (c == '$') {
         int imm = 0;
         if (!isdigit(line[column])) {
@@ -180,6 +191,7 @@ typedef struct op {
   OpType type;
   int reg;
   int base;
+  int disp;
   int imm;
   Token *token;
 } Op;
@@ -197,9 +209,10 @@ Op *op_reg(int reg, Token *token) {
   return op;
 }
 
-Op *op_mem(int base, Token *token) {
+Op *op_mem(int base, int disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->base = base;
+  op->disp = disp;
   return op;
 }
 
@@ -266,30 +279,53 @@ Vector *parse(Vector *lines) {
         switch ((*token)->type) {
           case TOK_REG: {
             int reg = (*token)->reg;
-            vector_push(ops, op_reg(reg, op_head));
             token++;
-            break;
+            vector_push(ops, op_reg(reg, op_head));
           }
+          break;
+
           case TOK_LPAREN: {
             token++;
             if ((*token)->type != TOK_REG) {
               ERROR(*token, "register is expected.\n");
             }
             int base = (*token)->reg;
-            vector_push(ops, op_mem(base, op_head));
             token++;
             if ((*token)->type != TOK_RPAREN) {
               ERROR(*token, "')' is expected.\n");
             }
             token++;
-            break;
+            vector_push(ops, op_mem(base, 0, op_head));
           }
+          break;
+
+          case TOK_DISP: {
+            int disp = (*token)->disp;
+            token++;
+            if ((*token)->type != TOK_LPAREN) {
+              ERROR(*token, "'(' is expected.\n");
+            }
+            token++;
+            if ((*token)->type != TOK_REG) {
+              ERROR(*token, "register is expected.\n");
+            }
+            int base = (*token)->reg;
+            token++;
+            if ((*token)->type != TOK_RPAREN) {
+              ERROR(*token, "')' is expected.\n");
+            }
+            token++;
+            vector_push(ops, op_mem(base, disp, op_head));
+          }
+          break;
+
           case TOK_IMM: {
             int imm = (*token)->imm;
-            vector_push(ops, op_imm(imm, op_head));
             token++;
-            break;
+            vector_push(ops, op_imm(imm, op_head));
           }
+          break;
+
           default: {
             ERROR(*token, "invalid operand.\n");
           }
@@ -361,8 +397,13 @@ void binary_write(Binary *binary, void *buffer, int size) {
 #define MOD_RM(Mod, RegOpcode, RM) \
   (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
 
-#define MOD_MEM 0
+#define MOD_DISP0 0
+#define MOD_DISP8 1
+#define MOD_DISP32 2
 #define MOD_REG 3
+
+#define MOD_MEM(disp) \
+  (disp == 0 ? MOD_DISP0 : (-128 <= disp && disp < 128 ? MOD_DISP8 : MOD_DISP32))
 
 #define OPCODE_REG(Opcode, Reg) \
   ((Opcode & 0xf8) | (Reg & 0x07))
@@ -452,10 +493,22 @@ Binary *gen_text(Vector *insts) {
             ERROR(dest->token, "rbp is not supported.\n");
           }
           // REX.W + 89 /r
+          int mod = MOD_MEM(dest->disp);
           Byte rex = REXW_PRE(src->reg, 0, dest->base);
           Byte opcode = 0x89;
-          Byte mod_rm = MOD_RM(MOD_MEM, src->reg, dest->base);
-          binary_append(text, 3, rex, opcode, mod_rm);
+          Byte mod_rm = MOD_RM(mod, src->reg, dest->base);
+          if (mod == MOD_DISP0) {
+            binary_append(text, 3, rex, opcode, mod_rm);
+          } else if (mod == MOD_DISP8) {
+            Byte disp = (signed char) dest->disp;
+            binary_append(text, 4, rex, opcode, mod_rm, disp);
+          } else if (mod == MOD_DISP32) {
+            Byte disp0 = ((unsigned int) dest->disp) & 0xff;
+            Byte disp1 = (((unsigned int) dest->disp) >> 8) & 0xff;
+            Byte disp2 = (((unsigned int) dest->disp) >> 16) & 0xff;
+            Byte disp3 = (((unsigned int) dest->disp) >> 24) & 0xff;
+            binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
+          }
         } else if (src->type == OP_MEM && dest->type == OP_REG) {
           if (src->base == 4) {
             ERROR(src->token, "rsp is not supported.\n");
@@ -464,10 +517,22 @@ Binary *gen_text(Vector *insts) {
             ERROR(src->token, "rbp is not supported.\n");
           }
           // REX.W + 8B /r
+          int mod = MOD_MEM(src->disp);
           Byte rex = REXW_PRE(dest->reg, 0, src->base);
           Byte opcode = 0x8b;
-          Byte mod_rm = MOD_RM(MOD_MEM, dest->reg, src->base);
-          binary_append(text, 3, rex, opcode, mod_rm);
+          Byte mod_rm = MOD_RM(mod, dest->reg, src->base);
+          if (mod == MOD_DISP0) {
+            binary_append(text, 3, rex, opcode, mod_rm);
+          } else if (mod == MOD_DISP8) {
+            Byte disp = (signed char) src->disp;
+            binary_append(text, 4, rex, opcode, mod_rm, disp);
+          } else if (mod == MOD_DISP32) {
+            Byte disp0 = ((unsigned int) src->disp) & 0xff;
+            Byte disp1 = (((unsigned int) src->disp) >> 8) & 0xff;
+            Byte disp2 = (((unsigned int) src->disp) >> 16) & 0xff;
+            Byte disp3 = (((unsigned int) src->disp) >> 24) & 0xff;
+            binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
+          }
         } else {
           ERROR(src->token, "invalid operand types.\n");
         }

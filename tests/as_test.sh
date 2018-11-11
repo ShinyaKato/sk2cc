@@ -81,4 +81,17 @@ gcc tmp/as_test.o -o tmp/as_test
 ./tmp/as_test
 [ $? -ne 85 ] && exit 1
 
+cat << EOS | ./as /dev/stdin tmp/as_test.o
+  movq %rsp, %rdx
+  movq \$39, %rsi
+  movq %rsi, -8(%rdx)
+  movq -8(%rdx), %rdi
+  movq %rdi, -144(%rdx)
+  movq -144(%rdx), %rax
+  ret
+EOS
+gcc tmp/as_test.o -o tmp/as_test
+./tmp/as_test
+[ $? -ne 39 ] && exit 1
+
 exit 0
