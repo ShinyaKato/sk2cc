@@ -845,7 +845,7 @@ void gen_elf(Unit *unit, char *output) {
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
-    fprintf(stderr, "usage: ./as [input file] [output file]\n");
+    fprintf(stderr, "usage: %s [input file] [output file]\n", argv[0]);
     exit(1);
   }
   char *input = argv[1];
