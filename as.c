@@ -242,6 +242,7 @@ Vector *tokenize(char *file, Vector *source) {
 typedef enum op_type {
   OP_REG,
   OP_MEM,
+  OP_SYM,
   OP_IMM,
 } OpType;
 
@@ -250,6 +251,7 @@ typedef struct op {
   int reg;
   int base;
   int disp;
+  char *sym;
   int imm;
   Token *token;
 } Op;
@@ -274,6 +276,12 @@ Op *op_mem(int base, int disp, Token *token) {
   return op;
 }
 
+Op *op_sym(char *sym, Token *token) {
+  Op *op = op_new(OP_SYM, token);
+  op->sym = sym;
+  return op;
+}
+
 Op *op_imm(int imm, Token *token) {
   Op *op = op_new(OP_IMM, token);
   op->imm = imm;
@@ -284,6 +292,7 @@ typedef enum inst_type {
   INST_PUSH,
   INST_POP,
   INST_MOV,
+  INST_CALL,
   INST_LEAVE,
   INST_RET,
 } InstType;
@@ -301,28 +310,31 @@ Inst *inst_new(InstType type, Vector *ops, Token *token) {
   return inst;
 }
 
-typedef struct sym {
+typedef struct label {
   int inst;
-} Sym;
+} Label;
 
-Sym *sym_new(int inst) {
-  Sym *sym = (Sym *) calloc(1, sizeof(Sym));
-  sym->inst = inst;
-  return sym;
+Label *label_new(int inst) {
+  Label *label = (Label *) calloc(1, sizeof(Label));
+  label->inst = inst;
+  return label;
 }
 
 typedef struct unit {
   Vector *insts;
-  Map *syms;
+  Map *labels;
   Binary *text;
+  Vector *relocs;
   int *addrs;
   Binary *symtab;
   String *strtab;
+  Map *gsyms;
+  Binary *rela_text;
 } Unit;
 
 void parse(Unit *unit, Vector *lines) {
   Vector *insts = vector_new();
-  Map *syms = map_new();
+  Map *labels = map_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
@@ -340,10 +352,10 @@ void parse(Unit *unit, Vector *lines) {
       if (*token) {
         ERROR(*token, "invalid symbol declaration.\n");
       }
-      if (map_lookup(syms, head->ident)) {
+      if (map_lookup(labels, head->ident)) {
         ERROR(head, "duplicated symbol declaration: %s.\n", head->ident);
       }
-      map_put(syms, head->ident, sym_new(insts->length));
+      map_put(labels, head->ident, label_new(insts->length));
       continue;
     }
 
@@ -354,6 +366,8 @@ void parse(Unit *unit, Vector *lines) {
       type = INST_POP;
     } else if (strcmp(head->ident, "movq") == 0) {
       type = INST_MOV;
+    } else if (strcmp(head->ident, "call") == 0) {
+      type = INST_CALL;
     } else if (strcmp(head->ident, "leave") == 0) {
       type = INST_LEAVE;
     } else if (strcmp(head->ident, "ret") == 0) {
@@ -409,6 +423,13 @@ void parse(Unit *unit, Vector *lines) {
           }
           break;
 
+          case TOK_IDENT: {
+            char *sym = (*token)->ident;
+            token++;
+            vector_push(ops, op_sym(sym, op_head));
+          }
+          break;
+
           case TOK_IMM: {
             int imm = (*token)->imm;
             token++;
@@ -438,7 +459,21 @@ void parse(Unit *unit, Vector *lines) {
   }
 
   unit->insts = insts;
-  unit->syms = syms;
+  unit->labels = labels;
+}
+
+typedef struct reloc {
+  int offset;
+  char *sym;
+  Token *token;
+} Reloc;
+
+Reloc *reloc_new(int offset, char *sym, Token *token) {
+  Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
+  reloc->offset = offset;
+  reloc->sym = sym;
+  reloc->token = token;
+  return reloc;
 }
 
 #define REXW_PRE(R, X, B) \
@@ -470,6 +505,7 @@ void gen_text(Unit *unit) {
   Vector *insts = unit->insts;
   Binary *text = binary_new();
   int *addrs = (int *) calloc(insts->length, sizeof(int));
+  Vector *relocs = vector_new();
 
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
@@ -595,6 +631,22 @@ void gen_text(Unit *unit) {
       }
       break;
 
+      case INST_CALL: {
+        if (inst->ops->length != 1) {
+          ERROR(inst->token, "'call' expects 1 operand.\n");
+        }
+        Op *op = inst->ops->array[0];
+        if (op->type == OP_SYM) {
+          // E8 cd
+          Byte opcode = 0xe8;
+          binary_append(text, 5, opcode, 0, 0, 0, 0);
+          vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
+        } else {
+          ERROR(inst->token, "invalid operand type.\n");
+        }
+      }
+      break;
+
       case INST_LEAVE: {
         if (inst->ops->length != 0) {
           ERROR(inst->token, "'leave' expects no operand.\n");
@@ -622,21 +674,23 @@ void gen_text(Unit *unit) {
   }
 
   unit->text = text;
+  unit->relocs = relocs;
   unit->addrs = addrs;
 }
 
 void gen_symtab(Unit *unit) {
-  Map *syms = unit->syms;
+  Map *labels = unit->labels;
   int *addrs = unit->addrs;
   Binary *symtab = binary_new();
   String *strtab = string_new();
+  Map *gsyms = map_new();
 
   binary_write(symtab, calloc(1, sizeof(Elf64_Sym)), sizeof(Elf64_Sym));
   string_push(strtab, '\0');
 
-  for (int i = 0; i < syms->count; i++) {
-    char *key = syms->keys[i];
-    Sym *val = syms->values[i];
+  for (int i = 0; i < labels->count; i++) {
+    char *key = labels->keys[i];
+    Label *val = labels->values[i];
 
     Elf64_Sym *sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
     sym->st_name = strtab->length;
@@ -648,10 +702,35 @@ void gen_symtab(Unit *unit) {
     binary_write(symtab, sym, sizeof(Elf64_Sym));
     string_write(strtab, key);
     string_push(strtab, '\0');
+    map_put(gsyms, key, (void *) (intptr_t) (i + 1));
   }
 
   unit->symtab = symtab;
   unit->strtab = strtab;
+  unit->gsyms = gsyms;
+}
+
+void gen_rela_text(Unit *unit) {
+  Vector *relocs = unit->relocs;
+  Map *gsyms = unit->gsyms;
+  Binary *rela_text = binary_new();
+
+  for (int i = 0; i < relocs->length; i++) {
+    Reloc *reloc = relocs->array[i];
+    int index = (int) (intptr_t) map_lookup(gsyms, reloc->sym);
+    if (index == 0) {
+      ERROR(reloc->token, "undefined symbol: %s.\n", reloc->sym);
+    }
+
+    Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
+    rela->r_offset = reloc->offset;
+    rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
+    rela->r_addend = -4;
+
+    binary_write(rela_text, rela, sizeof(Elf64_Rela));
+  }
+
+  unit->rela_text = rela_text;
 }
 
 int main(int argc, char *argv[]) {
@@ -674,39 +753,60 @@ int main(int argc, char *argv[]) {
   // .symtab, .strtab
   gen_symtab(unit);
 
+  // .rela.text
+  gen_rela_text(unit);
+
   // .shstrtab
-  char shstrtab[33] = "\0.text\0.symtab\0.strtab\0.shstrtab\0";
+  char shstrtab[44] = "\0.text\0.symtab\0.strtab\0.rela.text\0.shstrtab\0";
 
   // section header table
-  Elf64_Shdr *shdrtab = (Elf64_Shdr *) calloc(5, sizeof(Elf64_Shdr));
+  long offset = sizeof(Elf64_Ehdr);
+  Elf64_Shdr *shdrtab = (Elf64_Shdr *) calloc(6, sizeof(Elf64_Shdr));
 
   // section header for .text
   shdrtab[1].sh_name = 1;
   shdrtab[1].sh_type = SHT_PROGBITS;
   shdrtab[1].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
-  shdrtab[1].sh_offset = sizeof(Elf64_Ehdr);
+  shdrtab[1].sh_offset = offset;
   shdrtab[1].sh_size = unit->text->length;
+  offset += unit->text->length;
 
   // section header for .symtab
   shdrtab[2].sh_name = 7;
   shdrtab[2].sh_type = SHT_SYMTAB;
-  shdrtab[2].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length;
+  shdrtab[2].sh_offset = offset;
   shdrtab[2].sh_size = unit->symtab->length;
   shdrtab[2].sh_link = 3;
   shdrtab[2].sh_info = 1;
   shdrtab[2].sh_entsize = sizeof(Elf64_Sym);
+  offset += unit->symtab->length;
 
   // section header for .strtab
   shdrtab[3].sh_name = 15;
   shdrtab[3].sh_type = SHT_STRTAB;
-  shdrtab[3].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length;
+  shdrtab[3].sh_offset = offset;
   shdrtab[3].sh_size = unit->strtab->length;
+  offset += unit->strtab->length;
+
+  // section header for .rela.text
+  if (unit->rela_text->length > 0) {
+    shdrtab[4].sh_name = 23;
+    shdrtab[4].sh_type = SHT_RELA;
+    shdrtab[4].sh_flags = SHF_INFO_LINK;
+    shdrtab[4].sh_offset = offset;
+    shdrtab[4].sh_size = unit->rela_text->length;
+    shdrtab[4].sh_link = 2;
+    shdrtab[4].sh_info = 1;
+    shdrtab[4].sh_entsize = sizeof(Elf64_Rela);
+    offset += unit->rela_text->length;
+  }
 
   // section header for .shstrtab
-  shdrtab[4].sh_name = 23;
-  shdrtab[4].sh_type = SHT_STRTAB;
-  shdrtab[4].sh_offset = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length + unit->strtab->length;
-  shdrtab[4].sh_size = sizeof(shstrtab);
+  shdrtab[5].sh_name = 34;
+  shdrtab[5].sh_type = SHT_STRTAB;
+  shdrtab[5].sh_offset = offset;
+  shdrtab[5].sh_size = sizeof(shstrtab);
+  offset += sizeof(shstrtab);
 
   // ELF header
   Elf64_Ehdr *ehdr = (Elf64_Ehdr *) calloc(1, sizeof(Elf64_Ehdr));
@@ -722,11 +822,11 @@ int main(int argc, char *argv[]) {
   ehdr->e_type = ET_REL;
   ehdr->e_machine = EM_X86_64;
   ehdr->e_version = EV_CURRENT;
-  ehdr->e_shoff = sizeof(Elf64_Ehdr) + unit->text->length + unit->symtab->length + unit->strtab->length + sizeof(shstrtab);
+  ehdr->e_shoff = offset;
   ehdr->e_ehsize = sizeof(Elf64_Ehdr);
   ehdr->e_shentsize = sizeof(Elf64_Shdr);
-  ehdr->e_shnum = 5;
-  ehdr->e_shstrndx = 4;
+  ehdr->e_shnum = 6;
+  ehdr->e_shstrndx = 5;
 
   // generate ELF file
   FILE *out = fopen(output, "wb");
@@ -738,8 +838,9 @@ int main(int argc, char *argv[]) {
   fwrite(unit->text->buffer, unit->text->length, 1, out);
   fwrite(unit->symtab->buffer, unit->symtab->length, 1, out);
   fwrite(unit->strtab->buffer, unit->strtab->length, 1, out);
+  fwrite(unit->rela_text->buffer, unit->rela_text->length, 1, out);
   fwrite(shstrtab, sizeof(shstrtab), 1, out);
-  fwrite(shdrtab, sizeof(Elf64_Shdr), 5, out);
+  fwrite(shdrtab, sizeof(Elf64_Shdr), 6, out);
   fclose(out);
 
   return 0;

@@ -133,7 +133,9 @@ func:
   movq %rdi, %rax
   ret
 main:
-  movq \$46, %rax
+  movq \$64, %rax
+  movq \$46, %rdi
+  call func
   ret
 EOS
 
