@@ -45,130 +45,96 @@ Label *label_new(int inst) {
   return label;
 }
 
+#define EXPECT(token, expect_type, ...) \
+  do { \
+    Token *t = (token); \
+    if (t->type != (expect_type)) { \
+      ERROR(t, __VA_ARGS__); \
+    } \
+  } while (0)
+
+static InstType inst_type(Token *token) {
+  char *ident = token->ident;
+  if (strcmp(ident, "pushq") == 0) return INST_PUSH;
+  if (strcmp(ident, "popq") == 0) return INST_POP;
+  if (strcmp(ident, "movq") == 0) return INST_MOV;
+  if (strcmp(ident, "call") == 0) return INST_CALL;
+  if (strcmp(ident, "leave") == 0) return INST_LEAVE;
+  if (strcmp(ident, "ret") == 0) return INST_RET;
+  ERROR(token, "invalide instruction.");
+}
+
+static Inst *parse_inst(Token **token) {
+  Token *inst_tok = *token++;
+  TokenType type = inst_type(inst_tok);
+
+  Vector *ops = vector_new();
+  if (*token) {
+    do {
+      Token *op_head = *token;
+
+      switch ((*token)->type) {
+        case TOK_REG: {
+          int reg = (*token++)->reg;
+          vector_push(ops, op_reg(reg, op_head));
+        }
+        break;
+
+        case TOK_LPAREN:
+        case TOK_DISP: {
+          int disp = (*token)->type == TOK_DISP ? (*token++)->disp : 0;
+          EXPECT(*token++, TOK_LPAREN, "'(' is expected.");
+          EXPECT(*token, TOK_REG, "register is expected.");
+          int base = (*token++)->reg;
+          EXPECT(*token++, TOK_RPAREN, "')' is expected.");
+          vector_push(ops, op_mem(base, disp, op_head));
+        }
+        break;
+
+        case TOK_IDENT: {
+          char *sym = (*token++)->ident;
+          vector_push(ops, op_sym(sym, op_head));
+        }
+        break;
+
+        case TOK_IMM: {
+          int imm = (*token++)->imm;
+          vector_push(ops, op_imm(imm, op_head));
+        }
+        break;
+
+        default: {
+          ERROR(*token, "invalid operand.");
+        }
+      }
+    } while (*token && (*token++)->type == TOK_COMMA);
+  }
+
+  return inst_new(type, ops, inst_tok);
+}
+
 Unit *parse(Vector *lines) {
   Vector *insts = vector_new();
   Map *labels = map_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
-    if (line->length == 0) continue;
-
     Token **token = (Token **) line->array;
-    Token *head = *token++;
 
-    if (head->type != TOK_IDENT) {
-      ERROR(head, "invalid instruction.");
-    }
+    if (line->length == 0) continue;
+    EXPECT(token[0], TOK_IDENT, "identifier is expected.");
 
-    if (*token && (*token)->type == TOK_SEMICOLON) {
-      token++;
-      if (*token) {
-        ERROR(*token, "invalid symbol declaration.");
+    if (token[1] && token[1]->type == TOK_SEMICOLON) {
+      if (token[2]) {
+        ERROR(token[2], "invalid symbol declaration.");
       }
-      if (map_lookup(labels, head->ident)) {
-        ERROR(head, "duplicated symbol declaration: %s.", head->ident);
+      if (map_lookup(labels, token[0]->ident)) {
+        ERROR(token[0], "duplicated symbol declaration: %s.", token[0]->ident);
       }
-      map_put(labels, head->ident, label_new(insts->length));
-      continue;
-    }
-
-    InstType type;
-    if (strcmp(head->ident, "pushq") == 0) {
-      type = INST_PUSH;
-    } else if (strcmp(head->ident, "popq") == 0) {
-      type = INST_POP;
-    } else if (strcmp(head->ident, "movq") == 0) {
-      type = INST_MOV;
-    } else if (strcmp(head->ident, "call") == 0) {
-      type = INST_CALL;
-    } else if (strcmp(head->ident, "leave") == 0) {
-      type = INST_LEAVE;
-    } else if (strcmp(head->ident, "ret") == 0) {
-      type = INST_RET;
+      map_put(labels, token[0]->ident, label_new(insts->length));
     } else {
-      ERROR(head, "invalide instruction.");
+      vector_push(insts, parse_inst(token));
     }
-
-    Vector *ops = vector_new();
-    if (*token) {
-      while (1) {
-        Token *op_head = *token;
-        switch ((*token)->type) {
-          case TOK_REG: {
-            int reg = (*token)->reg;
-            token++;
-            vector_push(ops, op_reg(reg, op_head));
-          }
-          break;
-
-          case TOK_LPAREN: {
-            token++;
-            if ((*token)->type != TOK_REG) {
-              ERROR(*token, "register is expected.");
-            }
-            int base = (*token)->reg;
-            token++;
-            if ((*token)->type != TOK_RPAREN) {
-              ERROR(*token, "')' is expected.");
-            }
-            token++;
-            vector_push(ops, op_mem(base, 0, op_head));
-          }
-          break;
-
-          case TOK_DISP: {
-            int disp = (*token)->disp;
-            token++;
-            if ((*token)->type != TOK_LPAREN) {
-              ERROR(*token, "'(' is expected.");
-            }
-            token++;
-            if ((*token)->type != TOK_REG) {
-              ERROR(*token, "register is expected.");
-            }
-            int base = (*token)->reg;
-            token++;
-            if ((*token)->type != TOK_RPAREN) {
-              ERROR(*token, "')' is expected.");
-            }
-            token++;
-            vector_push(ops, op_mem(base, disp, op_head));
-          }
-          break;
-
-          case TOK_IDENT: {
-            char *sym = (*token)->ident;
-            token++;
-            vector_push(ops, op_sym(sym, op_head));
-          }
-          break;
-
-          case TOK_IMM: {
-            int imm = (*token)->imm;
-            token++;
-            vector_push(ops, op_imm(imm, op_head));
-          }
-          break;
-
-          default: {
-            ERROR(*token, "invalid operand.");
-          }
-        }
-
-        if (!*token) {
-          break;
-        }
-        if ((*token)->type != TOK_COMMA) {
-          ERROR(*token, "',' is expected.");
-        }
-        token++;
-        if (!*token) {
-          ERROR(*token, "invalid operand.");
-        }
-      }
-    }
-
-    vector_push(insts, inst_new(type, ops, head));
   }
 
   Unit *unit = (Unit *) calloc(1, sizeof(Unit));
