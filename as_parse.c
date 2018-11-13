@@ -45,7 +45,7 @@ Label *label_new(int inst) {
   return label;
 }
 
-void parse(Unit *unit, Vector *lines) {
+Unit *parse(Vector *lines) {
   Vector *insts = vector_new();
   Map *labels = map_new();
 
@@ -171,6 +171,9 @@ void parse(Unit *unit, Vector *lines) {
     vector_push(insts, inst_new(type, ops, head));
   }
 
+  Unit *unit = (Unit *) calloc(1, sizeof(Unit));
   unit->insts = insts;
   unit->labels = labels;
+
+  return unit;
 }

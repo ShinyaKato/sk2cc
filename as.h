@@ -104,23 +104,17 @@ typedef struct label {
   int inst;
 } Label;
 
-typedef struct reloc {
-  int offset;
-  char *sym;
-  Token *token;
-} Reloc;
-
 typedef struct unit {
   Vector *insts;
   Map *labels;
+} Unit;
+
+typedef struct section {
   Binary *text;
-  Vector *relocs;
-  int *addrs;
   Binary *symtab;
   String *strtab;
-  Map *gsyms;
   Binary *rela_text;
-} Unit;
+} Section;
 
 extern noreturn void errorf(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
 

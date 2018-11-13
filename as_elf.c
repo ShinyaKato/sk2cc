@@ -7,11 +7,11 @@
 #define RELA_TEXT 4
 #define SHSTRTAB 5
 
-void gen_elf(Unit *unit, char *output) {
-  Binary *text = unit->text;
-  Binary *symtab = unit->symtab;
-  String *strtab = unit->strtab;
-  Binary *rela_text = unit->rela_text;
+void gen_elf(Section *section, char *output) {
+  Binary *text = section->text;
+  Binary *symtab = section->symtab;
+  String *strtab = section->strtab;
+  Binary *rela_text = section->rela_text;
 
   // .shstrtab
   String *shstrtab = string_new();

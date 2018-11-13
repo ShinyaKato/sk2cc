@@ -1,12 +1,30 @@
 #include "as.h"
 
-Reloc *reloc_new(int offset, char *sym, Token *token) {
+typedef struct reloc {
+  int offset;
+  char *sym;
+  Token *token;
+} Reloc;
+
+static Reloc *reloc_new(int offset, char *sym, Token *token) {
   Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
   reloc->offset = offset;
   reloc->sym = sym;
   reloc->token = token;
   return reloc;
 }
+
+static Vector *insts;
+static Map * labels;
+
+static Binary *text;
+static Binary *symtab;
+static String *strtab;
+static Binary *rela_text;
+
+static int *offsets;
+static Vector *relocs;
+static Map *gsyms;
 
 #define REXW_PRE(R, X, B) \
   (0x48 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
@@ -33,15 +51,10 @@ Reloc *reloc_new(int offset, char *sym, Token *token) {
 #define IMM_ID2(id) ((id >> 16) & 0xff)
 #define IMM_ID3(id) (id >> 24)
 
-void gen_text(Unit *unit) {
-  Vector *insts = unit->insts;
-  Binary *text = binary_new();
-  int *addrs = (int *) calloc(insts->length, sizeof(int));
-  Vector *relocs = vector_new();
-
+static void gen_text() {
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
-    addrs[i] = text->length;
+    offsets[i] = text->length;
 
     switch (inst->type) {
       case INST_PUSH: {
@@ -204,19 +217,9 @@ void gen_text(Unit *unit) {
       }
     }
   }
-
-  unit->text = text;
-  unit->relocs = relocs;
-  unit->addrs = addrs;
 }
 
-void gen_symtab(Unit *unit) {
-  Map *labels = unit->labels;
-  int *addrs = unit->addrs;
-  Binary *symtab = binary_new();
-  String *strtab = string_new();
-  Map *gsyms = map_new();
-
+static void gen_symtab() {
   binary_write(symtab, calloc(1, sizeof(Elf64_Sym)), sizeof(Elf64_Sym));
   string_push(strtab, '\0');
 
@@ -229,24 +232,16 @@ void gen_symtab(Unit *unit) {
     sym->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
     sym->st_other = STV_DEFAULT;
     sym->st_shndx = 1;
-    sym->st_value = addrs[val->inst];
+    sym->st_value = offsets[val->inst];
 
     binary_write(symtab, sym, sizeof(Elf64_Sym));
     string_write(strtab, key);
     string_push(strtab, '\0');
     map_put(gsyms, key, (void *) (intptr_t) (i + 1));
   }
-
-  unit->symtab = symtab;
-  unit->strtab = strtab;
-  unit->gsyms = gsyms;
 }
 
-void gen_rela_text(Unit *unit) {
-  Vector *relocs = unit->relocs;
-  Map *gsyms = unit->gsyms;
-  Binary *rela_text = binary_new();
-
+static void gen_rela_text() {
   for (int i = 0; i < relocs->length; i++) {
     Reloc *reloc = relocs->array[i];
     int index = (int) (intptr_t) map_lookup(gsyms, reloc->sym);
@@ -261,12 +256,30 @@ void gen_rela_text(Unit *unit) {
 
     binary_write(rela_text, rela, sizeof(Elf64_Rela));
   }
-
-  unit->rela_text = rela_text;
 }
 
-void gen(Unit *unit) {
-  gen_text(unit);
-  gen_symtab(unit);
-  gen_rela_text(unit);
+Section *gen(Unit *unit) {
+  insts = unit->insts;
+  labels = unit->labels;
+
+  text = binary_new();
+  symtab = binary_new();
+  strtab = string_new();
+  rela_text = binary_new();
+
+  offsets = (int *) calloc(insts->length, sizeof(int));
+  relocs = vector_new();
+  gsyms = map_new();
+
+  gen_text();
+  gen_symtab();
+  gen_rela_text();
+
+  Section *section = (Section *) calloc(1, sizeof(Section));
+  section->text = text;
+  section->symtab = symtab;
+  section->strtab = strtab;
+  section->rela_text = rela_text;
+
+  return section;
 }
