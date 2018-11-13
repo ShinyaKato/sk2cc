@@ -45,11 +45,6 @@ extern void binary_push(Binary *binary, Byte byte);
 extern void binary_append(Binary *binary, int size, ...);
 extern void binary_write(Binary *binary, void *buffer, int size);
 
-#define ERROR(token, ...) \
-  errorf((token)->file, (token)->lineno, (token)->column, (token)->line, __VA_ARGS__)
-
-extern noreturn void errorf(char *file, int lineno, int column, char *line, char *format, ...);
-
 typedef enum token_type {
   TOK_IDENT,
   TOK_REG,
@@ -126,3 +121,11 @@ typedef struct unit {
   Map *gsyms;
   Binary *rela_text;
 } Unit;
+
+extern noreturn void errorf(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
+
+#define ERROR(token, ...) \
+  do { \
+    Token *t = (token); \
+    errorf(t->file, t->lineno, t->column, t->line, __FILE__, __LINE__, __VA_ARGS__); \
+  } while (0)

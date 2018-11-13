@@ -57,16 +57,16 @@ void parse(Unit *unit, Vector *lines) {
     Token *head = *token++;
 
     if (head->type != TOK_IDENT) {
-      ERROR(head, "invalid instruction.\n");
+      ERROR(head, "invalid instruction.");
     }
 
     if (*token && (*token)->type == TOK_SEMICOLON) {
       token++;
       if (*token) {
-        ERROR(*token, "invalid symbol declaration.\n");
+        ERROR(*token, "invalid symbol declaration.");
       }
       if (map_lookup(labels, head->ident)) {
-        ERROR(head, "duplicated symbol declaration: %s.\n", head->ident);
+        ERROR(head, "duplicated symbol declaration: %s.", head->ident);
       }
       map_put(labels, head->ident, label_new(insts->length));
       continue;
@@ -86,7 +86,7 @@ void parse(Unit *unit, Vector *lines) {
     } else if (strcmp(head->ident, "ret") == 0) {
       type = INST_RET;
     } else {
-      ERROR(head, "invalide instruction.\n");
+      ERROR(head, "invalide instruction.");
     }
 
     Vector *ops = vector_new();
@@ -104,12 +104,12 @@ void parse(Unit *unit, Vector *lines) {
           case TOK_LPAREN: {
             token++;
             if ((*token)->type != TOK_REG) {
-              ERROR(*token, "register is expected.\n");
+              ERROR(*token, "register is expected.");
             }
             int base = (*token)->reg;
             token++;
             if ((*token)->type != TOK_RPAREN) {
-              ERROR(*token, "')' is expected.\n");
+              ERROR(*token, "')' is expected.");
             }
             token++;
             vector_push(ops, op_mem(base, 0, op_head));
@@ -120,16 +120,16 @@ void parse(Unit *unit, Vector *lines) {
             int disp = (*token)->disp;
             token++;
             if ((*token)->type != TOK_LPAREN) {
-              ERROR(*token, "'(' is expected.\n");
+              ERROR(*token, "'(' is expected.");
             }
             token++;
             if ((*token)->type != TOK_REG) {
-              ERROR(*token, "register is expected.\n");
+              ERROR(*token, "register is expected.");
             }
             int base = (*token)->reg;
             token++;
             if ((*token)->type != TOK_RPAREN) {
-              ERROR(*token, "')' is expected.\n");
+              ERROR(*token, "')' is expected.");
             }
             token++;
             vector_push(ops, op_mem(base, disp, op_head));
@@ -151,7 +151,7 @@ void parse(Unit *unit, Vector *lines) {
           break;
 
           default: {
-            ERROR(*token, "invalid operand.\n");
+            ERROR(*token, "invalid operand.");
           }
         }
 
@@ -159,11 +159,11 @@ void parse(Unit *unit, Vector *lines) {
           break;
         }
         if ((*token)->type != TOK_COMMA) {
-          ERROR(*token, "',' is expected.\n");
+          ERROR(*token, "',' is expected.");
         }
         token++;
         if (!*token) {
-          ERROR(*token, "invalid operand.\n");
+          ERROR(*token, "invalid operand.");
         }
       }
     }

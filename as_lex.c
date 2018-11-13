@@ -44,7 +44,7 @@ Vector *tokenize(char *file, Vector *source) {
           if (strcmp(text->buffer, regs[reg]) == 0) break;
         }
         if (reg == 16) {
-          ERROR(token, "invalid register: %s.\n", text->buffer);
+          ERROR(token, "invalid register: %s.", text->buffer);
         }
         token->type = TOK_REG;
         token->reg = reg;
@@ -60,7 +60,7 @@ Vector *tokenize(char *file, Vector *source) {
       } else if (c == '$') {
         int imm = 0;
         if (!isdigit(line[column])) {
-          ERROR(token, "invalid immediate.\n");
+          ERROR(token, "invalid immediate.");
         }
         while (isdigit(line[column])) {
           imm = imm * 10 + (line[column++] - '0');
@@ -76,7 +76,7 @@ Vector *tokenize(char *file, Vector *source) {
       } else if (c == ':') {
         token->type = TOK_SEMICOLON;
       } else {
-        ERROR(token, "invalid character: %c\n", c);
+        ERROR(token, "invalid character: %c.", c);
       }
 
       vector_push(tokens, token);

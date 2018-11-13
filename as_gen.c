@@ -46,7 +46,7 @@ void gen_text(Unit *unit) {
     switch (inst->type) {
       case INST_PUSH: {
         if (inst->ops->length != 1) {
-          ERROR(inst->token, "'pushq' expects 1 operand.\n");
+          ERROR(inst->token, "'pushq' expects 1 operand.");
         }
         Op *op = inst->ops->array[0];
 
@@ -60,14 +60,14 @@ void gen_text(Unit *unit) {
             binary_append(text, 2, rex, opcode);
           }
         } else {
-          ERROR(op->token, "invalid operand type.\n");
+          ERROR(op->token, "invalid operand type.");
         }
       }
       break;
 
       case INST_POP: {
         if (inst->ops->length != 1) {
-          ERROR(inst->token, "'popq' expects 1 operand.\n");
+          ERROR(inst->token, "'popq' expects 1 operand.");
         }
         Op *op = inst->ops->array[0];
 
@@ -81,14 +81,14 @@ void gen_text(Unit *unit) {
             binary_append(text, 2, rex, opcode);
           }
         } else {
-          ERROR(op->token, "invalid operand type.\n");
+          ERROR(op->token, "invalid operand type.");
         }
       }
       break;
 
       case INST_MOV: {
         if (inst->ops->length != 2) {
-          ERROR(inst->token, "'movq' expects 2 operands.\n");
+          ERROR(inst->token, "'movq' expects 2 operands.");
         }
         Op *src = inst->ops->array[0];
         Op *dest = inst->ops->array[1];
@@ -111,10 +111,10 @@ void gen_text(Unit *unit) {
           binary_append(text, 3, rex, opcode, mod_rm);
         } else if (src->type == OP_REG && dest->type == OP_MEM) {
           if (dest->base == 4) {
-            ERROR(dest->token, "rsp is not supported.\n");
+            ERROR(dest->token, "rsp is not supported.");
           }
           if (dest->base == 5) {
-            ERROR(dest->token, "rbp is not supported.\n");
+            ERROR(dest->token, "rbp is not supported.");
           }
           // REX.W + 89 /r
           int mod = MOD_MEM(dest->disp);
@@ -135,10 +135,10 @@ void gen_text(Unit *unit) {
           }
         } else if (src->type == OP_MEM && dest->type == OP_REG) {
           if (src->base == 4) {
-            ERROR(src->token, "rsp is not supported.\n");
+            ERROR(src->token, "rsp is not supported.");
           }
           if (src->base == 5) {
-            ERROR(src->token, "rbp is not supported.\n");
+            ERROR(src->token, "rbp is not supported.");
           }
           // REX.W + 8B /r
           int mod = MOD_MEM(src->disp);
@@ -158,14 +158,14 @@ void gen_text(Unit *unit) {
             binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
           }
         } else {
-          ERROR(src->token, "invalid operand types.\n");
+          ERROR(src->token, "invalid operand types.");
         }
       }
       break;
 
       case INST_CALL: {
         if (inst->ops->length != 1) {
-          ERROR(inst->token, "'call' expects 1 operand.\n");
+          ERROR(inst->token, "'call' expects 1 operand.");
         }
         Op *op = inst->ops->array[0];
         if (op->type == OP_SYM) {
@@ -174,14 +174,14 @@ void gen_text(Unit *unit) {
           binary_append(text, 5, opcode, 0, 0, 0, 0);
           vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
         } else {
-          ERROR(inst->token, "invalid operand type.\n");
+          ERROR(inst->token, "invalid operand type.");
         }
       }
       break;
 
       case INST_LEAVE: {
         if (inst->ops->length != 0) {
-          ERROR(inst->token, "'leave' expects no operand.\n");
+          ERROR(inst->token, "'leave' expects no operand.");
         }
         // C9
         Byte opcode = 0xc9;
@@ -191,7 +191,7 @@ void gen_text(Unit *unit) {
 
       case INST_RET: {
         if (inst->ops->length != 0) {
-          ERROR(inst->token, "'ret' expects no operand.\n");
+          ERROR(inst->token, "'ret' expects no operand.");
         }
         // C3
         Byte opcode = 0xc3;
@@ -200,7 +200,7 @@ void gen_text(Unit *unit) {
       break;
 
       default: {
-        ERROR(inst->token, "unknown instruction.\n");
+        ERROR(inst->token, "unknown instruction.");
       }
     }
   }
@@ -251,7 +251,7 @@ void gen_rela_text(Unit *unit) {
     Reloc *reloc = relocs->array[i];
     int index = (int) (intptr_t) map_lookup(gsyms, reloc->sym);
     if (index == 0) {
-      ERROR(reloc->token, "undefined symbol: %s.\n", reloc->sym);
+      ERROR(reloc->token, "undefined symbol: %s.", reloc->sym);
     }
 
     Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
