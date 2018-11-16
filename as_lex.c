@@ -58,7 +58,7 @@ Vector *tokenize(char *file, Vector *source) {
         token->type = TOK_DISP;
         token->disp = sign * disp;
       } else if (c == '$') {
-        int imm = 0;
+        unsigned int imm = 0;
         if (!isdigit(line[column])) {
           ERROR(token, "invalid immediate.");
         }

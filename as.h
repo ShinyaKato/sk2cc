@@ -80,7 +80,7 @@ typedef struct token {
   char *ident;
   Reg reg;
   int disp;
-  int imm;
+  unsigned int imm;
   char *file;
   int lineno;
   int column;
@@ -100,7 +100,7 @@ typedef struct op {
   Reg base;
   int disp;
   char *sym;
-  int imm;
+  unsigned int imm;
   Token *token;
 } Op;
 
