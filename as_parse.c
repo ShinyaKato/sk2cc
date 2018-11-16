@@ -32,10 +32,13 @@ Op *op_imm(int imm, Token *token) {
   return op;
 }
 
-Inst *inst_new(InstType type, Vector *ops, Token *token) {
+Inst *inst_new(InstType type, Op *op, Op *src, Op *dest, Token *token) {
   Inst *inst = (Inst *) calloc(1, sizeof(Inst));
   inst->type = type;
-  inst->ops = ops;
+  inst->op = op;
+  inst->src = src;
+  inst->dest = dest;
+  inst->token = token;
   return inst;
 }
 
@@ -66,7 +69,7 @@ static InstType inst_type(Token *token) {
 
 static Inst *parse_inst(Token **token) {
   Token *inst_tok = *token++;
-  TokenType type = inst_type(inst_tok);
+  InstType type = inst_type(inst_tok);
 
   Vector *ops = vector_new();
   if (*token) {
@@ -110,7 +113,37 @@ static Inst *parse_inst(Token **token) {
     } while (*token && (*token++)->type == TOK_COMMA);
   }
 
-  return inst_new(type, ops, inst_tok);
+  Op *op = NULL, *src = NULL, *dest = NULL;
+  switch (type) {
+    case INST_LEAVE:
+    case INST_RET: {
+      if (ops->length != 0) {
+        ERROR(inst_tok, "'%s' expects no operand.", inst_tok->ident);
+      }
+    }
+    break;
+
+    case INST_PUSH:
+    case INST_POP:
+    case INST_CALL: {
+      if (ops->length != 1) {
+        ERROR(inst_tok, "'%s' expects 1 operand.", inst_tok->ident);
+      }
+      op = ops->array[0];
+    }
+    break;
+
+    case INST_MOV: {
+      if (ops->length != 2) {
+        ERROR(inst_tok, "'%s' expects 2 operands.", inst_tok->ident);
+      }
+      src = ops->array[0];
+      dest = ops->array[1];
+    }
+    break;
+  }
+
+  return inst_new(type, op, src, dest, inst_tok);
 }
 
 Unit *parse(Vector *lines) {

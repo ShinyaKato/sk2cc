@@ -96,7 +96,9 @@ typedef enum inst_type {
 
 typedef struct inst {
   InstType type;
-  Vector *ops;
+  Op *op;
+  Op *src;
+  Op *dest;
   Token *token;
 } Inst;
 

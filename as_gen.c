@@ -54,15 +54,11 @@ static Map *gsyms;
 static void gen_text() {
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
+    Op *op = inst->op, *src = inst->src, *dest = inst->dest;
     offsets[i] = text->length;
 
     switch (inst->type) {
       case INST_PUSH: {
-        if (inst->ops->length != 1) {
-          ERROR(inst->token, "'pushq' expects 1 operand.");
-        }
-        Op *op = inst->ops->array[0];
-
         if (op->type == OP_REG) {
           // 50 +rd
           Byte rex = REX_PRE(0, 0, op->reg);
@@ -79,11 +75,6 @@ static void gen_text() {
       break;
 
       case INST_POP: {
-        if (inst->ops->length != 1) {
-          ERROR(inst->token, "'popq' expects 1 operand.");
-        }
-        Op *op = inst->ops->array[0];
-
         if (op->type == OP_REG) {
           // 58 +rd
           Byte rex = REX_PRE(0, 0, op->reg);
@@ -100,12 +91,6 @@ static void gen_text() {
       break;
 
       case INST_MOV: {
-        if (inst->ops->length != 2) {
-          ERROR(inst->token, "'movq' expects 2 operands.");
-        }
-        Op *src = inst->ops->array[0];
-        Op *dest = inst->ops->array[1];
-
         if (src->type == OP_IMM && dest->type == OP_REG) {
           // REX.W + C7 /0 id
           Byte rex = REXW_PRE(0, 0, dest->reg);
@@ -177,10 +162,6 @@ static void gen_text() {
       break;
 
       case INST_CALL: {
-        if (inst->ops->length != 1) {
-          ERROR(inst->token, "'call' expects 1 operand.");
-        }
-        Op *op = inst->ops->array[0];
         if (op->type == OP_SYM) {
           // E8 cd
           Byte opcode = 0xe8;
@@ -193,9 +174,6 @@ static void gen_text() {
       break;
 
       case INST_LEAVE: {
-        if (inst->ops->length != 0) {
-          ERROR(inst->token, "'leave' expects no operand.");
-        }
         // C9
         Byte opcode = 0xc9;
         binary_append(text, 1, opcode);
@@ -203,9 +181,6 @@ static void gen_text() {
       break;
 
       case INST_RET: {
-        if (inst->ops->length != 0) {
-          ERROR(inst->token, "'ret' expects no operand.");
-        }
         // C3
         Byte opcode = 0xc3;
         binary_append(text, 1, opcode);
