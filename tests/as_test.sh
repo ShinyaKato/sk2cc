@@ -117,6 +117,17 @@ main:
   ret
 EOS
 
+expect 84 << EOS
+main:
+  movq %rsp, %r13
+  movq (%r13), %r11
+  movq \$84, %rcx
+  movq %rcx, (%r13)
+  movq (%r13), %rax
+  movq %r11, (%r13)
+  ret
+EOS
+
 expect 39 << EOS
 main:
   movq %rsp, %rdx
