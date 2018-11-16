@@ -150,5 +150,13 @@ main:
   ret
 EOS
 
+expect 53 << EOS
+main:
+  movq %rsp, %rcx
+  movq \$53, -144(%rcx)
+  movq -144(%rcx), %rax
+  ret
+EOS
+
 echo "[OK]"
 exit 0

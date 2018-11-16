@@ -119,6 +119,20 @@ static void gen_mov_inst(Inst *inst) {
     return;
   }
 
+  // REX.W + C7 /0 id
+  if (src->type == OP_IMM && dest->type == OP_MEM) {
+    Mod mod = mod_mem(dest->disp, dest->base);
+    if (dest->base == SP || dest->base == R12) {
+      ERROR(dest->token, "rsp is not supported.");
+    }
+    gen_rexw(0, 0, dest->base);
+    gen_opcode(0xc7);
+    gen_mod_rm(mod, 0, dest->base);
+    gen_disp(mod, dest->disp);
+    gen_imm32(src->imm);
+    return;
+  }
+
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_REG) {
     gen_rexw(src->reg, 0, dest->reg);
