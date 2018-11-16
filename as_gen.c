@@ -51,10 +51,92 @@ static Map *gsyms;
 #define IMM_ID2(id) ((id >> 16) & 0xff)
 #define IMM_ID3(id) (id >> 24)
 
+static void inst_mov(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+
+  if (src->type == OP_IMM && dest->type == OP_REG) {
+    // REX.W + C7 /0 id
+    Byte rex = REXW_PRE(0, 0, dest->reg);
+    Byte opcode = 0xc7;
+    Byte mod_rm = MOD_RM(MOD_REG, 0, dest->reg);
+    Byte imm0 = IMM_ID0(src->imm);
+    Byte imm1 = IMM_ID1(src->imm);
+    Byte imm2 = IMM_ID2(src->imm);
+    Byte imm3 = IMM_ID3(src->imm);
+    binary_append(text, 7, rex, opcode, mod_rm, imm0, imm1, imm2, imm3);
+    return;
+  }
+
+  if (src->type == OP_REG && dest->type == OP_REG) {
+    // REX.W + 8B /r
+    Byte rex = REXW_PRE(dest->reg, 0, src->reg);
+    Byte opcode = 0x8b;
+    Byte mod_rm = MOD_RM(MOD_REG, dest->reg, src->reg);
+    binary_append(text, 3, rex, opcode, mod_rm);
+    return;
+  }
+
+  if (src->type == OP_REG && dest->type == OP_MEM) {
+    if (dest->base == 4) {
+      ERROR(dest->token, "rsp is not supported.");
+    }
+    if (dest->base == 5) {
+      ERROR(dest->token, "rbp is not supported.");
+    }
+    // REX.W + 89 /r
+    int mod = MOD_MEM(dest->disp);
+    Byte rex = REXW_PRE(src->reg, 0, dest->base);
+    Byte opcode = 0x89;
+    Byte mod_rm = MOD_RM(mod, src->reg, dest->base);
+    if (mod == MOD_DISP0) {
+      binary_append(text, 3, rex, opcode, mod_rm);
+    } else if (mod == MOD_DISP8) {
+      Byte disp = (signed char) dest->disp;
+      binary_append(text, 4, rex, opcode, mod_rm, disp);
+    } else if (mod == MOD_DISP32) {
+      Byte disp0 = ((unsigned int) dest->disp) & 0xff;
+      Byte disp1 = (((unsigned int) dest->disp) >> 8) & 0xff;
+      Byte disp2 = (((unsigned int) dest->disp) >> 16) & 0xff;
+      Byte disp3 = (((unsigned int) dest->disp) >> 24) & 0xff;
+      binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
+    }
+    return;
+  }
+
+  if (src->type == OP_MEM && dest->type == OP_REG) {
+    if (src->base == 4) {
+      ERROR(src->token, "rsp is not supported.");
+    }
+    if (src->base == 5) {
+      ERROR(src->token, "rbp is not supported.");
+    }
+    // REX.W + 8B /r
+    int mod = MOD_MEM(src->disp);
+    Byte rex = REXW_PRE(dest->reg, 0, src->base);
+    Byte opcode = 0x8b;
+    Byte mod_rm = MOD_RM(mod, dest->reg, src->base);
+    if (mod == MOD_DISP0) {
+      binary_append(text, 3, rex, opcode, mod_rm);
+    } else if (mod == MOD_DISP8) {
+      Byte disp = (signed char) src->disp;
+      binary_append(text, 4, rex, opcode, mod_rm, disp);
+    } else if (mod == MOD_DISP32) {
+      Byte disp0 = ((unsigned int) src->disp) & 0xff;
+      Byte disp1 = (((unsigned int) src->disp) >> 8) & 0xff;
+      Byte disp2 = (((unsigned int) src->disp) >> 16) & 0xff;
+      Byte disp3 = (((unsigned int) src->disp) >> 24) & 0xff;
+      binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
+    }
+    return;
+  }
+
+  ERROR(src->token, "invalid operand types.");
+}
+
 static void gen_text() {
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
-    Op *op = inst->op, *src = inst->src, *dest = inst->dest;
+    Op *op = inst->op;
     offsets[i] = text->length;
 
     switch (inst->type) {
@@ -91,73 +173,7 @@ static void gen_text() {
       break;
 
       case INST_MOV: {
-        if (src->type == OP_IMM && dest->type == OP_REG) {
-          // REX.W + C7 /0 id
-          Byte rex = REXW_PRE(0, 0, dest->reg);
-          Byte opcode = 0xc7;
-          Byte mod_rm = MOD_RM(MOD_REG, 0, dest->reg);
-          Byte imm0 = IMM_ID0(src->imm);
-          Byte imm1 = IMM_ID1(src->imm);
-          Byte imm2 = IMM_ID2(src->imm);
-          Byte imm3 = IMM_ID3(src->imm);
-          binary_append(text, 7, rex, opcode, mod_rm, imm0, imm1, imm2, imm3);
-        } else if (src->type == OP_REG && dest->type == OP_REG) {
-          // REX.W + 8B /r
-          Byte rex = REXW_PRE(dest->reg, 0, src->reg);
-          Byte opcode = 0x8b;
-          Byte mod_rm = MOD_RM(MOD_REG, dest->reg, src->reg);
-          binary_append(text, 3, rex, opcode, mod_rm);
-        } else if (src->type == OP_REG && dest->type == OP_MEM) {
-          if (dest->base == 4) {
-            ERROR(dest->token, "rsp is not supported.");
-          }
-          if (dest->base == 5) {
-            ERROR(dest->token, "rbp is not supported.");
-          }
-          // REX.W + 89 /r
-          int mod = MOD_MEM(dest->disp);
-          Byte rex = REXW_PRE(src->reg, 0, dest->base);
-          Byte opcode = 0x89;
-          Byte mod_rm = MOD_RM(mod, src->reg, dest->base);
-          if (mod == MOD_DISP0) {
-            binary_append(text, 3, rex, opcode, mod_rm);
-          } else if (mod == MOD_DISP8) {
-            Byte disp = (signed char) dest->disp;
-            binary_append(text, 4, rex, opcode, mod_rm, disp);
-          } else if (mod == MOD_DISP32) {
-            Byte disp0 = ((unsigned int) dest->disp) & 0xff;
-            Byte disp1 = (((unsigned int) dest->disp) >> 8) & 0xff;
-            Byte disp2 = (((unsigned int) dest->disp) >> 16) & 0xff;
-            Byte disp3 = (((unsigned int) dest->disp) >> 24) & 0xff;
-            binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
-          }
-        } else if (src->type == OP_MEM && dest->type == OP_REG) {
-          if (src->base == 4) {
-            ERROR(src->token, "rsp is not supported.");
-          }
-          if (src->base == 5) {
-            ERROR(src->token, "rbp is not supported.");
-          }
-          // REX.W + 8B /r
-          int mod = MOD_MEM(src->disp);
-          Byte rex = REXW_PRE(dest->reg, 0, src->base);
-          Byte opcode = 0x8b;
-          Byte mod_rm = MOD_RM(mod, dest->reg, src->base);
-          if (mod == MOD_DISP0) {
-            binary_append(text, 3, rex, opcode, mod_rm);
-          } else if (mod == MOD_DISP8) {
-            Byte disp = (signed char) src->disp;
-            binary_append(text, 4, rex, opcode, mod_rm, disp);
-          } else if (mod == MOD_DISP32) {
-            Byte disp0 = ((unsigned int) src->disp) & 0xff;
-            Byte disp1 = (((unsigned int) src->disp) >> 8) & 0xff;
-            Byte disp2 = (((unsigned int) src->disp) >> 16) & 0xff;
-            Byte disp3 = (((unsigned int) src->disp) >> 24) & 0xff;
-            binary_append(text, 7, rex, opcode, mod_rm, disp0, disp1, disp2, disp3);
-          }
-        } else {
-          ERROR(src->token, "invalid operand types.");
-        }
+        inst_mov(inst);
       }
       break;
 
