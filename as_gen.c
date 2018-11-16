@@ -26,169 +26,170 @@ static int *offsets;
 static Vector *relocs;
 static Map *gsyms;
 
-#define REXW_PRE(R, X, B) \
-  (0x48 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
+static void gen_rexw(Reg reg, Reg index, Reg base) {
+  bool r = reg & 0x08;
+  bool x = index & 0x08;
+  bool b = base & 0x08;
+  binary_push(text, 0x48 | (r << 2) | (x << 1) | b);
+}
 
-#define REX_PRE(R, X, B) \
-  (0x40 | (((R >> 3) & 1) << 2) | (((X >> 3) & 1) << 1) | ((B >> 3) & 1))
+static void gen_rex(Reg reg, Reg index, Reg base) {
+  bool r = reg & 0x08;
+  bool x = index & 0x08;
+  bool b = base & 0x08;
+  if (r || x || b) {
+    binary_push(text, 0x40 | (r << 2) | (x << 1) | b);
+  }
+}
 
-#define MOD_RM(Mod, RegOpcode, RM) \
-  (((Mod << 6) & 0xc0) | ((RegOpcode << 3) & 0x38) | (RM & 0x07))
+static void gen_opcode(Byte opcode) {
+  binary_push(text, opcode);
+}
 
-#define MOD_DISP0 0
-#define MOD_DISP8 1
-#define MOD_DISP32 2
-#define MOD_REG 3
+static void gen_opcode_reg(Byte opcode, Reg reg) {
+  binary_push(text, opcode | (reg & 0x07));
+}
 
-#define MOD_MEM(reg, disp) \
-  (reg == 5 || reg == 13 ? MOD_DISP8 : ( \
-    (disp == 0 ? MOD_DISP0 : ( \
-      -128 <= disp && disp < 128 ? MOD_DISP8 : MOD_DISP32 \
-    )) \
-  ))
+typedef enum mod {
+  MOD_DISP0 = 0,
+  MOD_DISP8 = 1,
+  MOD_DISP32 = 2,
+  MOD_REG = 3,
+} Mod;
 
-#define OPCODE_REG(Opcode, Reg) \
-  ((Opcode & 0xf8) | (Reg & 0x07))
+static Mod mod_mem(int disp, Reg base) {
+  if (base == BP || base == R13) return MOD_DISP8;
 
-#define IMM8(imm) \
-  do { \
-    unsigned char _imm = (unsigned char) imm; \
-    binary_push(text, _imm); \
-  } while (0)
+  if (disp == 0) return MOD_DISP0;
+  if (-128 <= disp && disp < 128) return MOD_DISP8;
+  return MOD_DISP32;
+}
 
-#define IMM32(imm) \
-  do { \
-    unsigned int _imm = (unsigned int) imm; \
-    binary_push(text, (_imm >> 0) & 0xff); \
-    binary_push(text, (_imm >> 8) & 0xff); \
-    binary_push(text, (_imm >> 16) & 0xff); \
-    binary_push(text, (_imm >> 24) & 0xff); \
-  } while (0)
+static void gen_mod_rm(Mod mod, Reg reg, Reg rm) {
+  binary_push(text, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
+}
 
-static void inst_mov(Inst *inst) {
+static void gen_imm8(unsigned char imm) {
+  binary_push(text, imm);
+}
+
+static void gen_imm32(unsigned int imm) {
+  binary_push(text, (imm >> 0) & 0xff);
+  binary_push(text, (imm >> 8) & 0xff);
+  binary_push(text, (imm >> 16) & 0xff);
+  binary_push(text, (imm >> 24) & 0xff);
+}
+
+static void gen_disp(Mod mod, int disp) {
+  if (mod == MOD_DISP8) gen_imm8(disp);
+  else if (mod == MOD_DISP32) gen_imm32(disp);
+}
+
+static void gen_push_inst(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type != OP_REG) {
+    ERROR(op->token, "invalid operand type.");
+  }
+
+  // 50 +rd
+  gen_rex(0, 0, op->reg);
+  gen_opcode_reg(0x50, op->reg);
+}
+
+static void gen_pop_inst(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type != OP_REG) {
+    ERROR(op->token, "invalid operand type.");
+  }
+
+  // 58 +rd
+  gen_rex(0, 0, op->reg);
+  gen_opcode_reg(0x58, op->reg);
+}
+
+static void gen_mov_inst(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
 
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && dest->type == OP_REG) {
-    binary_push(text, REXW_PRE(0, 0, dest->reg));
-    binary_push(text, 0xc7);
-    binary_push(text, MOD_RM(MOD_REG, 0, dest->reg));
-    IMM32(src->imm);
+    gen_rexw(0, 0, dest->reg);
+    gen_opcode(0xc7);
+    gen_mod_rm(MOD_REG, 0, dest->reg);
+    gen_imm32(src->imm);
     return;
   }
 
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_REG) {
-    binary_push(text, REXW_PRE(src->reg, 0, dest->reg));
-    binary_push(text, 0x89);
-    binary_push(text, MOD_RM(MOD_REG, src->reg, dest->reg));
+    gen_rexw(src->reg, 0, dest->reg);
+    gen_opcode(0x89);
+    gen_mod_rm(MOD_REG, src->reg, dest->reg);
     return;
   }
 
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_MEM) {
-    int mod = MOD_MEM(dest->base, dest->disp);
-    if (dest->base == 4 || dest->base == 12) {
+    Mod mod = mod_mem(dest->disp, dest->base);
+    if (dest->base == SP || dest->base == R12) {
       ERROR(dest->token, "rsp is not supported.");
     }
-    binary_push(text, REXW_PRE(src->reg, 0, dest->base));
-    binary_push(text, 0x89);
-    binary_push(text, MOD_RM(mod, src->reg, dest->base));
-    if (mod == MOD_DISP8) IMM8(dest->disp);
-    else if (mod == MOD_DISP32) IMM32(dest->disp);
+    gen_rexw(src->reg, 0, dest->base);
+    gen_opcode(0x89);
+    gen_mod_rm(mod, src->reg, dest->base);
+    gen_disp(mod, dest->disp);
     return;
   }
 
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
-    int mod = MOD_MEM(src->base, src->disp);
-    if (src->base == 4 || src->base == 12) {
+    Mod mod = mod_mem(src->disp, src->base);
+    if (src->base == SP || src->base == R12) {
       ERROR(src->token, "rsp is not supported.");
     }
-    binary_push(text, REXW_PRE(dest->reg, 0, src->base));
-    binary_push(text, 0x8b);
-    binary_push(text, MOD_RM(mod, dest->reg, src->base));
-    if (mod == MOD_DISP8) IMM8(src->disp);
-    else if (mod == MOD_DISP32) IMM32(src->disp);
+    gen_rexw(dest->reg, 0, src->base);
+    gen_opcode(0x8b);
+    gen_mod_rm(mod, dest->reg, src->base);
+    gen_disp(mod, src->disp);
     return;
   }
 
   ERROR(src->token, "invalid operand types.");
 }
 
+static void gen_call_inst(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type != OP_SYM) {
+    ERROR(inst->token, "invalid operand type.");
+  }
+
+  // E8 cd
+  gen_opcode(0xe8);
+  gen_imm32(0);
+
+  vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
+}
+
+static void gen_leave_inst(Inst *inst) {
+  gen_opcode(0xc9); // C9
+}
+
+static void gen_ret_inst(Inst *inst) {
+  gen_opcode(0xc3); // C3
+}
+
 static void gen_text() {
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
-    Op *op = inst->op;
     offsets[i] = text->length;
 
     switch (inst->type) {
-      case INST_PUSH: {
-        if (op->type == OP_REG) {
-          // 50 +rd
-          Byte rex = REX_PRE(0, 0, op->reg);
-          Byte opcode = OPCODE_REG(0x50, op->reg);
-          if (op->reg < 8) {
-            binary_append(text, 1, opcode);
-          } else {
-            binary_append(text, 2, rex, opcode);
-          }
-        } else {
-          ERROR(op->token, "invalid operand type.");
-        }
-      }
-      break;
-
-      case INST_POP: {
-        if (op->type == OP_REG) {
-          // 58 +rd
-          Byte rex = REX_PRE(0, 0, op->reg);
-          Byte opcode = OPCODE_REG(0x58, op->reg);
-          if (op->reg < 8) {
-            binary_append(text, 1, opcode);
-          } else {
-            binary_append(text, 2, rex, opcode);
-          }
-        } else {
-          ERROR(op->token, "invalid operand type.");
-        }
-      }
-      break;
-
-      case INST_MOV: {
-        inst_mov(inst);
-      }
-      break;
-
-      case INST_CALL: {
-        if (op->type == OP_SYM) {
-          // E8 cd
-          Byte opcode = 0xe8;
-          binary_append(text, 5, opcode, 0, 0, 0, 0);
-          vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
-        } else {
-          ERROR(inst->token, "invalid operand type.");
-        }
-      }
-      break;
-
-      case INST_LEAVE: {
-        // C9
-        Byte opcode = 0xc9;
-        binary_append(text, 1, opcode);
-      }
-      break;
-
-      case INST_RET: {
-        // C3
-        Byte opcode = 0xc3;
-        binary_append(text, 1, opcode);
-      }
-      break;
-
-      default: {
-        ERROR(inst->token, "unknown instruction.");
-      }
+      case INST_PUSH: gen_push_inst(inst); break;
+      case INST_POP: gen_pop_inst(inst); break;
+      case INST_MOV: gen_mov_inst(inst); break;
+      case INST_CALL: gen_call_inst(inst); break;
+      case INST_LEAVE: gen_leave_inst(inst); break;
+      case INST_RET: gen_ret_inst(inst); break;
+      default: ERROR(inst->token, "unknown instruction.");
     }
   }
 }

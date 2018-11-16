@@ -45,6 +45,25 @@ extern void binary_push(Binary *binary, Byte byte);
 extern void binary_append(Binary *binary, int size, ...);
 extern void binary_write(Binary *binary, void *buffer, int size);
 
+typedef enum reg {
+  AX = 0,
+  CX = 1,
+  DX = 2,
+  BX = 3,
+  SP = 4,
+  BP = 5,
+  SI = 6,
+  DI = 7,
+  R8 = 8,
+  R9 = 9,
+  R10 = 10,
+  R11 = 11,
+  R12 = 12,
+  R13 = 13,
+  R14 = 14,
+  R15 = 15,
+} Reg;
+
 typedef enum token_type {
   TOK_IDENT,
   TOK_REG,
@@ -59,7 +78,7 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   char *ident;
-  int reg;
+  Reg reg;
   int disp;
   int imm;
   char *file;
@@ -77,8 +96,8 @@ typedef enum op_type {
 
 typedef struct op {
   OpType type;
-  int reg;
-  int base;
+  Reg reg;
+  Reg base;
   int disp;
   char *sym;
   int imm;
