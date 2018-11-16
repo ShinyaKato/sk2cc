@@ -153,8 +153,19 @@ EOS
 expect 53 << EOS
 main:
   movq %rsp, %rcx
-  movq \$53, -144(%rcx)
+  movq \$53, -8(%rcx)
+  movq -8(%rcx), %rdx
+  movq %rdx, -144(%rcx)
   movq -144(%rcx), %rax
+  ret
+EOS
+
+expect 16 << EOS
+main:
+  movq \$16, -8(%rsp)
+  movq -8(%rsp), %rcx
+  movq %rcx, -144(%rsp)
+  movq -144(%rsp), %rax
   ret
 EOS
 

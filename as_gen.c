@@ -69,8 +69,19 @@ static void gen_mod_rm(Mod mod, Reg reg, Reg rm) {
   binary_push(text, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
 }
 
-static void gen_imm8(unsigned char imm) {
-  binary_push(text, imm);
+static void gen_sib(int scale, Reg index, Reg base) {
+  binary_push(text, ((scale & 0x03) << 6) | ((index & 0x07) << 3) | (base & 0x07));
+}
+
+static void gen_disp(Mod mod, int disp) {
+  if (mod == MOD_DISP8) {
+    binary_push(text, (unsigned char) disp);
+  } else if (mod == MOD_DISP32) {
+    binary_push(text, ((unsigned int) disp >> 0) & 0xff);
+    binary_push(text, ((unsigned int) disp >> 8) & 0xff);
+    binary_push(text, ((unsigned int) disp >> 16) & 0xff);
+    binary_push(text, ((unsigned int) disp >> 24) & 0xff);
+  }
 }
 
 static void gen_imm32(unsigned int imm) {
@@ -78,11 +89,6 @@ static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 8) & 0xff);
   binary_push(text, (imm >> 16) & 0xff);
   binary_push(text, (imm >> 24) & 0xff);
-}
-
-static void gen_disp(Mod mod, int disp) {
-  if (mod == MOD_DISP8) gen_imm8(disp);
-  else if (mod == MOD_DISP32) gen_imm32(disp);
 }
 
 static void gen_push_inst(Inst *inst) {
@@ -122,12 +128,12 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    if (dest->base == SP || dest->base == R12) {
-      ERROR(dest->token, "rsp is not supported.");
-    }
     gen_rexw(0, 0, dest->base);
     gen_opcode(0xc7);
     gen_mod_rm(mod, 0, dest->base);
+    if (dest->base == SP || dest->base == R12) {
+      gen_sib(0, 4, dest->base);
+    }
     gen_disp(mod, dest->disp);
     gen_imm32(src->imm);
     return;
@@ -144,12 +150,12 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    if (dest->base == SP || dest->base == R12) {
-      ERROR(dest->token, "rsp is not supported.");
-    }
     gen_rexw(src->reg, 0, dest->base);
     gen_opcode(0x89);
     gen_mod_rm(mod, src->reg, dest->base);
+    if (dest->base == SP || dest->base == R12) {
+      gen_sib(0, 4, dest->base);
+    }
     gen_disp(mod, dest->disp);
     return;
   }
@@ -157,12 +163,12 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
     Mod mod = mod_mem(src->disp, src->base);
-    if (src->base == SP || src->base == R12) {
-      ERROR(src->token, "rsp is not supported.");
-    }
     gen_rexw(dest->reg, 0, src->base);
     gen_opcode(0x8b);
     gen_mod_rm(mod, dest->reg, src->base);
+    if (src->base == SP || src->base == R12) {
+      gen_sib(0, 4, src->base);
+    }
     gen_disp(mod, src->disp);
     return;
   }
