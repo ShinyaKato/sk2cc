@@ -169,5 +169,16 @@ main:
   ret
 EOS
 
+expect 22 << EOS
+main:
+  movq \$2, %rsi
+  movq \$8, %r14
+  movq \$22, -32(%rsp, %rsi, 8)
+  movq -32(%rsp, %rsi, 8), %rcx
+  movq %rcx, -144(%rsp, %r14)
+  movq -144(%rsp, %r14), %rax
+  ret
+EOS
+
 echo "[OK]"
 exit 0

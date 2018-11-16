@@ -69,7 +69,7 @@ static void gen_mod_rm(Mod mod, Reg reg, Reg rm) {
   binary_push(text, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
 }
 
-static void gen_sib(int scale, Reg index, Reg base) {
+static void gen_sib(Scale scale, Reg index, Reg base) {
   binary_push(text, ((scale & 0x03) << 6) | ((index & 0x07) << 3) | (base & 0x07));
 }
 
@@ -128,11 +128,16 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rexw(0, 0, dest->base);
+    gen_rexw(0, dest->sib ? dest->index : 0, dest->base);
     gen_opcode(0xc7);
-    gen_mod_rm(mod, 0, dest->base);
-    if (dest->base == SP || dest->base == R12) {
-      gen_sib(0, 4, dest->base);
+    if (!dest->sib) {
+      gen_mod_rm(mod, 0, dest->base);
+      if (dest->base == SP || dest->base == R12) {
+        gen_sib(0, 4, dest->base);
+      }
+    } else {
+      gen_mod_rm(mod, src->reg, 4);
+      gen_sib(dest->scale, dest->index, dest->base);
     }
     gen_disp(mod, dest->disp);
     gen_imm32(src->imm);
@@ -150,11 +155,16 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rexw(src->reg, 0, dest->base);
+    gen_rexw(src->reg, dest->sib ? dest->index : 0, dest->base);
     gen_opcode(0x89);
-    gen_mod_rm(mod, src->reg, dest->base);
-    if (dest->base == SP || dest->base == R12) {
-      gen_sib(0, 4, dest->base);
+    if (!dest->sib) {
+      gen_mod_rm(mod, src->reg, dest->base);
+      if (dest->base == SP || dest->base == R12) {
+        gen_sib(0, 4, dest->base);
+      }
+    } else {
+      gen_mod_rm(mod, src->reg, 4);
+      gen_sib(dest->scale, dest->index, dest->base);
     }
     gen_disp(mod, dest->disp);
     return;
@@ -163,11 +173,16 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
     Mod mod = mod_mem(src->disp, src->base);
-    gen_rexw(dest->reg, 0, src->base);
+    gen_rexw(dest->reg, src->sib ? src->index : 0, src->base);
     gen_opcode(0x8b);
-    gen_mod_rm(mod, dest->reg, src->base);
-    if (src->base == SP || src->base == R12) {
-      gen_sib(0, 4, src->base);
+    if (!src->sib) {
+      gen_mod_rm(mod, dest->reg, src->base);
+      if (src->base == SP || src->base == R12) {
+        gen_sib(0, 4, src->base);
+      }
+    } else {
+      gen_mod_rm(mod, dest->reg, 4);
+      gen_sib(src->scale, src->index, src->base);
     }
     gen_disp(mod, src->disp);
     return;

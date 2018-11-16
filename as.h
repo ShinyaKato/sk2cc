@@ -67,7 +67,7 @@ typedef enum reg {
 typedef enum token_type {
   TOK_IDENT,
   TOK_REG,
-  TOK_DISP,
+  TOK_NUM,
   TOK_IMM,
   TOK_COMMA,
   TOK_LPAREN,
@@ -79,13 +79,20 @@ typedef struct token {
   TokenType type;
   char *ident;
   Reg reg;
-  int disp;
+  int num;
   unsigned int imm;
   char *file;
   int lineno;
   int column;
   char *line;
 } Token;
+
+typedef enum scale {
+  SCALE1 = 0,
+  SCALE2 = 1,
+  SCALE4 = 2,
+  SCALE8 = 3,
+} Scale;
 
 typedef enum op_type {
   OP_REG,
@@ -97,6 +104,9 @@ typedef enum op_type {
 typedef struct op {
   OpType type;
   Reg reg;
+  bool sib;
+  Scale scale;
+  Reg index;
   Reg base;
   int disp;
   char *sym;

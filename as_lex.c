@@ -49,14 +49,13 @@ Vector *tokenize(char *file, Vector *source) {
         token->type = TOK_REG;
         token->reg = reg;
       } else if (c == '+' || c == '-' || isdigit(c)) {
-        int sign = 1;
-        if (c == '-') sign = -1;
-        int disp = isdigit(c) ? c - '0' : 0;
+        int sign = c == '-' ? -1 : 1;
+        int num = isdigit(c) ? (c - '0') : 0;
         while (isdigit(line[column])) {
-          disp = disp * 10 + (line[column++] - '0');
+          num = num * 10 + (line[column++] - '0');
         }
-        token->type = TOK_DISP;
-        token->disp = sign * disp;
+        token->type = TOK_NUM;
+        token->num = sign * num;
       } else if (c == '$') {
         unsigned int imm = 0;
         if (!isdigit(line[column])) {

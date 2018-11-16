@@ -7,14 +7,24 @@ Op *op_new(OpType type, Token *token) {
   return op;
 }
 
-Op *op_reg(int reg, Token *token) {
+Op *op_reg(Reg reg, Token *token) {
   Op *op = op_new(OP_REG, token);
   op->reg = reg;
   return op;
 }
 
-Op *op_mem(int base, int disp, Token *token) {
+Op *op_mem_base(Reg base, Reg disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
+  op->base = base;
+  op->disp = disp;
+  return op;
+}
+
+Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
+  Op *op = op_new(OP_MEM, token);
+  op->sib = true;
+  op->scale = scale;
+  op->index = index;
   op->base = base;
   op->disp = disp;
   return op;
@@ -78,19 +88,48 @@ static Inst *parse_inst(Token **token) {
 
       switch ((*token)->type) {
         case TOK_REG: {
-          int reg = (*token++)->reg;
+          Reg reg = (*token++)->reg;
           vector_push(ops, op_reg(reg, op_head));
         }
         break;
 
         case TOK_LPAREN:
-        case TOK_DISP: {
-          int disp = (*token)->type == TOK_DISP ? (*token++)->disp : 0;
+        case TOK_NUM: {
+          Op *op;
+          int disp = (*token)->type == TOK_NUM ? (*token++)->num : 0;
           EXPECT(*token++, TOK_LPAREN, "'(' is expected.");
           EXPECT(*token, TOK_REG, "register is expected.");
-          int base = (*token++)->reg;
+          Reg base = (*token++)->reg;
+          if ((*token)->type == TOK_COMMA) {
+            token++;
+            EXPECT(*token, TOK_REG, "register is expected.");
+            if ((*token)->reg == SP) {
+              ERROR(*token, "cannot use rsp as index.");
+            }
+            Reg index = (*token++)->reg;
+            if ((*token)->type == TOK_COMMA) {
+              token++;
+              EXPECT(*token, TOK_NUM, "scale is expected.");
+              Token *scale = *token++;
+              if (scale->num == 1) {
+                op = op_mem_sib(SCALE1, index, base, disp, op_head);
+              } else if (scale->num == 2) {
+                op = op_mem_sib(SCALE2, index, base, disp, op_head);
+              } else if (scale->num == 4) {
+                op = op_mem_sib(SCALE4, index, base, disp, op_head);
+              } else if (scale->num == 8) {
+                op = op_mem_sib(SCALE8, index, base, disp, op_head);
+              } else {
+                ERROR(scale, "one of 1, 2, 4, 8 is expected.");
+              }
+            } else {
+              op = op_mem_sib(SCALE1, index, base, disp, op_head);
+            }
+          } else {
+            op = op_mem_base(base, disp, op_head);
+          }
           EXPECT(*token++, TOK_RPAREN, "')' is expected.");
-          vector_push(ops, op_mem(base, disp, op_head));
+          vector_push(ops, op);
         }
         break;
 
