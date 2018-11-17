@@ -45,6 +45,11 @@ extern void binary_push(Binary *binary, Byte byte);
 extern void binary_append(Binary *binary, int size, ...);
 extern void binary_write(Binary *binary, void *buffer, int size);
 
+typedef enum reg_type {
+  R32,
+  R64,
+} RegType;
+
 typedef enum reg {
   AX = 0,
   CX = 1,
@@ -78,7 +83,8 @@ typedef enum token_type {
 typedef struct token {
   TokenType type;
   char *ident;
-  Reg reg;
+  RegType regtype;
+  Reg regcode;
   int num;
   unsigned int imm;
   char *file;
@@ -103,7 +109,8 @@ typedef enum op_type {
 
 typedef struct op {
   OpType type;
-  Reg reg;
+  RegType regtype;
+  Reg regcode;
   bool sib;
   Scale scale;
   Reg index;
@@ -123,8 +130,14 @@ typedef enum inst_type {
   INST_RET,
 } InstType;
 
+typedef enum inst_suffix {
+  INST_LONG,
+  INST_QUAD,
+} InstSuffix;
+
 typedef struct inst {
   InstType type;
+  InstSuffix suffix;
   Op *op;
   Op *src;
   Op *dest;

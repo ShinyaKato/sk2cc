@@ -7,9 +7,10 @@ Op *op_new(OpType type, Token *token) {
   return op;
 }
 
-Op *op_reg(Reg reg, Token *token) {
+Op *op_reg(RegType regtype, Reg regcode, Token *token) {
   Op *op = op_new(OP_REG, token);
-  op->reg = reg;
+  op->regtype = regtype;
+  op->regcode = regcode;
   return op;
 }
 
@@ -42,13 +43,28 @@ Op *op_imm(int imm, Token *token) {
   return op;
 }
 
-Inst *inst_new(InstType type, Op *op, Op *src, Op *dest, Token *token) {
+Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
   Inst *inst = (Inst *) calloc(1, sizeof(Inst));
   inst->type = type;
+  inst->suffix = suffix;
+  inst->token = token;
+  return inst;
+}
+
+Inst *inst_op0(InstType type, InstSuffix suffix, Token *token) {
+  return inst_new(type, suffix, token);
+}
+
+Inst *inst_op1(InstType type, InstSuffix suffix, Op *op, Token *token) {
+  Inst *inst = inst_new(type, suffix, token);
   inst->op = op;
+  return inst;
+}
+
+Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
+  Inst *inst = inst_new(type, suffix, token);
   inst->src = src;
   inst->dest = dest;
-  inst->token = token;
   return inst;
 }
 
@@ -66,123 +82,181 @@ Label *label_new(int inst) {
     } \
   } while (0)
 
-static InstType inst_type(Token *token) {
-  char *ident = token->ident;
-  if (strcmp(ident, "pushq") == 0) return INST_PUSH;
-  if (strcmp(ident, "popq") == 0) return INST_POP;
-  if (strcmp(ident, "movq") == 0) return INST_MOV;
-  if (strcmp(ident, "call") == 0) return INST_CALL;
-  if (strcmp(ident, "leave") == 0) return INST_LEAVE;
-  if (strcmp(ident, "ret") == 0) return INST_RET;
-  ERROR(token, "invalide instruction.");
+static Vector *parse_ops(Token **token) {
+  Vector *ops = vector_new();
+  if (!(*token)) return ops;
+
+  do {
+    Token *op_head = *token;
+
+    switch ((*token)->type) {
+      case TOK_REG: {
+        RegType regtype = (*token)->regtype;
+        Reg regcode = (*token)->regcode;
+        token++;
+        vector_push(ops, op_reg(regtype, regcode, op_head));
+      }
+      break;
+
+      case TOK_LPAREN:
+      case TOK_NUM: {
+        Op *op;
+        int disp = (*token)->type == TOK_NUM ? (*token++)->num : 0;
+        EXPECT(*token++, TOK_LPAREN, "'(' is expected.");
+        EXPECT(*token, TOK_REG, "register is expected.");
+        if ((*token)->regtype != R64) {
+          ERROR(*token, "64-bit register is expected.");
+        }
+        Reg base = (*token++)->regcode;
+        if ((*token)->type == TOK_COMMA) {
+          token++;
+          EXPECT(*token, TOK_REG, "register is expected.");
+          if ((*token)->regtype != R64) {
+            ERROR(*token, "64-bit register is expected.");
+          }
+          if ((*token)->regcode == SP) {
+            ERROR(*token, "cannot use rsp as index.");
+          }
+          Reg index = (*token++)->regcode;
+          if ((*token)->type == TOK_COMMA) {
+            token++;
+            EXPECT(*token, TOK_NUM, "scale is expected.");
+            Token *scale = *token++;
+            if (scale->num == 1) {
+              op = op_mem_sib(SCALE1, index, base, disp, op_head);
+            } else if (scale->num == 2) {
+              op = op_mem_sib(SCALE2, index, base, disp, op_head);
+            } else if (scale->num == 4) {
+              op = op_mem_sib(SCALE4, index, base, disp, op_head);
+            } else if (scale->num == 8) {
+              op = op_mem_sib(SCALE8, index, base, disp, op_head);
+            } else {
+              ERROR(scale, "one of 1, 2, 4, 8 is expected.");
+            }
+          } else {
+            op = op_mem_sib(SCALE1, index, base, disp, op_head);
+          }
+        } else {
+          op = op_mem_base(base, disp, op_head);
+        }
+        EXPECT(*token++, TOK_RPAREN, "')' is expected.");
+        vector_push(ops, op);
+      }
+      break;
+
+      case TOK_IDENT: {
+        char *sym = (*token++)->ident;
+        vector_push(ops, op_sym(sym, op_head));
+      }
+      break;
+
+      case TOK_IMM: {
+        int imm = (*token++)->imm;
+        vector_push(ops, op_imm(imm, op_head));
+      }
+      break;
+
+      default: {
+        ERROR(*token, "invalid operand.");
+      }
+    }
+  } while (*token && (*token++)->type == TOK_COMMA);
+
+  return ops;
 }
 
 static Inst *parse_inst(Token **token) {
-  Token *inst_tok = *token++;
-  InstType type = inst_type(inst_tok);
+  Token *inst = *token++;
+  Vector *ops = parse_ops(token);
 
-  Vector *ops = vector_new();
-  if (*token) {
-    do {
-      Token *op_head = *token;
-
-      switch ((*token)->type) {
-        case TOK_REG: {
-          Reg reg = (*token++)->reg;
-          vector_push(ops, op_reg(reg, op_head));
-        }
-        break;
-
-        case TOK_LPAREN:
-        case TOK_NUM: {
-          Op *op;
-          int disp = (*token)->type == TOK_NUM ? (*token++)->num : 0;
-          EXPECT(*token++, TOK_LPAREN, "'(' is expected.");
-          EXPECT(*token, TOK_REG, "register is expected.");
-          Reg base = (*token++)->reg;
-          if ((*token)->type == TOK_COMMA) {
-            token++;
-            EXPECT(*token, TOK_REG, "register is expected.");
-            if ((*token)->reg == SP) {
-              ERROR(*token, "cannot use rsp as index.");
-            }
-            Reg index = (*token++)->reg;
-            if ((*token)->type == TOK_COMMA) {
-              token++;
-              EXPECT(*token, TOK_NUM, "scale is expected.");
-              Token *scale = *token++;
-              if (scale->num == 1) {
-                op = op_mem_sib(SCALE1, index, base, disp, op_head);
-              } else if (scale->num == 2) {
-                op = op_mem_sib(SCALE2, index, base, disp, op_head);
-              } else if (scale->num == 4) {
-                op = op_mem_sib(SCALE4, index, base, disp, op_head);
-              } else if (scale->num == 8) {
-                op = op_mem_sib(SCALE8, index, base, disp, op_head);
-              } else {
-                ERROR(scale, "one of 1, 2, 4, 8 is expected.");
-              }
-            } else {
-              op = op_mem_sib(SCALE1, index, base, disp, op_head);
-            }
-          } else {
-            op = op_mem_base(base, disp, op_head);
-          }
-          EXPECT(*token++, TOK_RPAREN, "')' is expected.");
-          vector_push(ops, op);
-        }
-        break;
-
-        case TOK_IDENT: {
-          char *sym = (*token++)->ident;
-          vector_push(ops, op_sym(sym, op_head));
-        }
-        break;
-
-        case TOK_IMM: {
-          int imm = (*token++)->imm;
-          vector_push(ops, op_imm(imm, op_head));
-        }
-        break;
-
-        default: {
-          ERROR(*token, "invalid operand.");
-        }
-      }
-    } while (*token && (*token++)->type == TOK_COMMA);
+  if (strcmp(inst->ident, "pushq") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG || op->regtype != R64) {
+      ERROR(op->token, "only 64-bits register is supported.");
+    }
+    return inst_op1(INST_PUSH, INST_QUAD, op, inst);
   }
 
-  Op *op = NULL, *src = NULL, *dest = NULL;
-  switch (type) {
-    case INST_LEAVE:
-    case INST_RET: {
-      if (ops->length != 0) {
-        ERROR(inst_tok, "'%s' expects no operand.", inst_tok->ident);
-      }
+  if (strcmp(inst->ident, "popq") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    break;
-
-    case INST_PUSH:
-    case INST_POP:
-    case INST_CALL: {
-      if (ops->length != 1) {
-        ERROR(inst_tok, "'%s' expects 1 operand.", inst_tok->ident);
-      }
-      op = ops->array[0];
+    Op *op = ops->array[0];
+    if (op->type != OP_REG || op->regtype != R64) {
+      ERROR(op->token, "only 64-bits register is supported.");
     }
-    break;
-
-    case INST_MOV: {
-      if (ops->length != 2) {
-        ERROR(inst_tok, "'%s' expects 2 operands.", inst_tok->ident);
-      }
-      src = ops->array[0];
-      dest = ops->array[1];
-    }
-    break;
+    return inst_op1(INST_POP, INST_QUAD, op, inst);
   }
 
-  return inst_new(type, op, src, dest, inst_tok);
+  if (strcmp(inst->ident, "movl") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != R32) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != R32) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOV, INST_LONG, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != R64) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != R64) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "call") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_SYM) {
+      ERROR(op->token, "only symbol is supported.");
+    }
+    return inst_op1(INST_CALL, INST_QUAD, op, inst);
+  }
+
+  if (strcmp(inst->ident, "leave") == 0) {
+    if (ops->length != 0) {
+      ERROR(inst, "'%s' expects no operand.", inst->ident);
+    }
+    return inst_op0(INST_LEAVE, INST_QUAD, inst);
+  }
+
+  if (strcmp(inst->ident, "ret") == 0) {
+    if (ops->length != 0) {
+      ERROR(inst, "'%s' expects no operand.", inst->ident);
+    }
+    return inst_op0(INST_RET, INST_QUAD, inst);
+  }
+
+  ERROR(inst, "unknown instruction '%s'.", inst->ident);
 }
 
 Unit *parse(Vector *lines) {

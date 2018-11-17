@@ -180,5 +180,12 @@ main:
   ret
 EOS
 
+expect 25 << EOS
+main:
+  movl \$25, %r12d
+  movl %r12d, %eax
+  ret
+EOS
+
 echo "[OK]"
 exit 0

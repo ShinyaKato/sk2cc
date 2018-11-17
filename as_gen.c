@@ -26,19 +26,12 @@ static int *offsets;
 static Vector *relocs;
 static Map *gsyms;
 
-static void gen_rexw(Reg reg, Reg index, Reg base) {
+static void gen_rex(bool w, Reg reg, Reg index, Reg base) {
   bool r = reg & 0x08;
   bool x = index & 0x08;
   bool b = base & 0x08;
-  binary_push(text, 0x48 | (r << 2) | (x << 1) | b);
-}
-
-static void gen_rex(Reg reg, Reg index, Reg base) {
-  bool r = reg & 0x08;
-  bool x = index & 0x08;
-  bool b = base & 0x08;
-  if (r || x || b) {
-    binary_push(text, 0x40 | (r << 2) | (x << 1) | b);
+  if (w || r || x || b) {
+    binary_push(text, 0x40 | (w << 3) | (r << 2) | (x << 1) | b);
   }
 }
 
@@ -98,8 +91,8 @@ static void gen_push_inst(Inst *inst) {
   }
 
   // 50 +rd
-  gen_rex(0, 0, op->reg);
-  gen_opcode_reg(0x50, op->reg);
+  gen_rex(0, 0, 0, op->regcode);
+  gen_opcode_reg(0x50, op->regcode);
 }
 
 static void gen_pop_inst(Inst *inst) {
@@ -109,8 +102,8 @@ static void gen_pop_inst(Inst *inst) {
   }
 
   // 58 +rd
-  gen_rex(0, 0, op->reg);
-  gen_opcode_reg(0x58, op->reg);
+  gen_rex(0, 0, 0, op->regcode);
+  gen_opcode_reg(0x58, op->regcode);
 }
 
 static void gen_mov_inst(Inst *inst) {
@@ -118,9 +111,9 @@ static void gen_mov_inst(Inst *inst) {
 
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && dest->type == OP_REG) {
-    gen_rexw(0, 0, dest->reg);
+    gen_rex(inst->suffix == INST_QUAD, 0, 0, dest->regcode);
     gen_opcode(0xc7);
-    gen_mod_rm(MOD_REG, 0, dest->reg);
+    gen_mod_rm(MOD_REG, 0, dest->regcode);
     gen_imm32(src->imm);
     return;
   }
@@ -128,7 +121,7 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rexw(0, dest->sib ? dest->index : 0, dest->base);
+    gen_rex(inst->suffix == INST_QUAD, 0, dest->sib ? dest->index : 0, dest->base);
     gen_opcode(0xc7);
     if (!dest->sib) {
       gen_mod_rm(mod, 0, dest->base);
@@ -136,7 +129,7 @@ static void gen_mov_inst(Inst *inst) {
         gen_sib(0, 4, dest->base);
       }
     } else {
-      gen_mod_rm(mod, src->reg, 4);
+      gen_mod_rm(mod, src->regcode, 4);
       gen_sib(dest->scale, dest->index, dest->base);
     }
     gen_disp(mod, dest->disp);
@@ -146,24 +139,24 @@ static void gen_mov_inst(Inst *inst) {
 
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_REG) {
-    gen_rexw(src->reg, 0, dest->reg);
+    gen_rex(inst->suffix == INST_QUAD, src->regcode, 0, dest->regcode);
     gen_opcode(0x89);
-    gen_mod_rm(MOD_REG, src->reg, dest->reg);
+    gen_mod_rm(MOD_REG, src->regcode, dest->regcode);
     return;
   }
 
   // REX.W + 89 /r
   if (src->type == OP_REG && dest->type == OP_MEM) {
     Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rexw(src->reg, dest->sib ? dest->index : 0, dest->base);
+    gen_rex(inst->suffix == INST_QUAD, src->regcode, dest->sib ? dest->index : 0, dest->base);
     gen_opcode(0x89);
     if (!dest->sib) {
-      gen_mod_rm(mod, src->reg, dest->base);
+      gen_mod_rm(mod, src->regcode, dest->base);
       if (dest->base == SP || dest->base == R12) {
         gen_sib(0, 4, dest->base);
       }
     } else {
-      gen_mod_rm(mod, src->reg, 4);
+      gen_mod_rm(mod, src->regcode, 4);
       gen_sib(dest->scale, dest->index, dest->base);
     }
     gen_disp(mod, dest->disp);
@@ -173,15 +166,15 @@ static void gen_mov_inst(Inst *inst) {
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
     Mod mod = mod_mem(src->disp, src->base);
-    gen_rexw(dest->reg, src->sib ? src->index : 0, src->base);
+    gen_rex(inst->suffix == INST_QUAD, dest->regcode, src->sib ? src->index : 0, src->base);
     gen_opcode(0x8b);
     if (!src->sib) {
-      gen_mod_rm(mod, dest->reg, src->base);
+      gen_mod_rm(mod, dest->regcode, src->base);
       if (src->base == SP || src->base == R12) {
         gen_sib(0, 4, src->base);
       }
     } else {
-      gen_mod_rm(mod, dest->reg, 4);
+      gen_mod_rm(mod, dest->regcode, 4);
       gen_sib(src->scale, src->index, src->base);
     }
     gen_disp(mod, src->disp);

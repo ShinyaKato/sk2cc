@@ -1,5 +1,43 @@
 #include "as.h"
 
+static char *r32[16] = {
+  "eax",
+  "ecx",
+  "edx",
+  "ebx",
+  "esp",
+  "ebp",
+  "esi",
+  "edi",
+  "r8d",
+  "r9d",
+  "r10d",
+  "r11d",
+  "r12d",
+  "r13d",
+  "r14d",
+  "r15d",
+};
+
+static char *r64[16] = {
+  "rax",
+  "rcx",
+  "rdx",
+  "rbx",
+  "rsp",
+  "rbp",
+  "rsi",
+  "rdi",
+  "r8",
+  "r9",
+  "r10",
+  "r11",
+  "r12",
+  "r13",
+  "r14",
+  "r15",
+};
+
 Token *token_new(char *file, int lineno, int column, char *line) {
   Token *token = (Token *) calloc(1, sizeof(Token));
   token->file = file;
@@ -7,6 +45,36 @@ Token *token_new(char *file, int lineno, int column, char *line) {
   token->column = column;
   token->line = line;
   return token;
+}
+
+static RegType regtype(char *reg, Token *token) {
+  for (int i = 0; i < 16; i++) {
+    if (strcmp(reg, r32[i]) == 0) {
+      return R32;
+    }
+  }
+  for (int i = 0; i < 16; i++) {
+    if (strcmp(reg, r64[i]) == 0) {
+      return R64;
+    }
+  }
+
+  ERROR(token, "invalid register: %s.", reg);
+}
+
+static Reg regcode(char *reg, Token *token) {
+  for (int i = 0; i < 16; i++) {
+    if (strcmp(reg, r32[i]) == 0) {
+      return i;
+    }
+  }
+  for (int i = 0; i < 16; i++) {
+    if (strcmp(reg, r64[i]) == 0) {
+      return i;
+    }
+  }
+
+  ERROR(token, "invalid register: %s.", reg);
 }
 
 Vector *tokenize(char *file, Vector *source) {
@@ -35,19 +103,9 @@ Vector *tokenize(char *file, Vector *source) {
         while (isalnum(line[column])) {
           string_push(text, line[column++]);
         }
-        char *regs[16] = {
-          "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
-          "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15"
-        };
-        int reg = 0;
-        for (; reg < 16; reg++) {
-          if (strcmp(text->buffer, regs[reg]) == 0) break;
-        }
-        if (reg == 16) {
-          ERROR(token, "invalid register: %s.", text->buffer);
-        }
         token->type = TOK_REG;
-        token->reg = reg;
+        token->regtype = regtype(text->buffer, token);
+        token->regcode = regcode(text->buffer, token);
       } else if (c == '+' || c == '-' || isdigit(c)) {
         int sign = c == '-' ? -1 : 1;
         int num = isdigit(c) ? (c - '0') : 0;
