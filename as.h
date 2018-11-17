@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <stdnoreturn.h>
+#include <assert.h>
 #include <elf.h>
 
 typedef struct string {

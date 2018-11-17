@@ -77,6 +77,26 @@ static void gen_disp(Mod mod, int disp) {
   }
 }
 
+static void gen_ops(Reg reg, Op *rm) {
+  if (rm->type == OP_REG) {
+    gen_mod_rm(MOD_REG, reg, rm->regcode);
+  } else if (rm->type == OP_MEM) {
+    Mod mod = mod_mem(rm->disp, rm->base);
+    if (!rm->sib) {
+      gen_mod_rm(mod, reg, rm->base);
+      if (rm->base == SP || rm->base == R12) {
+        gen_sib(0, 4, rm->base);
+      }
+    } else {
+      gen_mod_rm(mod, reg, 4);
+      gen_sib(rm->scale, rm->index, rm->base);
+    }
+    gen_disp(mod, rm->disp);
+  } else {
+    assert(false);
+  }
+}
+
 static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 0) & 0xff);
   binary_push(text, (imm >> 8) & 0xff);
@@ -101,81 +121,44 @@ static void gen_pop_inst(Inst *inst) {
 }
 
 static void gen_mov_inst(Inst *inst) {
+  bool w = inst->suffix == INST_QUAD;
   Op *src = inst->src, *dest = inst->dest;
 
+  // C7 /0 id
   // REX.W + C7 /0 id
-  if (src->type == OP_IMM && dest->type == OP_REG) {
-    gen_rex(inst->suffix == INST_QUAD, 0, 0, dest->regcode);
+  if (src->type == OP_IMM && (dest->type == OP_REG || dest->type == OP_MEM)) {
+    gen_rex(w, 0, 0, dest->regcode);
     gen_opcode(0xc7);
-    gen_mod_rm(MOD_REG, 0, dest->regcode);
+    gen_ops(0, dest);
     gen_imm32(src->imm);
     return;
   }
 
-  // REX.W + C7 /0 id
-  if (src->type == OP_IMM && dest->type == OP_MEM) {
-    Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rex(inst->suffix == INST_QUAD, 0, dest->sib ? dest->index : 0, dest->base);
-    gen_opcode(0xc7);
-    if (!dest->sib) {
-      gen_mod_rm(mod, 0, dest->base);
-      if (dest->base == SP || dest->base == R12) {
-        gen_sib(0, 4, dest->base);
-      }
-    } else {
-      gen_mod_rm(mod, src->regcode, 4);
-      gen_sib(dest->scale, dest->index, dest->base);
-    }
-    gen_disp(mod, dest->disp);
-    gen_imm32(src->imm);
-    return;
-  }
-
+  // 89 /r
   // REX.W + 89 /r
-  if (src->type == OP_REG && dest->type == OP_REG) {
-    gen_rex(inst->suffix == INST_QUAD, src->regcode, 0, dest->regcode);
+  if (src->type == OP_REG && (dest->type == OP_REG || dest->type == OP_MEM)) {
+    Reg r = src->regcode;
+    Reg x = dest->type == OP_MEM && dest->sib ? dest->index : 0;
+    Reg b = dest->type == OP_MEM ? dest->base : dest->regcode;
+    gen_rex(w, r, x, b);
     gen_opcode(0x89);
-    gen_mod_rm(MOD_REG, src->regcode, dest->regcode);
+    gen_ops(src->regcode, dest);
     return;
   }
 
-  // REX.W + 89 /r
-  if (src->type == OP_REG && dest->type == OP_MEM) {
-    Mod mod = mod_mem(dest->disp, dest->base);
-    gen_rex(inst->suffix == INST_QUAD, src->regcode, dest->sib ? dest->index : 0, dest->base);
-    gen_opcode(0x89);
-    if (!dest->sib) {
-      gen_mod_rm(mod, src->regcode, dest->base);
-      if (dest->base == SP || dest->base == R12) {
-        gen_sib(0, 4, dest->base);
-      }
-    } else {
-      gen_mod_rm(mod, src->regcode, 4);
-      gen_sib(dest->scale, dest->index, dest->base);
-    }
-    gen_disp(mod, dest->disp);
-    return;
-  }
-
+  // 8B /r
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
-    Mod mod = mod_mem(src->disp, src->base);
-    gen_rex(inst->suffix == INST_QUAD, dest->regcode, src->sib ? src->index : 0, src->base);
+    Reg r = dest->regcode;
+    Reg x = src->sib ? src->index : 0;
+    Reg b = src->base;
+    gen_rex(w, r, x, b);
     gen_opcode(0x8b);
-    if (!src->sib) {
-      gen_mod_rm(mod, dest->regcode, src->base);
-      if (src->base == SP || src->base == R12) {
-        gen_sib(0, 4, src->base);
-      }
-    } else {
-      gen_mod_rm(mod, dest->regcode, 4);
-      gen_sib(src->scale, src->index, src->base);
-    }
-    gen_disp(mod, src->disp);
+    gen_ops(dest->regcode, src);
     return;
   }
 
-  ERROR(src->token, "invalid operand types.");
+  assert(false);
 }
 
 static void gen_call_inst(Inst *inst) {
@@ -208,7 +191,7 @@ static void gen_text() {
       case INST_CALL: gen_call_inst(inst); break;
       case INST_LEAVE: gen_leave_inst(inst); break;
       case INST_RET: gen_ret_inst(inst); break;
-      default: ERROR(inst->token, "unknown instruction.");
+      default: assert(false);
     }
   }
 }
