@@ -86,9 +86,6 @@ static void gen_imm32(unsigned int imm) {
 
 static void gen_push_inst(Inst *inst) {
   Op *op = inst->op;
-  if (op->type != OP_REG) {
-    ERROR(op->token, "invalid operand type.");
-  }
 
   // 50 +rd
   gen_rex(0, 0, 0, op->regcode);
@@ -97,9 +94,6 @@ static void gen_push_inst(Inst *inst) {
 
 static void gen_pop_inst(Inst *inst) {
   Op *op = inst->op;
-  if (op->type != OP_REG) {
-    ERROR(op->token, "invalid operand type.");
-  }
 
   // 58 +rd
   gen_rex(0, 0, 0, op->regcode);
@@ -186,9 +180,6 @@ static void gen_mov_inst(Inst *inst) {
 
 static void gen_call_inst(Inst *inst) {
   Op *op = inst->op;
-  if (op->type != OP_SYM) {
-    ERROR(inst->token, "invalid operand type.");
-  }
 
   // E8 cd
   gen_opcode(0xe8);
