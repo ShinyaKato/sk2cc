@@ -47,8 +47,10 @@ extern void binary_append(Binary *binary, int size, ...);
 extern void binary_write(Binary *binary, void *buffer, int size);
 
 typedef enum reg_type {
-  R32,
-  R64,
+  REG8,
+  REG16,
+  REG32,
+  REG64,
 } RegType;
 
 typedef enum reg {
@@ -132,6 +134,8 @@ typedef enum inst_type {
 } InstType;
 
 typedef enum inst_suffix {
+  INST_BYTE,
+  INST_WORD,
   INST_LONG,
   INST_QUAD,
 } InstSuffix;

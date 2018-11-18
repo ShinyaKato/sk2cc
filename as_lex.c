@@ -1,43 +1,5 @@
 #include "as.h"
 
-static char *r32[16] = {
-  "eax",
-  "ecx",
-  "edx",
-  "ebx",
-  "esp",
-  "ebp",
-  "esi",
-  "edi",
-  "r8d",
-  "r9d",
-  "r10d",
-  "r11d",
-  "r12d",
-  "r13d",
-  "r14d",
-  "r15d",
-};
-
-static char *r64[16] = {
-  "rax",
-  "rcx",
-  "rdx",
-  "rbx",
-  "rsp",
-  "rbp",
-  "rsi",
-  "rdi",
-  "r8",
-  "r9",
-  "r10",
-  "r11",
-  "r12",
-  "r13",
-  "r14",
-  "r15",
-};
-
 Token *token_new(char *file, int lineno, int column, char *line) {
   Token *token = (Token *) calloc(1, sizeof(Token));
   token->file = file;
@@ -47,33 +9,40 @@ Token *token_new(char *file, int lineno, int column, char *line) {
   return token;
 }
 
+static char *regs[16][4] = {
+  { "al", "ax", "eax", "rax" },
+  { "cl", "cx", "ecx", "rcx" },
+  { "dl", "dx", "edx", "rdx" },
+  { "bl", "bx", "ebx", "rbx" },
+  { "spl", "sp", "esp", "rsp" },
+  { "bpl", "bp", "ebp", "rbp" },
+  { "sil", "si", "esi", "rsi" },
+  { "dil", "di", "edi", "rdi" },
+  { "r8b", "r8w", "r8d", "r8" },
+  { "r9b", "r9w", "r9d", "r9" },
+  { "r10b", "r10w", "r10d", "r10" },
+  { "r11b", "r11w", "r11d", "r11" },
+  { "r12b", "r12w", "r12d", "r12" },
+  { "r13b", "r13w", "r13d", "r13" },
+  { "r14b", "r14w", "r14d", "r14" },
+  { "r15b", "r15w", "r15d", "r15" },
+};
+
 static RegType regtype(char *reg, Token *token) {
   for (int i = 0; i < 16; i++) {
-    if (strcmp(reg, r32[i]) == 0) {
-      return R32;
+    for (int j = 0; j < 4; j++) {
+      if (strcmp(reg, regs[i][j]) == 0) return j;
     }
   }
-  for (int i = 0; i < 16; i++) {
-    if (strcmp(reg, r64[i]) == 0) {
-      return R64;
-    }
-  }
-
   ERROR(token, "invalid register: %s.", reg);
 }
 
 static Reg regcode(char *reg, Token *token) {
   for (int i = 0; i < 16; i++) {
-    if (strcmp(reg, r32[i]) == 0) {
-      return i;
+    for (int j = 0; j < 4; j++) {
+      if (strcmp(reg, regs[i][j]) == 0) return i;
     }
   }
-  for (int i = 0; i < 16; i++) {
-    if (strcmp(reg, r64[i]) == 0) {
-      return i;
-    }
-  }
-
   ERROR(token, "invalid register: %s.", reg);
 }
 

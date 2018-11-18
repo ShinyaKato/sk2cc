@@ -26,13 +26,17 @@ static int *offsets;
 static Vector *relocs;
 static Map *gsyms;
 
-static void gen_rex(bool w, Reg reg, Reg index, Reg base) {
+static void gen_rex(bool w, Reg reg, Reg index, Reg base, bool required) {
   bool r = reg & 0x08;
   bool x = index & 0x08;
   bool b = base & 0x08;
-  if (w || r || x || b) {
+  if (required || w || r || x || b) {
     binary_push(text, 0x40 | (w << 3) | (r << 2) | (x << 1) | b);
   }
+}
+
+static void gen_prefix(Byte opcode) {
+  binary_push(text, opcode);
 }
 
 static void gen_opcode(Byte opcode) {
@@ -97,6 +101,15 @@ static void gen_ops(Reg reg, Op *rm) {
   }
 }
 
+static void gen_imm8(unsigned char imm) {
+  binary_push(text, (imm >> 0) & 0xff);
+}
+
+static void gen_imm16(unsigned short imm) {
+  binary_push(text, (imm >> 0) & 0xff);
+  binary_push(text, (imm >> 8) & 0xff);
+}
+
 static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 0) & 0xff);
   binary_push(text, (imm >> 8) & 0xff);
@@ -108,7 +121,7 @@ static void gen_push_inst(Inst *inst) {
   Op *op = inst->op;
 
   // 50 +rd
-  gen_rex(0, 0, 0, op->regcode);
+  gen_rex(0, 0, 0, op->regcode, false);
   gen_opcode_reg(0x50, op->regcode);
 }
 
@@ -116,44 +129,60 @@ static void gen_pop_inst(Inst *inst) {
   Op *op = inst->op;
 
   // 58 +rd
-  gen_rex(0, 0, 0, op->regcode);
+  gen_rex(0, 0, 0, op->regcode, false);
   gen_opcode_reg(0x58, op->regcode);
 }
 
 static void gen_mov_inst(Inst *inst) {
-  bool w = inst->suffix == INST_QUAD;
   Op *src = inst->src, *dest = inst->dest;
+  bool rex_src = src->type == OP_REG && src->regtype == REG8 && (src->regcode & 12) == 4;
+  bool rex_dest = dest->type == OP_REG && dest->regtype == REG8 && (dest->regcode & 12) == 4;
+  bool required = rex_src || rex_dest;
+  bool w = inst->suffix == INST_QUAD;
 
+  if (inst->suffix == INST_WORD) {
+    gen_prefix(0x66);
+  }
+
+  // C6 /0 id
   // C7 /0 id
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && (dest->type == OP_REG || dest->type == OP_MEM)) {
-    gen_rex(w, 0, 0, dest->regcode);
-    gen_opcode(0xc7);
+    gen_rex(w, 0, 0, dest->regcode, required);
+    gen_opcode(inst->suffix == INST_BYTE ? 0xc6 : 0xc7);
     gen_ops(0, dest);
-    gen_imm32(src->imm);
+    if (inst->suffix == INST_BYTE) {
+      gen_imm8(src->imm);
+    } else if (inst->suffix == INST_WORD) {
+      gen_imm16(src->imm);
+    } else {
+      gen_imm32(src->imm);
+    }
     return;
   }
 
+  // 88 /r
   // 89 /r
   // REX.W + 89 /r
   if (src->type == OP_REG && (dest->type == OP_REG || dest->type == OP_MEM)) {
     Reg r = src->regcode;
     Reg x = dest->type == OP_MEM && dest->sib ? dest->index : 0;
     Reg b = dest->type == OP_MEM ? dest->base : dest->regcode;
-    gen_rex(w, r, x, b);
-    gen_opcode(0x89);
+    gen_rex(w, r, x, b, required);
+    gen_opcode(inst->suffix == INST_BYTE ? 0x88 : 0x89);
     gen_ops(src->regcode, dest);
     return;
   }
 
+  // 8A /r
   // 8B /r
   // REX.W + 8B /r
   if (src->type == OP_MEM && dest->type == OP_REG) {
     Reg r = dest->regcode;
     Reg x = src->sib ? src->index : 0;
     Reg b = src->base;
-    gen_rex(w, r, x, b);
-    gen_opcode(0x8b);
+    gen_rex(w, r, x, b, required);
+    gen_opcode(inst->suffix == INST_BYTE ? 0x8a : 0x8b);
     gen_ops(dest->regcode, src);
     return;
   }

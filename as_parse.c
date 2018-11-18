@@ -104,14 +104,14 @@ static Vector *parse_ops(Token **token) {
         int disp = (*token)->type == TOK_NUM ? (*token++)->num : 0;
         EXPECT(*token++, TOK_LPAREN, "'(' is expected.");
         EXPECT(*token, TOK_REG, "register is expected.");
-        if ((*token)->regtype != R64) {
+        if ((*token)->regtype != REG64) {
           ERROR(*token, "64-bit register is expected.");
         }
         Reg base = (*token++)->regcode;
         if ((*token)->type == TOK_COMMA) {
           token++;
           EXPECT(*token, TOK_REG, "register is expected.");
-          if ((*token)->regtype != R64) {
+          if ((*token)->regtype != REG64) {
             ERROR(*token, "64-bit register is expected.");
           }
           if ((*token)->regcode == SP) {
@@ -174,7 +174,7 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
     Op *op = ops->array[0];
-    if (op->type != OP_REG || op->regtype != R64) {
+    if (op->type != OP_REG || op->regtype != REG64) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
     return inst_op1(INST_PUSH, INST_QUAD, op, inst);
@@ -185,10 +185,50 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
     Op *op = ops->array[0];
-    if (op->type != OP_REG || op->regtype != R64) {
+    if (op->type != OP_REG || op->regtype != REG64) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
     return inst_op1(INST_POP, INST_QUAD, op, inst);
+  }
+
+  if (strcmp(inst->ident, "movb") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != REG8) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG8) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movw") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != REG16) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG16) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOV, INST_WORD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movl") == 0) {
@@ -202,10 +242,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != R32) {
+    if (src->type == OP_REG && src->regtype != REG32) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != R32) {
+    if (dest->type == OP_REG && dest->regtype != REG32) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_LONG, src, dest, inst);
@@ -222,10 +262,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != R64) {
+    if (src->type == OP_REG && src->regtype != REG64) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != R64) {
+    if (dest->type == OP_REG && dest->regtype != REG64) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);

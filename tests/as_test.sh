@@ -187,5 +187,26 @@ main:
   ret
 EOS
 
+expect 31 << EOS
+main:
+  movw \$31, %r12w
+  movw %r12w, %ax
+  ret
+EOS
+
+expect 57 << EOS
+main:
+  movb \$57, %r12b
+  movb %r12b, %al
+  ret
+EOS
+
+expect 87 << EOS
+main:
+  movb \$87, %sil
+  movb %sil, %al
+  ret
+EOS
+
 echo "[OK]"
 exit 0
