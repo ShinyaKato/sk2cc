@@ -147,7 +147,9 @@ static void gen_mov_inst(Inst *inst) {
   // C7 /0 id
   // REX.W + C7 /0 id
   if (src->type == OP_IMM && (dest->type == OP_REG || dest->type == OP_MEM)) {
-    gen_rex(w, 0, 0, dest->regcode, required);
+    Reg x = dest->type == OP_MEM && dest->sib ? dest->index : 0;
+    Reg b = dest->type == OP_MEM ? dest->base : dest->regcode;
+    gen_rex(w, 0, x, b, required);
     gen_opcode(inst->suffix == INST_BYTE ? 0xc6 : 0xc7);
     gen_ops(0, dest);
     if (inst->suffix == INST_BYTE) {
