@@ -807,5 +807,95 @@ test_encoding 'movq (%r13, %r12), %r9' '4f 8b 4c 25 00'
 test_encoding 'movq (%r13, %r13), %r9' '4f 8b 4c 2d 00'
 test_encoding 'movq (%r13, %r15), %r9' '4f 8b 4c 3d 00'
 
+# movl $imm32, %r32
+test_encoding 'movl $42, %eax' 'c7 c0 2a 00 00 00'
+test_encoding 'movl $42, %esp' 'c7 c4 2a 00 00 00'
+test_encoding 'movl $42, %ebp' 'c7 c5 2a 00 00 00'
+test_encoding 'movl $42, %edi' 'c7 c7 2a 00 00 00'
+test_encoding 'movl $42, %r8d' '41 c7 c0 2a 00 00 00'
+test_encoding 'movl $42, %r12d' '41 c7 c4 2a 00 00 00'
+test_encoding 'movl $42, %r13d' '41 c7 c5 2a 00 00 00'
+test_encoding 'movl $42, %r15d' '41 c7 c7 2a 00 00 00'
+
+# movl %ecx, %r32
+test_encoding 'movl %ecx, %eax' '89 c8'
+test_encoding 'movl %ecx, %esp' '89 cc'
+test_encoding 'movl %ecx, %ebp' '89 cd'
+test_encoding 'movl %ecx, %edi' '89 cf'
+test_encoding 'movl %ecx, %r8d' '41 89 c8'
+test_encoding 'movl %ecx, %r12d' '41 89 cc'
+test_encoding 'movl %ecx, %r13d' '41 89 cd'
+test_encoding 'movl %ecx, %r15d' '41 89 cf'
+
+# movl %r9d, %r32
+test_encoding 'movl %r9d, %eax' '44 89 c8'
+test_encoding 'movl %r9d, %esp' '44 89 cc'
+test_encoding 'movl %r9d, %ebp' '44 89 cd'
+test_encoding 'movl %r9d, %edi' '44 89 cf'
+test_encoding 'movl %r9d, %r8d' '45 89 c8'
+test_encoding 'movl %r9d, %r12d' '45 89 cc'
+test_encoding 'movl %r9d, %r13d' '45 89 cd'
+test_encoding 'movl %r9d, %r15d' '45 89 cf'
+
+# movl %r32, %ecx
+test_encoding 'movl %eax, %ecx' '89 c1'
+test_encoding 'movl %esp, %ecx' '89 e1'
+test_encoding 'movl %ebp, %ecx' '89 e9'
+test_encoding 'movl %edi, %ecx' '89 f9'
+test_encoding 'movl %r8d, %ecx' '44 89 c1'
+test_encoding 'movl %r12d, %ecx' '44 89 e1'
+test_encoding 'movl %r13d, %ecx' '44 89 e9'
+test_encoding 'movl %r15d, %ecx' '44 89 f9'
+
+# movl %r32, %r9d
+test_encoding 'movl %eax, %r9d' '41 89 c1'
+test_encoding 'movl %esp, %r9d' '41 89 e1'
+test_encoding 'movl %ebp, %r9d' '41 89 e9'
+test_encoding 'movl %edi, %r9d' '41 89 f9'
+test_encoding 'movl %r8d, %r9d' '45 89 c1'
+test_encoding 'movl %r12d, %r9d' '45 89 e1'
+test_encoding 'movl %r13d, %r9d' '45 89 e9'
+test_encoding 'movl %r15d, %r9d' '45 89 f9'
+
+# movl (%r64), %ecx
+test_encoding 'movl (%rax), %ecx' '8b 08'
+test_encoding 'movl (%rsp), %ecx' '8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl (%rbp), %ecx' '8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl (%rdi), %ecx' '8b 0f'
+test_encoding 'movl (%r8), %ecx' '41 8b 08'
+test_encoding 'movl (%r12), %ecx' '41 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl (%r13), %ecx' '41 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl (%r15), %ecx' '41 8b 0f'
+
+# movl (%r64), %r9d
+test_encoding 'movl (%rax), %r9d' '44 8b 08'
+test_encoding 'movl (%rsp), %r9d' '44 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl (%rbp), %r9d' '44 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl (%rdi), %r9d' '44 8b 0f'
+test_encoding 'movl (%r8), %r9d' '45 8b 08'
+test_encoding 'movl (%r12), %r9d' '45 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl (%r13), %r9d' '45 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl (%r15), %r9d' '45 8b 0f'
+
+# movl %ecx, (%r64)
+test_encoding 'movl %ecx, (%rax)' '89 08'
+test_encoding 'movl %ecx, (%rsp)' '89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl %ecx, (%rbp)' '89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl %ecx, (%rdi)' '89 0f'
+test_encoding 'movl %ecx, (%r8)' '41 89 08'
+test_encoding 'movl %ecx, (%r12)' '41 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl %ecx, (%r13)' '41 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl %ecx, (%r15)' '41 89 0f'
+
+# movq %r9, (%r64)
+test_encoding 'movl %r9d, (%rax)' '44 89 08'
+test_encoding 'movl %r9d, (%rsp)' '44 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl %r9d, (%rbp)' '44 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl %r9d, (%rdi)' '44 89 0f'
+test_encoding 'movl %r9d, (%r8)' '45 89 08'
+test_encoding 'movl %r9d, (%r12)' '45 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movl %r9d, (%r13)' '45 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movl %r9d, (%r15)' '45 89 0f'
+
 echo "[OK]"
 exit 0
