@@ -95,8 +95,6 @@ static void gen_ops(Reg reg, Op *rm) {
       gen_sib(rm->scale, rm->index, rm->base);
     }
     gen_disp(mod, rm->disp);
-  } else {
-    assert(false);
   }
 }
 
@@ -116,7 +114,7 @@ static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 24) & 0xff);
 }
 
-static void gen_push_inst(Inst *inst) {
+static void gen_push(Inst *inst) {
   Op *op = inst->op;
 
   // 50 +rd
@@ -124,7 +122,7 @@ static void gen_push_inst(Inst *inst) {
   gen_opcode_reg(0x50, op->regcode);
 }
 
-static void gen_pop_inst(Inst *inst) {
+static void gen_pop(Inst *inst) {
   Op *op = inst->op;
 
   // 58 +rd
@@ -132,66 +130,149 @@ static void gen_pop_inst(Inst *inst) {
   gen_opcode_reg(0x58, op->regcode);
 }
 
-static void gen_mov_inst(Inst *inst) {
+static void gen_mov(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
-  bool rex_src = src->type == OP_REG && src->regtype == REG8 && (src->regcode & 12) == 4;
-  bool rex_dest = dest->type == OP_REG && dest->regtype == REG8 && (dest->regcode & 12) == 4;
-  bool required = rex_src || rex_dest;
-  bool w = inst->suffix == INST_QUAD;
-
-  if (inst->suffix == INST_WORD) {
-    gen_prefix(0x66);
-  }
-
-  // C6 /0 id
-  // C7 /0 id
-  // REX.W + C7 /0 id
-  if (src->type == OP_IMM && (dest->type == OP_REG || dest->type == OP_MEM)) {
-    Reg x = dest->type == OP_MEM && dest->sib ? dest->index : 0;
-    Reg b = dest->type == OP_MEM ? dest->base : dest->regcode;
-    gen_rex(w, 0, x, b, required);
-    gen_opcode(inst->suffix == INST_BYTE ? 0xc6 : 0xc7);
-    gen_ops(0, dest);
-    if (inst->suffix == INST_BYTE) {
-      gen_imm8(src->imm);
-    } else if (inst->suffix == INST_WORD) {
-      gen_imm16(src->imm);
-    } else {
-      gen_imm32(src->imm);
+  switch (inst->suffix) {
+    case INST_QUAD: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // REX.W + C7 /0 id
+        gen_rex(1, 0, 0, dest->regcode, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // REX.W + C7 /0 id
+        gen_rex(1, 0, dest->index, dest->base, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // REX.W + 89 /r
+        gen_rex(1, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // REX.W + 89 /r
+        gen_rex(1, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // REX.W + 8B /r
+        gen_rex(1, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x8b);
+        gen_ops(dest->regcode, src);
+      }
     }
-    return;
-  }
+    break;
 
-  // 88 /r
-  // 89 /r
-  // REX.W + 89 /r
-  if (src->type == OP_REG && (dest->type == OP_REG || dest->type == OP_MEM)) {
-    Reg r = src->regcode;
-    Reg x = dest->type == OP_MEM && dest->sib ? dest->index : 0;
-    Reg b = dest->type == OP_MEM ? dest->base : dest->regcode;
-    gen_rex(w, r, x, b, required);
-    gen_opcode(inst->suffix == INST_BYTE ? 0x88 : 0x89);
-    gen_ops(src->regcode, dest);
-    return;
-  }
+    case INST_LONG: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // C7 /0 id
+        gen_rex(0, 0, 0, dest->regcode, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // C7 /0 id
+        gen_rex(0, 0, dest->index, dest->base, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 89 /r
+        gen_rex(0, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 89 /r
+        gen_rex(0, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 8B /r
+        gen_rex(0, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x8b);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
 
-  // 8A /r
-  // 8B /r
-  // REX.W + 8B /r
-  if (src->type == OP_MEM && dest->type == OP_REG) {
-    Reg r = dest->regcode;
-    Reg x = src->sib ? src->index : 0;
-    Reg b = src->base;
-    gen_rex(w, r, x, b, required);
-    gen_opcode(inst->suffix == INST_BYTE ? 0x8a : 0x8b);
-    gen_ops(dest->regcode, src);
-    return;
-  }
+    case INST_WORD: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // C7 /0 id
+        gen_prefix(0x66);
+        gen_rex(0, 0, 0, dest->regcode, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm16(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // C7 /0 id
+        gen_prefix(0x66);
+        gen_rex(0, 0, dest->index, dest->base, false);
+        gen_opcode(0xc7);
+        gen_ops(0, dest);
+        gen_imm16(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 89 /r
+        gen_prefix(0x66);
+        gen_rex(0, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 89 /r
+        gen_prefix(0x66);
+        gen_rex(0, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x89);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 8B /r
+        gen_prefix(0x66);
+        gen_rex(0, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x8b);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
 
-  assert(false);
+    case INST_BYTE: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // C6 /0 id
+        bool required = (dest->regcode & 12) == 4;
+        gen_rex(0, 0, 0, dest->regcode, required);
+        gen_opcode(0xc6);
+        gen_ops(0, dest);
+        gen_imm8(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // C6 /0 id
+        gen_rex(0, 0, dest->index, dest->base, 0);
+        gen_opcode(0xc6);
+        gen_ops(0, dest);
+        gen_imm8(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 88 /r
+        bool required = (src->regcode & 12) == 4 || (dest->regcode & 12) == 4;
+        gen_rex(0, src->regcode, 0, dest->regcode, required);
+        gen_opcode(0x88);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 88 /r
+        bool required = (src->regcode & 12) == 4;
+        gen_rex(0, src->regcode, dest->index, dest->base, required);
+        gen_opcode(0x88);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 8A /r
+        bool required = (dest->regcode & 12) == 4;
+        gen_rex(0, dest->regcode, src->index, src->base, required);
+        gen_opcode(0x8a);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
+  }
 }
 
-static void gen_call_inst(Inst *inst) {
+static void gen_call(Inst *inst) {
   Op *op = inst->op;
 
   // E8 cd
@@ -201,11 +282,11 @@ static void gen_call_inst(Inst *inst) {
   vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
 }
 
-static void gen_leave_inst(Inst *inst) {
+static void gen_leave(Inst *inst) {
   gen_opcode(0xc9); // C9
 }
 
-static void gen_ret_inst(Inst *inst) {
+static void gen_ret(Inst *inst) {
   gen_opcode(0xc3); // C3
 }
 
@@ -215,13 +296,24 @@ static void gen_text() {
     offsets[i] = text->length;
 
     switch (inst->type) {
-      case INST_PUSH: gen_push_inst(inst); break;
-      case INST_POP: gen_pop_inst(inst); break;
-      case INST_MOV: gen_mov_inst(inst); break;
-      case INST_CALL: gen_call_inst(inst); break;
-      case INST_LEAVE: gen_leave_inst(inst); break;
-      case INST_RET: gen_ret_inst(inst); break;
-      default: assert(false);
+      case INST_PUSH:
+        gen_push(inst);
+        break;
+      case INST_POP:
+        gen_pop(inst);
+        break;
+      case INST_MOV:
+        gen_mov(inst);
+        break;
+      case INST_CALL:
+        gen_call(inst);
+        break;
+      case INST_LEAVE:
+        gen_leave(inst);
+        break;
+      case INST_RET:
+        gen_ret(inst);
+        break;
     }
   }
 }
