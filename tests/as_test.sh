@@ -887,7 +887,7 @@ test_encoding 'movl %ecx, (%r12)' '41 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movl %ecx, (%r13)' '41 89 4d 00' # Mod: 1, disp8: 0
 test_encoding 'movl %ecx, (%r15)' '41 89 0f'
 
-# movq %r9, (%r64)
+# movl %r9d, (%r64)
 test_encoding 'movl %r9d, (%rax)' '44 89 08'
 test_encoding 'movl %r9d, (%rsp)' '44 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movl %r9d, (%rbp)' '44 89 4d 00' # Mod: 1, disp8: 0
@@ -896,6 +896,96 @@ test_encoding 'movl %r9d, (%r8)' '45 89 08'
 test_encoding 'movl %r9d, (%r12)' '45 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movl %r9d, (%r13)' '45 89 4d 00' # Mod: 1, disp8: 0
 test_encoding 'movl %r9d, (%r15)' '45 89 0f'
+
+# movw $imm16, %r16
+test_encoding 'movw $42, %ax' '66 c7 c0 2a 00'
+test_encoding 'movw $42, %sp' '66 c7 c4 2a 00'
+test_encoding 'movw $42, %bp' '66 c7 c5 2a 00'
+test_encoding 'movw $42, %di' '66 c7 c7 2a 00'
+test_encoding 'movw $42, %r8w' '66 41 c7 c0 2a 00'
+test_encoding 'movw $42, %r12w' '66 41 c7 c4 2a 00'
+test_encoding 'movw $42, %r13w' '66 41 c7 c5 2a 00'
+test_encoding 'movw $42, %r15w' '66 41 c7 c7 2a 00'
+
+# movw %cx, %r16
+test_encoding 'movw %cx, %ax' '66 89 c8'
+test_encoding 'movw %cx, %sp' '66 89 cc'
+test_encoding 'movw %cx, %bp' '66 89 cd'
+test_encoding 'movw %cx, %di' '66 89 cf'
+test_encoding 'movw %cx, %r8w' '66 41 89 c8'
+test_encoding 'movw %cx, %r12w' '66 41 89 cc'
+test_encoding 'movw %cx, %r13w' '66 41 89 cd'
+test_encoding 'movw %cx, %r15w' '66 41 89 cf'
+
+# movw %r9w, %r16
+test_encoding 'movw %r9w, %ax' '66 44 89 c8'
+test_encoding 'movw %r9w, %sp' '66 44 89 cc'
+test_encoding 'movw %r9w, %bp' '66 44 89 cd'
+test_encoding 'movw %r9w, %di' '66 44 89 cf'
+test_encoding 'movw %r9w, %r8w' '66 45 89 c8'
+test_encoding 'movw %r9w, %r12w' '66 45 89 cc'
+test_encoding 'movw %r9w, %r13w' '66 45 89 cd'
+test_encoding 'movw %r9w, %r15w' '66 45 89 cf'
+
+# movw %r16, %cx
+test_encoding 'movw %ax, %cx' '66 89 c1'
+test_encoding 'movw %sp, %cx' '66 89 e1'
+test_encoding 'movw %bp, %cx' '66 89 e9'
+test_encoding 'movw %di, %cx' '66 89 f9'
+test_encoding 'movw %r8w, %cx' '66 44 89 c1'
+test_encoding 'movw %r12w, %cx' '66 44 89 e1'
+test_encoding 'movw %r13w, %cx' '66 44 89 e9'
+test_encoding 'movw %r15w, %cx' '66 44 89 f9'
+
+# movw %r16, %r9w
+test_encoding 'movw %ax, %r9w' '66 41 89 c1'
+test_encoding 'movw %sp, %r9w' '66 41 89 e1'
+test_encoding 'movw %bp, %r9w' '66 41 89 e9'
+test_encoding 'movw %di, %r9w' '66 41 89 f9'
+test_encoding 'movw %r8w, %r9w' '66 45 89 c1'
+test_encoding 'movw %r12w, %r9w' '66 45 89 e1'
+test_encoding 'movw %r13w, %r9w' '66 45 89 e9'
+test_encoding 'movw %r15w, %r9w' '66 45 89 f9'
+
+# movw (%r64), %cx
+test_encoding 'movw (%rax), %cx' '66 8b 08'
+test_encoding 'movw (%rsp), %cx' '66 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw (%rbp), %cx' '66 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw (%rdi), %cx' '66 8b 0f'
+test_encoding 'movw (%r8), %cx' '66 41 8b 08'
+test_encoding 'movw (%r12), %cx' '66 41 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw (%r13), %cx' '66 41 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw (%r15), %cx' '66 41 8b 0f'
+
+# movw (%r64), %r9w
+test_encoding 'movw (%rax), %r9w' '66 44 8b 08'
+test_encoding 'movw (%rsp), %r9w' '66 44 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw (%rbp), %r9w' '66 44 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw (%rdi), %r9w' '66 44 8b 0f'
+test_encoding 'movw (%r8), %r9w' '66 45 8b 08'
+test_encoding 'movw (%r12), %r9w' '66 45 8b 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw (%r13), %r9w' '66 45 8b 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw (%r15), %r9w' '66 45 8b 0f'
+
+# movw %cx, (%r64)
+test_encoding 'movw %cx, (%rax)' '66 89 08'
+test_encoding 'movw %cx, (%rsp)' '66 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw %cx, (%rbp)' '66 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw %cx, (%rdi)' '66 89 0f'
+test_encoding 'movw %cx, (%r8)' '66 41 89 08'
+test_encoding 'movw %cx, (%r12)' '66 41 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw %cx, (%r13)' '66 41 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw %cx, (%r15)' '66 41 89 0f'
+
+# movq %r9w, (%r64)
+test_encoding 'movw %r9w, (%rax)' '66 44 89 08'
+test_encoding 'movw %r9w, (%rsp)' '66 44 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw %r9w, (%rbp)' '66 44 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw %r9w, (%rdi)' '66 44 89 0f'
+test_encoding 'movw %r9w, (%r8)' '66 45 89 08'
+test_encoding 'movw %r9w, (%r12)' '66 45 89 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movw %r9w, (%r13)' '66 45 89 4d 00' # Mod: 1, disp8: 0
+test_encoding 'movw %r9w, (%r15)' '66 45 89 0f'
 
 echo "[OK]"
 exit 0
