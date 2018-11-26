@@ -208,5 +208,57 @@ main:
   ret
 EOS
 
+gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
+
+encoding_failed() {
+  asm=$1
+  expected=$2
+  actual=$3
+  echo "[failed]"
+  echo "instruction encoding check failed."
+  echo "input:    $asm"
+  echo "expected: $expected"
+  echo "actual:   $actual"
+  exit 1
+}
+
+test_encoding() {
+  asm=$1
+  expected=$2
+  actual=`echo "$asm" | ./tmp/as_driver`
+  [ "$actual" != "$expected" ] && encoding_failed "$asm" "$expected" "$actual"
+}
+
+test_encoding 'pushq %rax' '50'
+test_encoding 'pushq %rdi' '57'
+test_encoding 'pushq %r8' '41 50'
+test_encoding 'pushq %r15' '41 57'
+
+test_encoding 'popq %rax' '58'
+test_encoding 'popq %rdi' '5f'
+test_encoding 'popq %r8' '41 58'
+test_encoding 'popq %r15' '41 5f'
+
+test_encoding 'leave' 'c9'
+
+test_encoding 'ret' 'c3'
+
+test_encoding 'movq $42, %rax' '48 c7 c0 2a 00 00 00'
+test_encoding 'movq $42, %rsp' '48 c7 c4 2a 00 00 00'
+test_encoding 'movq $42, %rbp' '48 c7 c5 2a 00 00 00'
+test_encoding 'movq $42, %rdi' '48 c7 c7 2a 00 00 00'
+test_encoding 'movq $42, (%rax)' '48 c7 00 2a 00 00 00'
+test_encoding 'movq $42, (%rsp)' '48 c7 04 24 2a 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movq $42, (%rbp)' '48 c7 45 00 2a 00 00 00' # Mod: 1, disp8: 0
+test_encoding 'movq $42, (%rdi)' '48 c7 07 2a 00 00 00'
+test_encoding 'movq $42, 8(%rax)' '48 c7 40 08 2a 00 00 00'
+test_encoding 'movq $42, 8(%rsp)' '48 c7 44 24 08 2a 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movq $42, 8(%rbp)' '48 c7 45 08 2a 00 00 00'
+test_encoding 'movq $42, 8(%rdi)' '48 c7 47 08 2a 00 00 00'
+test_encoding 'movq $42, 144(%rax)' '48 c7 80 90 00 00 00 2a 00 00 00'
+test_encoding 'movq $42, 144(%rsp)' '48 c7 84 24 90 00 00 00 2a 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movq $42, 144(%rbp)' '48 c7 85 90 00 00 00 2a 00 00 00'
+test_encoding 'movq $42, 144(%rdi)' '48 c7 87 90 00 00 00 2a 00 00 00'
+
 echo "[OK]"
 exit 0

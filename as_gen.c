@@ -55,9 +55,8 @@ typedef enum mod {
 } Mod;
 
 static Mod mod_mem(int disp, Reg base) {
-  if (base == BP || base == R13) return MOD_DISP8;
-
-  if (disp == 0) return MOD_DISP0;
+  bool bp = base == BP || base == R13;
+  if (!bp && disp == 0) return MOD_DISP0;
   if (-128 <= disp && disp < 128) return MOD_DISP8;
   return MOD_DISP32;
 }
