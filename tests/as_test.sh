@@ -977,7 +977,7 @@ test_encoding 'movw %cx, (%r12)' '66 41 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movw %cx, (%r13)' '66 41 89 4d 00' # Mod: 1, disp8: 0
 test_encoding 'movw %cx, (%r15)' '66 41 89 0f'
 
-# movq %r9w, (%r64)
+# movw %r9w, (%r64)
 test_encoding 'movw %r9w, (%rax)' '66 44 89 08'
 test_encoding 'movw %r9w, (%rsp)' '66 44 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movw %r9w, (%rbp)' '66 44 89 4d 00' # Mod: 1, disp8: 0
@@ -986,6 +986,96 @@ test_encoding 'movw %r9w, (%r8)' '66 45 89 08'
 test_encoding 'movw %r9w, (%r12)' '66 45 89 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movw %r9w, (%r13)' '66 45 89 4d 00' # Mod: 1, disp8: 0
 test_encoding 'movw %r9w, (%r15)' '66 45 89 0f'
+
+# movb $imm8, %r8
+test_encoding 'movb $42, %al' 'c6 c0 2a'
+test_encoding 'movb $42, %spl' '40 c6 c4 2a'
+test_encoding 'movb $42, %bpl' '40 c6 c5 2a'
+test_encoding 'movb $42, %dil' '40 c6 c7 2a'
+test_encoding 'movb $42, %r8b' '41 c6 c0 2a'
+test_encoding 'movb $42, %r12b' '41 c6 c4 2a'
+test_encoding 'movb $42, %r13b' '41 c6 c5 2a'
+test_encoding 'movb $42, %r15b' '41 c6 c7 2a'
+
+# movb %cl, %r8
+test_encoding 'movb %cl, %al' '88 c8'
+test_encoding 'movb %cl, %spl' '40 88 cc'
+test_encoding 'movb %cl, %bpl' '40 88 cd'
+test_encoding 'movb %cl, %dil' '40 88 cf'
+test_encoding 'movb %cl, %r8b' '41 88 c8'
+test_encoding 'movb %cl, %r12b' '41 88 cc'
+test_encoding 'movb %cl, %r13b' '41 88 cd'
+test_encoding 'movb %cl, %r15b' '41 88 cf'
+
+# movb %r9b, %r8
+test_encoding 'movb %r9b, %al' '44 88 c8'
+test_encoding 'movb %r9b, %spl' '44 88 cc'
+test_encoding 'movb %r9b, %bpl' '44 88 cd'
+test_encoding 'movb %r9b, %dil' '44 88 cf'
+test_encoding 'movb %r9b, %r8b' '45 88 c8'
+test_encoding 'movb %r9b, %r12b' '45 88 cc'
+test_encoding 'movb %r9b, %r13b' '45 88 cd'
+test_encoding 'movb %r9b, %r15b' '45 88 cf'
+
+# movb %r8, %cl
+test_encoding 'movb %al, %cl' '88 c1'
+test_encoding 'movb %spl, %cl' '40 88 e1'
+test_encoding 'movb %bpl, %cl' '40 88 e9'
+test_encoding 'movb %dil, %cl' '40 88 f9'
+test_encoding 'movb %r8b, %cl' '44 88 c1'
+test_encoding 'movb %r12b, %cl' '44 88 e1'
+test_encoding 'movb %r13b, %cl' '44 88 e9'
+test_encoding 'movb %r15b, %cl' '44 88 f9'
+
+# movb %r8, %r9b
+test_encoding 'movb %al, %r9b' '41 88 c1'
+test_encoding 'movb %spl, %r9b' '41 88 e1'
+test_encoding 'movb %bpl, %r9b' '41 88 e9'
+test_encoding 'movb %dil, %r9b' '41 88 f9'
+test_encoding 'movb %r8b, %r9b' '45 88 c1'
+test_encoding 'movb %r12b, %r9b' '45 88 e1'
+test_encoding 'movb %r13b, %r9b' '45 88 e9'
+test_encoding 'movb %r15b, %r9b' '45 88 f9'
+
+# movb (%r64), %cb
+test_encoding 'movb (%rax), %cl' '8a 08'
+test_encoding 'movb (%rsp), %cl' '8a 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb (%rbp), %cl' '8a 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb (%rdi), %cl' '8a 0f'
+test_encoding 'movb (%r8), %cl' '41 8a 08'
+test_encoding 'movb (%r12), %cl' '41 8a 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb (%r13), %cl' '41 8a 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb (%r15), %cl' '41 8a 0f'
+
+# movb (%r64), %r9b
+test_encoding 'movb (%rax), %r9b' '44 8a 08'
+test_encoding 'movb (%rsp), %r9b' '44 8a 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb (%rbp), %r9b' '44 8a 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb (%rdi), %r9b' '44 8a 0f'
+test_encoding 'movb (%r8), %r9b' '45 8a 08'
+test_encoding 'movb (%r12), %r9b' '45 8a 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb (%r13), %r9b' '45 8a 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb (%r15), %r9b' '45 8a 0f'
+
+# movb %cl, (%r64)
+test_encoding 'movb %cl, (%rax)' '88 08'
+test_encoding 'movb %cl, (%rsp)' '88 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb %cl, (%rbp)' '88 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb %cl, (%rdi)' '88 0f'
+test_encoding 'movb %cl, (%r8)' '41 88 08'
+test_encoding 'movb %cl, (%r12)' '41 88 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb %cl, (%r13)' '41 88 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb %cl, (%r15)' '41 88 0f'
+
+# movb %r9b, (%r64)
+test_encoding 'movb %r9b, (%rax)' '44 88 08'
+test_encoding 'movb %r9b, (%rsp)' '44 88 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb %r9b, (%rbp)' '44 88 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb %r9b, (%rdi)' '44 88 0f'
+test_encoding 'movb %r9b, (%r8)' '45 88 08'
+test_encoding 'movb %r9b, (%r12)' '45 88 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'movb %r9b, (%r13)' '45 88 4d 00' # Mod: 1, displ8: 0
+test_encoding 'movb %r9b, (%r15)' '45 88 0f'
 
 echo "[OK]"
 exit 0
