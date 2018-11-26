@@ -272,6 +272,15 @@ static void gen_mov(Inst *inst) {
   }
 }
 
+static void gen_lea(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+
+  // REX.W + 8D /r
+  gen_rex(1, dest->regcode, src->index, src->base, false);
+  gen_opcode(0x8d);
+  gen_ops(dest->regcode, src);
+}
+
 static void gen_call(Inst *inst) {
   Op *op = inst->op;
 
@@ -304,6 +313,9 @@ static void gen_text() {
         break;
       case INST_MOV:
         gen_mov(inst);
+        break;
+      case INST_LEA:
+        gen_lea(inst);
         break;
       case INST_CALL:
         gen_call(inst);

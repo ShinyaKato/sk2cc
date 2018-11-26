@@ -208,6 +208,17 @@ main:
   ret
 EOS
 
+expect 67 << EOS
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  leaq -8(%rbp), %rcx
+  movq \$67, (%rcx)
+  movq (%rcx), %rax
+  leave
+  ret
+EOS
+
 gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
 
 encoding_failed() {
@@ -1076,6 +1087,66 @@ test_encoding 'movb %r9b, (%r8)' '45 88 08'
 test_encoding 'movb %r9b, (%r12)' '45 88 0c 24' # Scale: 0, Index: 4, Base: 4
 test_encoding 'movb %r9b, (%r13)' '45 88 4d 00' # Mod: 1, displ8: 0
 test_encoding 'movb %r9b, (%r15)' '45 88 0f'
+
+# leaq (%r64), %rcx
+test_encoding 'leaq (%rax), %rcx' '48 8d 08'
+test_encoding 'leaq (%rsp), %rcx' '48 8d 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq (%rbp), %rcx' '48 8d 4d 00' # Mod: 1, disp8: 0
+test_encoding 'leaq (%rdi), %rcx' '48 8d 0f'
+test_encoding 'leaq (%r8), %rcx' '49 8d 08'
+test_encoding 'leaq (%r12), %rcx' '49 8d 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq (%r13), %rcx' '49 8d 4d 00' # Mod: 1, disp8: 0
+test_encoding 'leaq (%r15), %rcx' '49 8d 0f'
+
+# leaq disp8(%r64), %rcx
+test_encoding 'leaq 8(%rax), %rcx' '48 8d 48 08'
+test_encoding 'leaq 8(%rsp), %rcx' '48 8d 4c 24 08' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 8(%rbp), %rcx' '48 8d 4d 08' # Mod: 1, disp8: 0
+test_encoding 'leaq 8(%rdi), %rcx' '48 8d 4f 08'
+test_encoding 'leaq 8(%r8), %rcx' '49 8d 48 08'
+test_encoding 'leaq 8(%r12), %rcx' '49 8d 4c 24 08' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 8(%r13), %rcx' '49 8d 4d 08' # Mod: 1, disp8: 0
+test_encoding 'leaq 8(%r15), %rcx' '49 8d 4f 08'
+
+# leaq disp32(%r64), %rcx
+test_encoding 'leaq 144(%rax), %rcx' '48 8d 88 90 00 00 00'
+test_encoding 'leaq 144(%rsp), %rcx' '48 8d 8c 24 90 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 144(%rbp), %rcx' '48 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
+test_encoding 'leaq 144(%rdi), %rcx' '48 8d 8f 90 00 00 00'
+test_encoding 'leaq 144(%r8), %rcx' '49 8d 88 90 00 00 00'
+test_encoding 'leaq 144(%r12), %rcx' '49 8d 8c 24 90 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 144(%r13), %rcx' '49 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
+test_encoding 'leaq 144(%r15), %rcx' '49 8d 8f 90 00 00 00'
+
+# leaq (%r64), %r9
+test_encoding 'leaq (%rax), %r9' '4c 8d 08'
+test_encoding 'leaq (%rsp), %r9' '4c 8d 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq (%rbp), %r9' '4c 8d 4d 00' # Mod: 1, disp8: 0
+test_encoding 'leaq (%rdi), %r9' '4c 8d 0f'
+test_encoding 'leaq (%r8), %r9' '4d 8d 08'
+test_encoding 'leaq (%r12), %r9' '4d 8d 0c 24' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq (%r13), %r9' '4d 8d 4d 00' # Mod: 1, disp8: 0
+test_encoding 'leaq (%r15), %r9' '4d 8d 0f'
+
+# leaq disp8(%r64), %r9
+test_encoding 'leaq 8(%rax), %r9' '4c 8d 48 08'
+test_encoding 'leaq 8(%rsp), %r9' '4c 8d 4c 24 08' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 8(%rbp), %r9' '4c 8d 4d 08' # Mod: 1, disp8: 0
+test_encoding 'leaq 8(%rdi), %r9' '4c 8d 4f 08'
+test_encoding 'leaq 8(%r8), %r9' '4d 8d 48 08'
+test_encoding 'leaq 8(%r12), %r9' '4d 8d 4c 24 08' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 8(%r13), %r9' '4d 8d 4d 08' # Mod: 1, disp8: 0
+test_encoding 'leaq 8(%r15), %r9' '4d 8d 4f 08'
+
+# leaq disp32(%r64), %r9
+test_encoding 'leaq 144(%rax), %r9' '4c 8d 88 90 00 00 00'
+test_encoding 'leaq 144(%rsp), %r9' '4c 8d 8c 24 90 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 144(%rbp), %r9' '4c 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
+test_encoding 'leaq 144(%rdi), %r9' '4c 8d 8f 90 00 00 00'
+test_encoding 'leaq 144(%r8), %r9' '4d 8d 88 90 00 00 00'
+test_encoding 'leaq 144(%r12), %r9' '4d 8d 8c 24 90 00 00 00' # Scale: 0, Index: 4, Base: 4
+test_encoding 'leaq 144(%r13), %r9' '4d 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
+test_encoding 'leaq 144(%r15), %r9' '4d 8d 8f 90 00 00 00'
 
 echo "[OK]"
 exit 0

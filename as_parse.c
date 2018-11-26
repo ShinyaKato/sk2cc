@@ -271,6 +271,23 @@ static Inst *parse_inst(Token **token) {
     return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
   }
 
+  if (strcmp(inst->ident, "leaq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_MEM) {
+      ERROR(src->token, "first operand should be memory operand.");
+    }
+    if (dest->type != OP_REG) {
+      ERROR(dest->token, "second operand should be register operand.");
+    }
+    if (dest->regtype != REG64) {
+      ERROR(dest->token, "only 64-bit register is supported.");
+    }
+    return inst_op2(INST_LEA, INST_QUAD, src, dest, inst);
+  }
+
   if (strcmp(inst->ident, "call") == 0) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
