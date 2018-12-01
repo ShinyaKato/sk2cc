@@ -191,7 +191,7 @@ static Inst *parse_inst(Token **token) {
     return inst_op1(INST_POP, INST_QUAD, op, inst);
   }
 
-  if (strcmp(inst->ident, "movb") == 0) {
+  if (strcmp(inst->ident, "movq") == 0) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
@@ -202,33 +202,13 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG64) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG8) {
+    if (dest->type == OP_REG && dest->regtype != REG64) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movw") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->array[0], *dest = ops->array[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG16) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG16) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(INST_MOV, INST_WORD, src, dest, inst);
+    return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movl") == 0) {
@@ -251,7 +231,7 @@ static Inst *parse_inst(Token **token) {
     return inst_op2(INST_MOV, INST_LONG, src, dest, inst);
   }
 
-  if (strcmp(inst->ident, "movq") == 0) {
+  if (strcmp(inst->ident, "movw") == 0) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
@@ -262,13 +242,33 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG16) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG16) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
+    return inst_op2(INST_MOV, INST_WORD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movb") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != REG8) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG8) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "leaq") == 0) {
@@ -286,6 +286,46 @@ static Inst *parse_inst(Token **token) {
       ERROR(dest->token, "only 64-bit register is supported.");
     }
     return inst_op2(INST_LEA, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "addq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != REG64) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG64) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_ADD, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "addl") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (dest->type == OP_IMM) {
+      ERROR(dest->token, "destination cannot be an immediate.");
+    }
+    if (src->type == OP_MEM && dest->type == OP_MEM) {
+      ERROR(inst, "both of source and destination cannot be memory operands.");
+    }
+    if (src->type == OP_REG && src->regtype != REG32) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG32) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_ADD, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "call") == 0) {

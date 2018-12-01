@@ -1148,5 +1148,19 @@ test_encoding 'leaq 144(%r12), %r9' '4d 8d 8c 24 90 00 00 00' # Scale: 0, Index:
 test_encoding 'leaq 144(%r13), %r9' '4d 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
 test_encoding 'leaq 144(%r15), %r9' '4d 8d 8f 90 00 00 00'
 
+# addq
+test_encoding 'addq $42, %rdx' '48 81 c2 2a 00 00 00'
+test_encoding 'addq $42, (%rdx)' '48 81 02 2a 00 00 00'
+test_encoding 'addq %rcx, %rdx' '48 01 ca'
+test_encoding 'addq %rcx, (%rdx)' '48 01 0a'
+test_encoding 'addq (%rdx), %rcx' '48 03 0a'
+
+# addl
+test_encoding 'addl $42, %edx' '81 c2 2a 00 00 00'
+test_encoding 'addl $42, (%rdx)' '81 02 2a 00 00 00'
+test_encoding 'addl %ecx, %edx' '01 ca'
+test_encoding 'addl %ecx, (%rdx)' '01 0a'
+test_encoding 'addl (%rdx), %ecx' '03 0a'
+
 echo "[OK]"
 exit 0
