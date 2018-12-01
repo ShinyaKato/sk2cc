@@ -494,6 +494,35 @@ static void gen_div(Inst *inst) {
   }
 }
 
+static void gen_idiv(Inst *inst) {
+  Op *op = inst->op;
+  if (inst->suffix == INST_QUAD) {
+    if (op->type == OP_REG) {
+      // REX.W + F7 /7 id
+      gen_rex(1, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(7, op);
+    } else if (op->type == OP_MEM) {
+      // REX.W + F7 /7 id
+      gen_rex(1, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(7, op);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (op->type == OP_REG) {
+      // F7 /7 id
+      gen_rex(0, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(7, op);
+    } else if (op->type == OP_MEM) {
+      // F7 /7 id
+      gen_rex(0, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(7, op);
+    }
+  }
+}
+
 static void gen_call(Inst *inst) {
   Op *op = inst->op;
 
@@ -544,6 +573,9 @@ static void gen_text() {
         break;
       case INST_DIV:
         gen_div(inst);
+        break;
+      case INST_IDIV:
+        gen_idiv(inst);
         break;
       case INST_CALL:
         gen_call(inst);

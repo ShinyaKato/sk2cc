@@ -273,6 +273,18 @@ main:
   ret
 EOS
 
+expect 11 << EOS
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  movl \$33, %eax
+  movl \$3, %ecx
+  movl \$0, %edx
+  idivl %ecx
+  leave
+  ret
+EOS
+
 gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
 
 encoding_failed() {
@@ -1253,6 +1265,14 @@ test_encoding 'divq (%rdx)' '48 f7 32'
 # divl
 test_encoding 'divl %edx' 'f7 f2'
 test_encoding 'divl (%rdx)' 'f7 32'
+
+# idivq
+test_encoding 'idivq %rdx' '48 f7 fa'
+test_encoding 'idivq (%rdx)' '48 f7 3a'
+
+# idivl
+test_encoding 'idivl %edx' 'f7 fa'
+test_encoding 'idivl (%rdx)' 'f7 3a'
 
 echo "[OK]"
 exit 0
