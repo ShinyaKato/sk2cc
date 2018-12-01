@@ -1444,5 +1444,47 @@ test_encoding 'notq (%rsi)' '48 f7 16'
 test_encoding 'notl %esi' 'f7 d6'
 test_encoding 'notl (%rsi)' 'f7 16'
 
+# andq
+test_encoding 'andq $42, %rdx' '48 81 e2 2a 00 00 00'
+test_encoding 'andq $42, (%rdx)' '48 81 22 2a 00 00 00'
+test_encoding 'andq %rcx, %rdx' '48 21 ca'
+test_encoding 'andq %rcx, (%rdx)' '48 21 0a'
+test_encoding 'andq (%rdx), %rcx' '48 23 0a'
+
+# andl
+test_encoding 'andl $42, %edx' '81 e2 2a 00 00 00'
+test_encoding 'andl $42, (%rdx)' '81 22 2a 00 00 00'
+test_encoding 'andl %ecx, %edx' '21 ca'
+test_encoding 'andl %ecx, (%rdx)' '21 0a'
+test_encoding 'andl (%rdx), %ecx' '23 0a'
+
+# xorq
+test_encoding 'xorq $42, %rdx' '48 81 f2 2a 00 00 00'
+test_encoding 'xorq $42, (%rdx)' '48 81 32 2a 00 00 00'
+test_encoding 'xorq %rcx, %rdx' '48 31 ca'
+test_encoding 'xorq %rcx, (%rdx)' '48 31 0a'
+test_encoding 'xorq (%rdx), %rcx' '48 33 0a'
+
+# xorl
+test_encoding 'xorl $42, %edx' '81 f2 2a 00 00 00'
+test_encoding 'xorl $42, (%rdx)' '81 32 2a 00 00 00'
+test_encoding 'xorl %ecx, %edx' '31 ca'
+test_encoding 'xorl %ecx, (%rdx)' '31 0a'
+test_encoding 'xorl (%rdx), %ecx' '33 0a'
+
+# orq
+test_encoding 'orq $42, %rdx' '48 81 ca 2a 00 00 00'
+test_encoding 'orq $42, (%rdx)' '48 81 0a 2a 00 00 00'
+test_encoding 'orq %rcx, %rdx' '48 09 ca'
+test_encoding 'orq %rcx, (%rdx)' '48 09 0a'
+test_encoding 'orq (%rdx), %rcx' '48 0b 0a'
+
+# orl
+test_encoding 'orl $42, %edx' '81 ca 2a 00 00 00'
+test_encoding 'orl $42, (%rdx)' '81 0a 2a 00 00 00'
+test_encoding 'orl %ecx, %edx' '09 ca'
+test_encoding 'orl %ecx, (%rdx)' '09 0a'
+test_encoding 'orl (%rdx), %ecx' '0b 0a'
+
 echo "[OK]"
 exit 0
