@@ -489,6 +489,17 @@ static Inst *parse_inst(Token **token) {
     return inst_op1(INST_IDIV, INST_LONG, op, inst);
   }
 
+  if (strcmp(inst->ident, "jmp") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_SYM) {
+      ERROR(op->token, "only symbol is supported.");
+    }
+    return inst_op1(INST_JMP, INST_QUAD, op, inst);
+  }
+
   if (strcmp(inst->ident, "call") == 0) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);

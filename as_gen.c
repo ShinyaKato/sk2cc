@@ -1,15 +1,15 @@
 #include "as.h"
 
-typedef struct reloc {
+typedef struct rel {
   int offset;
   char *ident;
-} Reloc;
+} Rel;
 
-static Reloc *reloc_new(int offset, char *ident) {
-  Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
-  reloc->offset = offset;
-  reloc->ident = ident;
-  return reloc;
+static Rel *rel_new(int offset, char *ident) {
+  Rel *rel = (Rel *) calloc(1, sizeof(Rel));
+  rel->offset = offset;
+  rel->ident = ident;
+  return rel;
 }
 
 static Vector *insts;
@@ -21,7 +21,7 @@ static String *strtab;
 static Binary *rela_text;
 
 static int *offsets;
-static Vector *relocs;
+static Vector *rels;
 static Map *gsyms;
 
 static void gen_rex(bool w, Reg reg, Reg index, Reg base, bool required) {
@@ -119,25 +119,21 @@ static void gen_rel32(char *ident) {
   if (!symbol) {
     map_put(symbols, ident, undef_symbol());
   }
-  vector_push(relocs, reloc_new(text->length, ident));
+  vector_push(rels, rel_new(text->length, ident));
 
   gen_imm32(0);
 }
 
 static void gen_push(Inst *inst) {
-  Op *op = inst->op;
-
   // 50 +rd
-  gen_rex(0, 0, 0, op->regcode, false);
-  gen_opcode_reg(0x50, op->regcode);
+  gen_rex(0, 0, 0, inst->op->regcode, false);
+  gen_opcode_reg(0x50, inst->op->regcode);
 }
 
 static void gen_pop(Inst *inst) {
-  Op *op = inst->op;
-
   // 58 +rd
-  gen_rex(0, 0, 0, op->regcode, false);
-  gen_opcode_reg(0x58, op->regcode);
+  gen_rex(0, 0, 0, inst->op->regcode, false);
+  gen_opcode_reg(0x58, inst->op->regcode);
 }
 
 static void gen_mov(Inst *inst) {
@@ -283,12 +279,10 @@ static void gen_mov(Inst *inst) {
 }
 
 static void gen_lea(Inst *inst) {
-  Op *src = inst->src, *dest = inst->dest;
-
   // REX.W + 8D /r
-  gen_rex(1, dest->regcode, src->index, src->base, false);
+  gen_rex(1, inst->dest->regcode, inst->src->index, inst->src->base, false);
   gen_opcode(0x8d);
-  gen_ops(dest->regcode, src);
+  gen_ops(inst->dest->regcode, inst->src);
 }
 
 static void gen_add(Inst *inst) {
@@ -533,20 +527,26 @@ static void gen_idiv(Inst *inst) {
   }
 }
 
-static void gen_call(Inst *inst) {
-  Op *op = inst->op;
+static void gen_jmp(Inst *inst) {
+  // E9 cd
+  gen_opcode(0xe9);
+  gen_rel32(inst->op->ident);
+}
 
+static void gen_call(Inst *inst) {
   // E8 cd
   gen_opcode(0xe8);
-  gen_rel32(op->ident);
+  gen_rel32(inst->op->ident);
 }
 
 static void gen_leave(Inst *inst) {
-  gen_opcode(0xc9); // C9
+  // C9
+  gen_opcode(0xc9);
 }
 
 static void gen_ret(Inst *inst) {
-  gen_opcode(0xc3); // C3
+  // C3
+  gen_opcode(0xc3);
 }
 
 static void gen_text() {
@@ -584,6 +584,9 @@ static void gen_text() {
         break;
       case INST_IDIV:
         gen_idiv(inst);
+        break;
+      case INST_JMP:
+        gen_jmp(inst);
         break;
       case INST_CALL:
         gen_call(inst);
@@ -627,16 +630,23 @@ static void gen_symtab() {
 }
 
 static void gen_rela_text() {
-  for (int i = 0; i < relocs->length; i++) {
-    Reloc *reloc = relocs->array[i];
-    int index = (int) (intptr_t) map_lookup(gsyms, reloc->ident);
+  for (int i = 0; i < rels->length; i++) {
+    Rel *rel = rels->array[i];
+    Symbol *symbol = map_lookup(symbols, rel->ident);
 
-    Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
-    rela->r_offset = reloc->offset;
-    rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
-    rela->r_addend = -4;
+    if (symbol->global) {
+      int index = (int) (intptr_t) map_lookup(gsyms, rel->ident);
 
-    binary_write(rela_text, rela, sizeof(Elf64_Rela));
+      Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
+      rela->r_offset = rel->offset;
+      rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
+      rela->r_addend = -4;
+
+      binary_write(rela_text, rela, sizeof(Elf64_Rela));
+    } else {
+      int *rel32 = (int *) &text->buffer[rel->offset];
+      *rel32 = offsets[symbol->inst] - (rel->offset + 4);
+    }
   }
 }
 
@@ -650,7 +660,7 @@ Section *gen(Unit *unit) {
   rela_text = binary_new();
 
   offsets = (int *) calloc(insts->length, sizeof(int));
-  relocs = vector_new();
+  rels = vector_new();
   gsyms = map_new();
 
   gen_text();
