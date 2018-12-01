@@ -675,6 +675,20 @@ static void gen_jmp(Inst *inst) {
   gen_rel32(inst->op->ident);
 }
 
+static void gen_je(Inst *inst) {
+  // E9 cd
+  gen_opcode(0x0f);
+  gen_opcode(0x84);
+  gen_rel32(inst->op->ident);
+}
+
+static void gen_jne(Inst *inst) {
+  // E9 cd
+  gen_opcode(0x0f);
+  gen_opcode(0x85);
+  gen_rel32(inst->op->ident);
+}
+
 static void gen_call(Inst *inst) {
   // E8 cd
   gen_opcode(0xe8);
@@ -732,6 +746,12 @@ static void gen_text() {
         break;
       case INST_JMP:
         gen_jmp(inst);
+        break;
+      case INST_JE:
+        gen_je(inst);
+        break;
+      case INST_JNE:
+        gen_jne(inst);
         break;
       case INST_CALL:
         gen_call(inst);

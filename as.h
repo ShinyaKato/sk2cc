@@ -137,6 +137,8 @@ typedef enum inst_type {
   INST_IDIV,
   INST_CMP,
   INST_JMP,
+  INST_JE,
+  INST_JNE,
   INST_CALL,
   INST_LEAVE,
   INST_RET,
