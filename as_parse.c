@@ -325,6 +325,34 @@ static Inst *parse_inst(Token **token) {
     return inst_op1(INST_NEG, INST_LONG, op, inst);
   }
 
+  if (strcmp(inst->ident, "notq") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG64) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_NOT, INST_QUAD, op, inst);
+  }
+
+  if (strcmp(inst->ident, "notl") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG32) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_NOT, INST_LONG, op, inst);
+  }
+
   if (strcmp(inst->ident, "addq") == 0) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);

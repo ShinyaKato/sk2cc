@@ -130,6 +130,7 @@ typedef enum inst_type {
   INST_MOV,
   INST_LEA,
   INST_NEG,
+  INST_NOT,
   INST_ADD,
   INST_SUB,
   INST_MUL,

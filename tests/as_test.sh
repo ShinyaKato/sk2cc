@@ -1436,5 +1436,13 @@ test_encoding 'negq (%rsi)' '48 f7 1e'
 test_encoding 'negl %esi' 'f7 de'
 test_encoding 'negl (%rsi)' 'f7 1e'
 
+# negq
+test_encoding 'notq %rsi' '48 f7 d6'
+test_encoding 'notq (%rsi)' '48 f7 16'
+
+# negl
+test_encoding 'notl %esi' 'f7 d6'
+test_encoding 'notl (%rsi)' 'f7 16'
+
 echo "[OK]"
 exit 0
