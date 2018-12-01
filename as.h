@@ -133,6 +133,7 @@ typedef enum inst_type {
   INST_SUB,
   INST_MUL,
   INST_IMUL,
+  INST_DIV,
   INST_CALL,
   INST_LEAVE,
   INST_RET,

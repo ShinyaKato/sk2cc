@@ -1246,5 +1246,13 @@ test_encoding 'imulq (%rdx)' '48 f7 2a'
 test_encoding 'imull %edx' 'f7 ea'
 test_encoding 'imull (%rdx)' 'f7 2a'
 
+# divq
+test_encoding 'divq %rdx' '48 f7 f2'
+test_encoding 'divq (%rdx)' '48 f7 32'
+
+# divl
+test_encoding 'divl %edx' 'f7 f2'
+test_encoding 'divl (%rdx)' 'f7 32'
+
 echo "[OK]"
 exit 0
