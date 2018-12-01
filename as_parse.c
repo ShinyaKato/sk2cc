@@ -569,6 +569,90 @@ static Inst *parse_inst(Token **token) {
     return inst_op2(INST_CMP, INST_BYTE, src, dest, inst);
   }
 
+  if (strcmp(inst->ident, "sete") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETE, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setne") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETNE, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setl") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETL, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setg") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETG, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setle") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETLE, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setge") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->array[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETGE, INST_BYTE, op, inst);
+  }
+
   if (strcmp(inst->ident, "jmp") == 0) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);

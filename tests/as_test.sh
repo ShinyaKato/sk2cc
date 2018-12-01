@@ -1404,5 +1404,29 @@ test_encoding 'cmpb %cl, %dl' '38 ca'
 test_encoding 'cmpb %cl, (%rdx)' '38 0a'
 test_encoding 'cmpb (%rdx), %cl' '3a 0a'
 
+# sete
+test_encoding 'sete %bl' '0f 94 c3'
+test_encoding 'sete (%rbx)' '0f 94 03'
+
+# setne
+test_encoding 'setne %bl' '0f 95 c3'
+test_encoding 'setne (%rbx)' '0f 95 03'
+
+# setl
+test_encoding 'setl %bl' '0f 9c c3'
+test_encoding 'setl (%rbx)' '0f 9c 03'
+
+# setg
+test_encoding 'setg %bl' '0f 9f c3'
+test_encoding 'setg (%rbx)' '0f 9f 03'
+
+# setle
+test_encoding 'setle %bl' '0f 9e c3'
+test_encoding 'setle (%rbx)' '0f 9e 03'
+
+# setge
+test_encoding 'setge %bl' '0f 9d c3'
+test_encoding 'setge (%rbx)' '0f 9d 03'
+
 echo "[OK]"
 exit 0

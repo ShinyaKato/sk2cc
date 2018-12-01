@@ -669,6 +669,114 @@ static void gen_cmp(Inst *inst) {
   }
 }
 
+static void gen_sete(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 94
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x94);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 94
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x94);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setne(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 95
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x95);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 95
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x95);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setl(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 9C
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x9c);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 9C
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x9c);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setg(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 9F
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x9f);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 9F
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x9f);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setle(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 9E
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x9e);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 9E
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x9e);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setge(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 9D
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x9d);
+    gen_ops(0, op); // reg field is not used.
+  } else if (op->type == OP_MEM) {
+    // 0F 9D
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x9d);
+    gen_ops(0, op); // reg field is not used.
+  }
+}
+
 static void gen_jmp(Inst *inst) {
   // E9 cd
   gen_opcode(0xe9);
@@ -743,6 +851,24 @@ static void gen_text() {
         break;
       case INST_CMP:
         gen_cmp(inst);
+        break;
+      case INST_SETE:
+        gen_sete(inst);
+        break;
+      case INST_SETNE:
+        gen_setne(inst);
+        break;
+      case INST_SETL:
+        gen_setl(inst);
+        break;
+      case INST_SETG:
+        gen_setg(inst);
+        break;
+      case INST_SETLE:
+        gen_setle(inst);
+        break;
+      case INST_SETGE:
+        gen_setge(inst);
         break;
       case INST_JMP:
         gen_jmp(inst);
