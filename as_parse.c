@@ -665,6 +665,74 @@ static Inst *parse_inst(Token **token) {
     return inst_op2(INST_OR, INST_LONG, src, dest, inst);
   }
 
+  if (strcmp(inst->ident, "salq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+      ERROR(src->token, "only %%cl is supported.");
+    }
+    if (dest->type != OP_REG && dest->type != OP_MEM) {
+      ERROR(dest->token, "register or memory operand is expected.");
+      if (dest->type == OP_REG && dest->regtype != REG64) {
+        ERROR(dest->token, "operand type mismatched.");
+      }
+    }
+    return inst_op2(INST_SAL, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "sall") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+      ERROR(src->token, "only %%cl is supported.");
+    }
+    if (dest->type != OP_REG && dest->type != OP_MEM) {
+      ERROR(dest->token, "register or memory operand is expected.");
+      if (dest->type == OP_REG && dest->regtype != REG64) {
+        ERROR(dest->token, "operand type mismatched.");
+      }
+    }
+    return inst_op2(INST_SAL, INST_LONG, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "sarq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+      ERROR(src->token, "only %%cl is supported.");
+    }
+    if (dest->type != OP_REG && dest->type != OP_MEM) {
+      ERROR(dest->token, "register or memory operand is expected.");
+      if (dest->type == OP_REG && dest->regtype != REG64) {
+        ERROR(dest->token, "operand type mismatched.");
+      }
+    }
+    return inst_op2(INST_SAR, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "sarl") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+      ERROR(src->token, "only %%cl is supported.");
+    }
+    if (dest->type != OP_REG && dest->type != OP_MEM) {
+      ERROR(dest->token, "register or memory operand is expected.");
+      if (dest->type == OP_REG && dest->regtype != REG64) {
+        ERROR(dest->token, "operand type mismatched.");
+      }
+    }
+    return inst_op2(INST_SAR, INST_LONG, src, dest, inst);
+  }
+
   if (strcmp(inst->ident, "cmpq") == 0) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);

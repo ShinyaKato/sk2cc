@@ -1486,5 +1486,17 @@ test_encoding 'orl %ecx, %edx' '09 ca'
 test_encoding 'orl %ecx, (%rdx)' '09 0a'
 test_encoding 'orl (%rdx), %ecx' '0b 0a'
 
+# salq
+test_encoding 'salq %cl, %rdx' '48 d3 e2'
+
+# sall
+test_encoding 'sall %cl, %rdx' 'd3 e2'
+
+# salq
+test_encoding 'sarq %cl, %rdx' '48 d3 fa'
+
+# sall
+test_encoding 'sarl %cl, %edx' 'd3 fa'
+
 echo "[OK]"
 exit 0

@@ -774,6 +774,64 @@ static void gen_or(Inst *inst) {
   }
 }
 
+static void gen_sal(Inst *inst) {
+  Op *dest = inst->dest;
+  if (inst->suffix == INST_QUAD) {
+    if (dest->type == OP_REG) {
+      // REX.W + D3 /4
+      gen_rex(1, 0, 0, dest->regcode, false);
+      gen_opcode(0xd3);
+      gen_ops(4, dest);
+    } else if (dest->type == OP_MEM) {
+      // REX.W + D3 /4
+      gen_rex(1, 0, dest->index, dest->base, false);
+      gen_opcode(0xd3);
+      gen_ops(4, dest);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (dest->type == OP_REG) {
+      // D3 /4
+      gen_rex(0, 0, 0, dest->regcode, false);
+      gen_opcode(0xd3);
+      gen_ops(4, dest);
+    } else if (dest->type == OP_MEM) {
+      // D3 /4
+      gen_rex(0, 0, dest->index, dest->base, false);
+      gen_opcode(0xd3);
+      gen_ops(4, dest);
+    }
+  }
+}
+
+static void gen_sar(Inst *inst) {
+  Op *dest = inst->dest;
+  if (inst->suffix == INST_QUAD) {
+    if (dest->type == OP_REG) {
+      // REX.W + D3 /7
+      gen_rex(1, 0, 0, dest->regcode, false);
+      gen_opcode(0xd3);
+      gen_ops(7, dest);
+    } else if (dest->type == OP_MEM) {
+      // REX.W + D3 /7
+      gen_rex(1, 0, dest->index, dest->base, false);
+      gen_opcode(0xd3);
+      gen_ops(7, dest);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (dest->type == OP_REG) {
+      // D3 /7
+      gen_rex(0, 0, 0, dest->regcode, false);
+      gen_opcode(0xd3);
+      gen_ops(7, dest);
+    } else if (dest->type == OP_MEM) {
+      // D3 /7
+      gen_rex(0, 0, dest->index, dest->base, false);
+      gen_opcode(0xd3);
+      gen_ops(7, dest);
+    }
+  }
+}
+
 static void gen_cmp(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
   switch (inst->suffix) {
@@ -1110,6 +1168,12 @@ static void gen_text() {
         break;
       case INST_OR:
         gen_or(inst);
+        break;
+      case INST_SAL:
+        gen_sal(inst);
+        break;
+      case INST_SAR:
+        gen_sar(inst);
         break;
       case INST_CMP:
         gen_cmp(inst);

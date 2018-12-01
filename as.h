@@ -140,6 +140,8 @@ typedef enum inst_type {
   INST_AND,
   INST_XOR,
   INST_OR,
+  INST_SAL,
+  INST_SAR,
   INST_CMP,
   INST_SETE,
   INST_SETNE,
