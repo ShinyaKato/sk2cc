@@ -219,6 +219,20 @@ main:
   ret
 EOS
 
+expect 82 << EOS
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  subq \$8, %rsp
+  leaq -8(%rbp), %rcx
+  movl \$82, %eax
+  movl %eax, (%rcx)
+  leaq -8(%rbp), %rax
+  movl (%rax), %eax
+  leave
+  ret
+EOS
+
 gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
 
 encoding_failed() {
@@ -1161,6 +1175,20 @@ test_encoding 'addl $42, (%rdx)' '81 02 2a 00 00 00'
 test_encoding 'addl %ecx, %edx' '01 ca'
 test_encoding 'addl %ecx, (%rdx)' '01 0a'
 test_encoding 'addl (%rdx), %ecx' '03 0a'
+
+# subq
+test_encoding 'subq $42, %rdx' '48 81 ea 2a 00 00 00'
+test_encoding 'subq $42, (%rdx)' '48 81 2a 2a 00 00 00'
+test_encoding 'subq %rcx, %rdx' '48 29 ca'
+test_encoding 'subq %rcx, (%rdx)' '48 29 0a'
+test_encoding 'subq (%rdx), %rcx' '48 2b 0a'
+
+# subl
+test_encoding 'subl $42, %edx' '81 ea 2a 00 00 00'
+test_encoding 'subl $42, (%rdx)' '81 2a 2a 00 00 00'
+test_encoding 'subl %ecx, %edx' '29 ca'
+test_encoding 'subl %ecx, (%rdx)' '29 0a'
+test_encoding 'subl (%rdx), %ecx' '2b 0a'
 
 echo "[OK]"
 exit 0

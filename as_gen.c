@@ -344,6 +344,69 @@ static void gen_add(Inst *inst) {
   }
 }
 
+static void gen_sub(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+  if (inst->suffix == INST_QUAD) {
+    if (src->type == OP_IMM && dest->type == OP_REG) {
+      // REX.W + 81 /5 id
+      gen_rex(1, 0, 0, dest->regcode, false);
+      gen_opcode(0x81);
+      gen_ops(5, dest);
+      gen_imm32(src->imm);
+    } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+      // REX.W + 81 /5 id
+      gen_rex(1, 0, dest->index, dest->base, false);
+      gen_opcode(0x81);
+      gen_ops(5, dest);
+      gen_imm32(src->imm);
+    } else if (src->type == OP_REG && dest->type == OP_REG) {
+      // REX.W + 29 /r
+      gen_rex(1, src->regcode, 0, dest->regcode, false);
+      gen_opcode(0x29);
+      gen_ops(src->regcode, dest);
+    } else if (src->type == OP_REG && dest->type == OP_MEM) {
+      // REX.W + 29 /r
+      gen_rex(1, src->regcode, dest->index, dest->base, false);
+      gen_opcode(0x29);
+      gen_ops(src->regcode, dest);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // REX.W + 2B /r
+      gen_rex(1, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x2b);
+      gen_ops(dest->regcode, src);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (src->type == OP_IMM && dest->type == OP_REG) {
+      // 81 /5 id
+      gen_rex(0, 0, 0, dest->regcode, false);
+      gen_opcode(0x81);
+      gen_ops(5, dest);
+      gen_imm32(src->imm);
+    } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+      // 81 /5 id
+      gen_rex(0, 0, dest->index, dest->base, false);
+      gen_opcode(0x81);
+      gen_ops(5, dest);
+      gen_imm32(src->imm);
+    } else if (src->type == OP_REG && dest->type == OP_REG) {
+      // 29 /r
+      gen_rex(0, src->regcode, 0, dest->regcode, false);
+      gen_opcode(0x29);
+      gen_ops(src->regcode, dest);
+    } else if (src->type == OP_REG && dest->type == OP_MEM) {
+      // 29 /r
+      gen_rex(0, src->regcode, dest->index, dest->base, false);
+      gen_opcode(0x29);
+      gen_ops(src->regcode, dest);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // 2B /r
+      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x2b);
+      gen_ops(dest->regcode, src);
+    }
+  }
+}
+
 static void gen_call(Inst *inst) {
   Op *op = inst->op;
 
@@ -382,6 +445,9 @@ static void gen_text() {
         break;
       case INST_ADD:
         gen_add(inst);
+        break;
+      case INST_SUB:
+        gen_sub(inst);
         break;
       case INST_CALL:
         gen_call(inst);
