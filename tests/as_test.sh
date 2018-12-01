@@ -1498,5 +1498,19 @@ test_encoding 'sarq %cl, %rdx' '48 d3 fa'
 # sall
 test_encoding 'sarl %cl, %edx' 'd3 fa'
 
+# movzb
+test_encoding 'movzbq %cl, %rdx' '48 0f b6 d1'
+test_encoding 'movzbq (%rcx), %rdx' '48 0f b6 11'
+test_encoding 'movzbl %cl, %edx' '0f b6 d1'
+test_encoding 'movzbl (%rcx), %edx' '0f b6 11'
+test_encoding 'movzbw %cl, %dx' '66 0f b6 d1'
+test_encoding 'movzbw (%rcx), %dx' '66 0f b6 11'
+
+# movzw
+test_encoding 'movzwq %cx, %rdx' '48 0f b7 d1'
+test_encoding 'movzwq (%rcx), %rdx' '48 0f b7 11'
+test_encoding 'movzwl %cx, %edx' '0f b7 d1'
+test_encoding 'movzwl (%rcx), %edx' '0f b7 11'
+
 echo "[OK]"
 exit 0

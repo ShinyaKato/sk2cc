@@ -280,6 +280,91 @@ static Inst *parse_inst(Token **token) {
     return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
   }
 
+  if (strcmp(inst->ident, "movzbq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG && src->type != OP_MEM) {
+      ERROR(src->token, "register or memory operand is expected.");
+    }
+    if (src->type == OP_REG && src->regtype != REG8) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG64) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOVZB, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movzbl") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG && src->type != OP_MEM) {
+      ERROR(src->token, "register or memory operand is expected.");
+    }
+    if (src->type == OP_REG && src->regtype != REG8) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG32) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOVZB, INST_LONG, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movzbw") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG && src->type != OP_MEM) {
+      ERROR(src->token, "register or memory operand is expected.");
+    }
+    if (src->type == OP_REG && src->regtype != REG8) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG16) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOVZB, INST_WORD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movzwq") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG && src->type != OP_MEM) {
+      ERROR(src->token, "register or memory operand is expected.");
+    }
+    if (src->type == OP_REG && src->regtype != REG16) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG64) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOVZW, INST_QUAD, src, dest, inst);
+  }
+
+  if (strcmp(inst->ident, "movzwl") == 0) {
+    if (ops->length != 2) {
+      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
+    }
+    Op *src = ops->array[0], *dest = ops->array[1];
+    if (src->type != OP_REG && src->type != OP_MEM) {
+      ERROR(src->token, "register or memory operand is expected.");
+    }
+    if (src->type == OP_REG && src->regtype != REG16) {
+      ERROR(src->token, "operand type mismatched.");
+    }
+    if (dest->type == OP_REG && dest->regtype != REG32) {
+      ERROR(dest->token, "operand type mismatched.");
+    }
+    return inst_op2(INST_MOVZW, INST_LONG, src, dest, inst);
+  }
+
   if (strcmp(inst->ident, "leaq") == 0) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
