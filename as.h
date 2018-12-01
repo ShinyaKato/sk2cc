@@ -119,7 +119,7 @@ typedef struct op {
   Reg index;
   Reg base;
   int disp;
-  char *sym;
+  char *ident;
   unsigned int imm;
   Token *token;
 } Op;
@@ -156,13 +156,15 @@ typedef struct inst {
   Token *token;
 } Inst;
 
-typedef struct label {
+typedef struct symbol {
+  bool global;
+  bool undef;
   int inst;
-} Label;
+} Symbol;
 
 typedef struct unit {
   Vector *insts;
-  Map *labels;
+  Map *symbols;
 } Unit;
 
 typedef struct section {

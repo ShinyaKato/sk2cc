@@ -2,20 +2,18 @@
 
 typedef struct reloc {
   int offset;
-  char *sym;
-  Token *token;
+  char *ident;
 } Reloc;
 
-static Reloc *reloc_new(int offset, char *sym, Token *token) {
+static Reloc *reloc_new(int offset, char *ident) {
   Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
   reloc->offset = offset;
-  reloc->sym = sym;
-  reloc->token = token;
+  reloc->ident = ident;
   return reloc;
 }
 
 static Vector *insts;
-static Map * labels;
+static Map *symbols;
 
 static Binary *text;
 static Binary *symtab;
@@ -112,6 +110,18 @@ static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 8) & 0xff);
   binary_push(text, (imm >> 16) & 0xff);
   binary_push(text, (imm >> 24) & 0xff);
+}
+
+extern Symbol *undef_symbol();
+
+static void gen_rel32(char *ident) {
+  Symbol *symbol = map_lookup(symbols, ident);
+  if (!symbol) {
+    map_put(symbols, ident, undef_symbol());
+  }
+  vector_push(relocs, reloc_new(text->length, ident));
+
+  gen_imm32(0);
 }
 
 static void gen_push(Inst *inst) {
@@ -528,9 +538,7 @@ static void gen_call(Inst *inst) {
 
   // E8 cd
   gen_opcode(0xe8);
-  gen_imm32(0);
-
-  vector_push(relocs, reloc_new(text->length - 4, op->sym, op->token));
+  gen_rel32(op->ident);
 }
 
 static void gen_leave(Inst *inst) {
@@ -594,31 +602,34 @@ static void gen_symtab() {
   binary_write(symtab, calloc(1, sizeof(Elf64_Sym)), sizeof(Elf64_Sym));
   string_push(strtab, '\0');
 
-  for (int i = 0; i < labels->count; i++) {
-    char *key = labels->keys[i];
-    Label *val = labels->values[i];
+  for (int i = 0; i < symbols->count; i++) {
+    char *ident = symbols->keys[i];
+    Symbol *symbol = symbols->values[i];
 
-    Elf64_Sym *sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
-    sym->st_name = strtab->length;
-    sym->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
-    sym->st_other = STV_DEFAULT;
-    sym->st_shndx = 1;
-    sym->st_value = offsets[val->inst];
+    if (symbol->global) {
+      Elf64_Sym *sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
+      sym->st_name = strtab->length;
+      sym->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
+      sym->st_other = STV_DEFAULT;
+      if (!symbol->undef) {
+        sym->st_shndx = 1;
+        sym->st_value = offsets[symbol->inst];
+      } else {
+        sym->st_shndx = SHN_UNDEF;
+      }
 
-    binary_write(symtab, sym, sizeof(Elf64_Sym));
-    string_write(strtab, key);
-    string_push(strtab, '\0');
-    map_put(gsyms, key, (void *) (intptr_t) (i + 1));
+      binary_write(symtab, sym, sizeof(Elf64_Sym));
+      string_write(strtab, ident);
+      string_push(strtab, '\0');
+      map_put(gsyms, ident, (void *) (intptr_t) (gsyms->count + 1));
+    }
   }
 }
 
 static void gen_rela_text() {
   for (int i = 0; i < relocs->length; i++) {
     Reloc *reloc = relocs->array[i];
-    int index = (int) (intptr_t) map_lookup(gsyms, reloc->sym);
-    if (index == 0) {
-      ERROR(reloc->token, "undefined symbol: %s.", reloc->sym);
-    }
+    int index = (int) (intptr_t) map_lookup(gsyms, reloc->ident);
 
     Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
     rela->r_offset = reloc->offset;
@@ -631,7 +642,7 @@ static void gen_rela_text() {
 
 Section *gen(Unit *unit) {
   insts = unit->insts;
-  labels = unit->labels;
+  symbols = unit->symbols;
 
   text = binary_new();
   symtab = binary_new();

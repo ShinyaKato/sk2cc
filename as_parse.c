@@ -31,9 +31,9 @@ Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
   return op;
 }
 
-Op *op_sym(char *sym, Token *token) {
+Op *op_sym(char *ident, Token *token) {
   Op *op = op_new(OP_SYM, token);
-  op->sym = sym;
+  op->ident = ident;
   return op;
 }
 
@@ -68,10 +68,19 @@ Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token
   return inst;
 }
 
-Label *label_new(int inst) {
-  Label *label = (Label *) calloc(1, sizeof(Label));
-  label->inst = inst;
-  return label;
+Symbol *symbol_new(int inst) {
+  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
+  symbol->global = false;
+  symbol->undef = false;
+  symbol->inst = inst;
+  return symbol;
+}
+
+Symbol *undef_symbol() {
+  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
+  symbol->global = true;
+  symbol->undef = true;
+  return symbol;
 }
 
 #define EXPECT(token, expect_type, ...) \
@@ -510,7 +519,7 @@ static Inst *parse_inst(Token **token) {
 
 Unit *parse(Vector *lines) {
   Vector *insts = vector_new();
-  Map *labels = map_new();
+  Map *symbols = map_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
@@ -523,10 +532,31 @@ Unit *parse(Vector *lines) {
       if (token[2]) {
         ERROR(token[2], "invalid symbol declaration.");
       }
-      if (map_lookup(labels, token[0]->ident)) {
-        ERROR(token[0], "duplicated symbol declaration: %s.", token[0]->ident);
+      char *ident = token[0]->ident;
+      Symbol *symbol = map_lookup(symbols, ident);
+      if (symbol) {
+        if (!symbol->undef) {
+          ERROR(token[0], "duplicated symbol declaration: %s.", ident);
+        }
+        symbol->undef = false;
+        symbol->inst = insts->length;
+      } else {
+        map_put(symbols, ident, symbol_new(insts->length));
       }
-      map_put(labels, token[0]->ident, label_new(insts->length));
+    } else if (strcmp(token[0]->ident, ".global") == 0) {
+      if (!token[1] || token[1]->type != TOK_IDENT) {
+        ERROR(token[0], "identifier is expected.");
+      }
+      if (token[2]) {
+        ERROR(token[0], "invalid directive.");
+      }
+      char *ident = token[1]->ident;
+      Symbol *symbol = map_lookup(symbols, ident);
+      if (symbol) {
+        symbol->global = true;
+      } else {
+        map_put(symbols, ident, undef_symbol());
+      }
     } else {
       vector_push(insts, parse_inst(token));
     }
@@ -534,7 +564,7 @@ Unit *parse(Vector *lines) {
 
   Unit *unit = (Unit *) calloc(1, sizeof(Unit));
   unit->insts = insts;
-  unit->labels = labels;
+  unit->symbols = symbols;
 
   return unit;
 }

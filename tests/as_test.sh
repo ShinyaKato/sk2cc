@@ -41,20 +41,22 @@ expect() {
   expect=$1
   cat - > tmp/as_test.s
   ./as tmp/as_test.s tmp/as_test.o 2> tmp/as_test.log || error
-  gcc tmp/as_test.o -o tmp/as_test || invalid
-  ./tmp/as_test
+  gcc -static tmp/as_test.o -o tmp/as_test || invalid
+  ./tmp/as_test > /dev/null
   actual=$?
   [ $actual -ne $expect ] && failed $expect $actual
   count=$((count+1))
 }
 
 expect 42 << EOS
+  .global main
 main:
   movq \$42, %rax
   ret
 EOS
 
 expect 12 << EOS
+  .global main
 main:
   movq \$12, %rax
   movq \$23, %rcx
@@ -66,6 +68,7 @@ main:
 EOS
 
 expect 12 << EOS
+  .global main
 main:
   movq \$12, %rax
   movq \$23, %r8
@@ -80,6 +83,7 @@ main:
 EOS
 
 expect 34 << EOS
+  .global main
 main:
   movq \$34, %rdx
   movq %rdx, %r9
@@ -88,6 +92,7 @@ main:
 EOS
 
 expect 63 << EOS
+  .global main
 main:
   movq \$63, %rbx
   pushq %rbx
@@ -98,6 +103,7 @@ main:
 EOS
 
 expect 13 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -107,6 +113,7 @@ main:
 EOS
 
 expect 85 << EOS
+  .global main
 main:
   movq %rsp, %rdx
   movq (%rdx), %r11
@@ -118,6 +125,7 @@ main:
 EOS
 
 expect 84 << EOS
+  .global main
 main:
   movq %rsp, %r13
   movq (%r13), %r11
@@ -129,6 +137,7 @@ main:
 EOS
 
 expect 39 << EOS
+  .global main
 main:
   movq %rsp, %rdx
   movq \$39, %rsi
@@ -140,9 +149,11 @@ main:
 EOS
 
 expect 46 << EOS
+  .global func
 func:
   movq %rdi, %rax
   ret
+  .global main
 main:
   movq \$64, %rax
   movq \$46, %rdi
@@ -151,6 +162,7 @@ main:
 EOS
 
 expect 53 << EOS
+  .global main
 main:
   movq %rsp, %rcx
   movq \$53, -8(%rcx)
@@ -161,6 +173,7 @@ main:
 EOS
 
 expect 16 << EOS
+  .global main
 main:
   movq \$16, -8(%rsp)
   movq -8(%rsp), %rcx
@@ -170,6 +183,7 @@ main:
 EOS
 
 expect 22 << EOS
+  .global main
 main:
   movq \$2, %rsi
   movq \$8, %r14
@@ -181,6 +195,7 @@ main:
 EOS
 
 expect 25 << EOS
+  .global main
 main:
   movl \$25, %r12d
   movl %r12d, %eax
@@ -188,6 +203,7 @@ main:
 EOS
 
 expect 31 << EOS
+  .global main
 main:
   movw \$31, %r12w
   movw %r12w, %ax
@@ -195,6 +211,7 @@ main:
 EOS
 
 expect 57 << EOS
+  .global main
 main:
   movb \$57, %r12b
   movb %r12b, %al
@@ -202,6 +219,7 @@ main:
 EOS
 
 expect 87 << EOS
+  .global main
 main:
   movb \$87, %sil
   movb %sil, %al
@@ -209,6 +227,7 @@ main:
 EOS
 
 expect 67 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -220,6 +239,7 @@ main:
 EOS
 
 expect 82 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -234,6 +254,7 @@ main:
 EOS
 
 expect 34 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -263,6 +284,7 @@ main:
 EOS
 
 expect 15 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -274,6 +296,7 @@ main:
 EOS
 
 expect 11 << EOS
+  .global main
 main:
   pushq %rbp
   movq %rsp, %rbp
@@ -281,6 +304,32 @@ main:
   movl \$3, %ecx
   movl \$0, %edx
   idivl %ecx
+  leave
+  ret
+EOS
+
+expect 12 << EOS
+  .global main
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  subq \$16, %rsp
+  movb \$72, -16(%rbp)
+  movb \$101, -15(%rbp)
+  movb \$108, -14(%rbp)
+  movb \$108, -13(%rbp)
+  movb \$111, -12(%rbp)
+  movb \$32, -11(%rbp)
+  movb \$87, -10(%rbp)
+  movb \$111, -9(%rbp)
+  movb \$114, -8(%rbp)
+  movb \$108, -7(%rbp)
+  movb \$100, -6(%rbp)
+  movb \$10, -5(%rbp)
+  movb \$0, -4(%rbp)
+  leaq -16(%rbp), %rdi
+  movq \$0, %rax
+  call printf
   leave
   ret
 EOS
