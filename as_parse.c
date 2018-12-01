@@ -862,9 +862,9 @@ static Inst *parse_inst(Token **token) {
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
-      if (dest->type == OP_REG && dest->regtype != REG64) {
-        ERROR(dest->token, "operand type mismatched.");
-      }
+    }
+    if (dest->type == OP_REG && dest->regtype != REG64) {
+      ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAL, INST_QUAD, src, dest, inst);
   }
@@ -879,9 +879,9 @@ static Inst *parse_inst(Token **token) {
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
-      if (dest->type == OP_REG && dest->regtype != REG64) {
-        ERROR(dest->token, "operand type mismatched.");
-      }
+    }
+    if (dest->type == OP_REG && dest->regtype != REG32) {
+      ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAL, INST_LONG, src, dest, inst);
   }
@@ -896,9 +896,9 @@ static Inst *parse_inst(Token **token) {
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
-      if (dest->type == OP_REG && dest->regtype != REG64) {
-        ERROR(dest->token, "operand type mismatched.");
-      }
+    }
+    if (dest->type == OP_REG && dest->regtype != REG64) {
+      ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAR, INST_QUAD, src, dest, inst);
   }
@@ -913,9 +913,9 @@ static Inst *parse_inst(Token **token) {
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
-      if (dest->type == OP_REG && dest->regtype != REG64) {
-        ERROR(dest->token, "operand type mismatched.");
-      }
+    }
+    if (dest->type == OP_REG && dest->regtype != REG32) {
+      ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAR, INST_LONG, src, dest, inst);
   }
