@@ -1428,5 +1428,13 @@ test_encoding 'setle (%rbx)' '0f 9e 03'
 test_encoding 'setge %bl' '0f 9d c3'
 test_encoding 'setge (%rbx)' '0f 9d 03'
 
+# negq
+test_encoding 'negq %rsi' '48 f7 de'
+test_encoding 'negq (%rsi)' '48 f7 1e'
+
+# negl
+test_encoding 'negl %esi' 'f7 de'
+test_encoding 'negl (%rsi)' 'f7 1e'
+
 echo "[OK]"
 exit 0

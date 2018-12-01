@@ -285,6 +285,35 @@ static void gen_lea(Inst *inst) {
   gen_ops(inst->dest->regcode, inst->src);
 }
 
+static void gen_neg(Inst *inst) {
+  Op *op = inst->op;
+  if (inst->suffix == INST_QUAD) {
+    if (op->type == OP_REG) {
+      // REX.W + F7 /3 id
+      gen_rex(1, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(3, op);
+    } else if (op->type == OP_MEM) {
+      // REX.W + F7 /3 id
+      gen_rex(1, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(3, op);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (op->type == OP_REG) {
+      // F7 /3 id
+      gen_rex(0, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(3, op);
+    } else if (op->type == OP_MEM) {
+      // F7 /3 id
+      gen_rex(0, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(3, op);
+    }
+  }
+}
+
 static void gen_add(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
   if (inst->suffix == INST_QUAD) {
@@ -830,6 +859,9 @@ static void gen_text() {
         break;
       case INST_LEA:
         gen_lea(inst);
+        break;
+      case INST_NEG:
+        gen_neg(inst);
         break;
       case INST_ADD:
         gen_add(inst);
