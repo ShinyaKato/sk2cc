@@ -1512,5 +1512,23 @@ test_encoding 'movzwq (%rcx), %rdx' '48 0f b7 11'
 test_encoding 'movzwl %cx, %edx' '0f b7 d1'
 test_encoding 'movzwl (%rcx), %edx' '0f b7 11'
 
+# movzb
+test_encoding 'movsbq %cl, %rdx' '48 0f be d1'
+test_encoding 'movsbq (%rcx), %rdx' '48 0f be 11'
+test_encoding 'movsbl %cl, %edx' '0f be d1'
+test_encoding 'movsbl (%rcx), %edx' '0f be 11'
+test_encoding 'movsbw %cl, %dx' '66 0f be d1'
+test_encoding 'movsbw (%rcx), %dx' '66 0f be 11'
+
+# movzw
+test_encoding 'movswq %cx, %rdx' '48 0f bf d1'
+test_encoding 'movswq (%rcx), %rdx' '48 0f bf 11'
+test_encoding 'movswl %cx, %edx' '0f bf d1'
+test_encoding 'movswl (%rcx), %edx' '0f bf 11'
+
+# movzl
+test_encoding 'movslq %ecx, %rdx' '48 63 d1'
+test_encoding 'movslq (%rcx), %rdx' '48 63 11'
+
 echo "[OK]"
 exit 0

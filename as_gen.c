@@ -360,6 +360,103 @@ static void gen_movzw(Inst *inst) {
   }
 }
 
+static void gen_movsb(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+  if (inst->suffix == INST_QUAD) {
+    if (src->type == OP_REG && dest->type == OP_REG) {
+      // REX.W + 0F BE /r
+      gen_rex(1, dest->regcode, 0, src->regcode, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // REX.W + 0F BE /r
+      gen_rex(1, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (src->type == OP_REG && dest->type == OP_REG) {
+      // 0F BE /r
+      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // 0F BE /r
+      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    }
+  } else if (inst->suffix == INST_WORD) {
+    if (src->type == OP_REG && dest->type == OP_REG) {
+      // 0F BE /r
+      gen_prefix(0x66);
+      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // 0F BE /r
+      gen_prefix(0x66);
+      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbe);
+      gen_ops(dest->regcode, src);
+    }
+  }
+}
+
+static void gen_movsw(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+  if (inst->suffix == INST_QUAD) {
+    if (src->type == OP_REG && dest->type == OP_REG) {
+      // REX.W + 0F BF /r
+      gen_rex(1, dest->regcode, 0, src->regcode, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbf);
+      gen_ops(dest->regcode, src);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // REX.W + 0F BF /r
+      gen_rex(1, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbf);
+      gen_ops(dest->regcode, src);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (src->type == OP_REG && dest->type == OP_REG) {
+      // 0F BF /r
+      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbf);
+      gen_ops(dest->regcode, src);
+    } else if (src->type == OP_MEM && dest->type == OP_REG) {
+      // 0F BF /r
+      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_opcode(0x0f);
+      gen_opcode(0xbf);
+      gen_ops(dest->regcode, src);
+    }
+  }
+}
+
+static void gen_movsl(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+  if (src->type == OP_REG && dest->type == OP_REG) {
+    // REX.W + 63 /r
+    gen_rex(1, dest->regcode, 0, src->regcode, false);
+    gen_opcode(0x63);
+    gen_ops(dest->regcode, src);
+  } else if (src->type == OP_MEM && dest->type == OP_REG) {
+    // REX.W + 63 /r
+    gen_rex(1, dest->regcode, src->index, src->base, false);
+    gen_opcode(0x63);
+    gen_ops(dest->regcode, src);
+  }
+}
+
 static void gen_lea(Inst *inst) {
   // REX.W + 8D /r
   gen_rex(1, inst->dest->regcode, inst->src->index, inst->src->base, false);
@@ -1220,6 +1317,15 @@ static void gen_text() {
         break;
       case INST_MOVZW:
         gen_movzw(inst);
+        break;
+      case INST_MOVSB:
+        gen_movsb(inst);
+        break;
+      case INST_MOVSW:
+        gen_movsw(inst);
+        break;
+      case INST_MOVSL:
+        gen_movsl(inst);
         break;
       case INST_LEA:
         gen_lea(inst);
