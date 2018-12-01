@@ -1348,5 +1348,33 @@ test_encoding 'idivq (%rdx)' '48 f7 3a'
 test_encoding 'idivl %edx' 'f7 fa'
 test_encoding 'idivl (%rdx)' 'f7 3a'
 
+# cmpq
+test_encoding 'cmpq $42, %rdx' '48 81 fa 2a 00 00 00'
+test_encoding 'cmpq $42, (%rdx)' '48 81 3a 2a 00 00 00'
+test_encoding 'cmpq %rcx, %rdx' '48 39 ca'
+test_encoding 'cmpq %rcx, (%rdx)' '48 39 0a'
+test_encoding 'cmpq (%rdx), %rcx' '48 3b 0a'
+
+# cmpl
+test_encoding 'cmpl $42, %edx' '81 fa 2a 00 00 00'
+test_encoding 'cmpl $42, (%rdx)' '81 3a 2a 00 00 00'
+test_encoding 'cmpl %ecx, %edx' '39 ca'
+test_encoding 'cmpl %ecx, (%rdx)' '39 0a'
+test_encoding 'cmpl (%rdx), %ecx' '3b 0a'
+
+# cmpw
+test_encoding 'cmpw $42, %dx' '66 81 fa 2a 00'
+test_encoding 'cmpw $42, (%rdx)' '66 81 3a 2a 00'
+test_encoding 'cmpw %cx, %dx' '66 39 ca'
+test_encoding 'cmpw %cx, (%rdx)' '66 39 0a'
+test_encoding 'cmpw (%rdx), %cx' '66 3b 0a'
+
+# cmpb
+test_encoding 'cmpb $42, %dl' '80 fa 2a'
+test_encoding 'cmpb $42, (%rdx)' '80 3a 2a'
+test_encoding 'cmpb %cl, %dl' '38 ca'
+test_encoding 'cmpb %cl, (%rdx)' '38 0a'
+test_encoding 'cmpb (%rdx), %cl' '3a 0a'
+
 echo "[OK]"
 exit 0

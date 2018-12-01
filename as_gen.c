@@ -527,6 +527,148 @@ static void gen_idiv(Inst *inst) {
   }
 }
 
+static void gen_cmp(Inst *inst) {
+  Op *src = inst->src, *dest = inst->dest;
+  switch (inst->suffix) {
+    case INST_QUAD: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // REX.W + 81 /7 id
+        gen_rex(1, 0, 0, dest->regcode, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // REX.W + 81 /7 id
+        gen_rex(1, 0, dest->index, dest->base, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // REX.W + 39 /r
+        gen_rex(1, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // REX.W + 39 /r
+        gen_rex(1, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // REX.W + 3B /r
+        gen_rex(1, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x3b);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
+
+    case INST_LONG: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // 81 /7 id
+        gen_rex(0, 0, 0, dest->regcode, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // 81 /0 id
+        gen_rex(0, 0, dest->index, dest->base, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm32(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 39 /r
+        gen_rex(0, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 39 /r
+        gen_rex(0, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 3B /r
+        gen_rex(0, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x3b);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
+
+    case INST_WORD: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // 81 /7 id
+        gen_prefix(0x66);
+        gen_rex(0, 0, 0, dest->regcode, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm16(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // 81 /7 id
+        gen_prefix(0x66);
+        gen_rex(0, 0, dest->index, dest->base, false);
+        gen_opcode(0x81);
+        gen_ops(7, dest);
+        gen_imm16(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 39 /r
+        gen_prefix(0x66);
+        gen_rex(0, src->regcode, 0, dest->regcode, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 39 /r
+        gen_prefix(0x66);
+        gen_rex(0, src->regcode, dest->index, dest->base, false);
+        gen_opcode(0x39);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 3B /r
+        gen_prefix(0x66);
+        gen_rex(0, dest->regcode, src->index, src->base, false);
+        gen_opcode(0x3b);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
+
+    case INST_BYTE: {
+      if (src->type == OP_IMM && dest->type == OP_REG) {
+        // 80 /7 id
+        bool required = (dest->regcode & 12) == 4;
+        gen_rex(0, 0, 0, dest->regcode, required);
+        gen_opcode(0x80);
+        gen_ops(7, dest);
+        gen_imm8(src->imm);
+      } else if (src->type == OP_IMM && dest->type == OP_MEM) {
+        // 80 /0 id
+        gen_rex(0, 0, dest->index, dest->base, 0);
+        gen_opcode(0x80);
+        gen_ops(7, dest);
+        gen_imm8(src->imm);
+      } else if (src->type == OP_REG && dest->type == OP_REG) {
+        // 38 /r
+        bool required = (src->regcode & 12) == 4 || (dest->regcode & 12) == 4;
+        gen_rex(0, src->regcode, 0, dest->regcode, required);
+        gen_opcode(0x38);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_REG && dest->type == OP_MEM) {
+        // 38 /r
+        bool required = (src->regcode & 12) == 4;
+        gen_rex(0, src->regcode, dest->index, dest->base, required);
+        gen_opcode(0x38);
+        gen_ops(src->regcode, dest);
+      } else if (src->type == OP_MEM && dest->type == OP_REG) {
+        // 3A /r
+        bool required = (dest->regcode & 12) == 4;
+        gen_rex(0, dest->regcode, src->index, src->base, required);
+        gen_opcode(0x3a);
+        gen_ops(dest->regcode, src);
+      }
+    }
+    break;
+  }
+}
+
 static void gen_jmp(Inst *inst) {
   // E9 cd
   gen_opcode(0xe9);
@@ -584,6 +726,9 @@ static void gen_text() {
         break;
       case INST_IDIV:
         gen_idiv(inst);
+        break;
+      case INST_CMP:
+        gen_cmp(inst);
         break;
       case INST_JMP:
         gen_jmp(inst);
