@@ -262,6 +262,17 @@ main:
   ret
 EOS
 
+expect 15 << EOS
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  movl \$3, %eax
+  movl \$5, %ecx
+  imull %ecx
+  leave
+  ret
+EOS
+
 gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
 
 encoding_failed() {
@@ -1226,6 +1237,14 @@ test_encoding 'mulq (%rdx)' '48 f7 22'
 # mull
 test_encoding 'mull %edx' 'f7 e2'
 test_encoding 'mull (%rdx)' 'f7 22'
+
+# imulq
+test_encoding 'imulq %rdx' '48 f7 ea'
+test_encoding 'imulq (%rdx)' '48 f7 2a'
+
+# imull
+test_encoding 'imull %edx' 'f7 ea'
+test_encoding 'imull (%rdx)' 'f7 2a'
 
 echo "[OK]"
 exit 0
