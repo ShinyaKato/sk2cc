@@ -233,6 +233,35 @@ main:
   ret
 EOS
 
+expect 34 << EOS
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  subq \$16, %rsp
+  leaq -16(%rbp), %rax
+  pushq %rax
+  movl \$2, %eax
+  movq \$4, %rcx
+  mulq %rcx
+  popq %rcx
+  addq %rax, %rcx
+  pushq %rcx
+  movl \$34, %eax
+  popq %rcx
+  movl %eax, (%rcx)
+  leaq -16(%rbp), %rax
+  pushq %rax
+  movl \$2, %eax
+  movq \$4, %rcx
+  mulq %rcx
+  popq %rcx
+  addq %rax, %rcx
+  movq %rcx, %rax
+  movl (%rax), %eax
+  leave
+  ret
+EOS
+
 gcc as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_gen.c as_elf.c tests/as_driver.c -o tmp/as_driver
 
 encoding_failed() {
@@ -1189,6 +1218,14 @@ test_encoding 'subl $42, (%rdx)' '81 2a 2a 00 00 00'
 test_encoding 'subl %ecx, %edx' '29 ca'
 test_encoding 'subl %ecx, (%rdx)' '29 0a'
 test_encoding 'subl (%rdx), %ecx' '2b 0a'
+
+# mulq
+test_encoding 'mulq %rdx' '48 f7 e2'
+test_encoding 'mulq (%rdx)' '48 f7 22'
+
+# mull
+test_encoding 'mull %edx' 'f7 e2'
+test_encoding 'mull (%rdx)' 'f7 22'
 
 echo "[OK]"
 exit 0

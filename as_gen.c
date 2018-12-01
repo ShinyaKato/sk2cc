@@ -407,6 +407,35 @@ static void gen_sub(Inst *inst) {
   }
 }
 
+static void gen_mul(Inst *inst) {
+  Op *op = inst->op;
+  if (inst->suffix == INST_QUAD) {
+    if (op->type == OP_REG) {
+      // REX.W + F7 /5 id
+      gen_rex(1, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(4, op);
+    } else if (op->type == OP_MEM) {
+      // REX.W + F7 /5 id
+      gen_rex(1, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(4, op);
+    }
+  } else if (inst->suffix == INST_LONG) {
+    if (op->type == OP_REG) {
+      // F7 /4 id
+      gen_rex(0, 0, 0, op->regcode, false);
+      gen_opcode(0xf7);
+      gen_ops(4, op);
+    } else if (op->type == OP_MEM) {
+      // F7 /4 id
+      gen_rex(0, 0, op->index, op->base, false);
+      gen_opcode(0xf7);
+      gen_ops(4, op);
+    }
+  }
+}
+
 static void gen_call(Inst *inst) {
   Op *op = inst->op;
 
@@ -448,6 +477,9 @@ static void gen_text() {
         break;
       case INST_SUB:
         gen_sub(inst);
+        break;
+      case INST_MUL:
+        gen_mul(inst);
         break;
       case INST_CALL:
         gen_call(inst);
