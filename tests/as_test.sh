@@ -1316,6 +1316,14 @@ test_encoding 'leaq 144(%r12), %r9' '4d 8d 8c 24 90 00 00 00' # Scale: 0, Index:
 test_encoding 'leaq 144(%r13), %r9' '4d 8d 8d 90 00 00 00' # Mod: 1, disp8: 0
 test_encoding 'leaq 144(%r15), %r9' '4d 8d 8f 90 00 00 00'
 
+# leaq id(%rip), %r64
+test_encoding 'leaq id(%rip), %rax' '48 8d 05 00 00 00 00'
+test_encoding 'leaq id(%rip), %rsp' '48 8d 25 00 00 00 00'
+test_encoding 'leaq id(%rip), %rdi' '48 8d 3d 00 00 00 00'
+test_encoding 'leaq id(%rip), %r8' '4c 8d 05 00 00 00 00'
+test_encoding 'leaq id(%rip), %r12' '4c 8d 25 00 00 00 00'
+test_encoding 'leaq id(%rip), %r15' '4c 8d 3d 00 00 00 00'
+
 # addq
 test_encoding 'addq $42, %rdx' '48 81 c2 2a 00 00 00'
 test_encoding 'addq $42, (%rdx)' '48 81 02 2a 00 00 00'

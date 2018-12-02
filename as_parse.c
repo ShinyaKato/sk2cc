@@ -31,6 +31,13 @@ Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
   return op;
 }
 
+Op *op_rip_rel(char *ident, Token *token) {
+  Op *op = op_new(OP_MEM, token);
+  op->rip = true;
+  op->ident = ident;
+  return op;
+}
+
 Op *op_sym(char *ident, Token *token) {
   Op *op = op_new(OP_SYM, token);
   op->ident = ident;
@@ -155,7 +162,14 @@ static Vector *parse_ops(Token **token) {
 
       case TOK_IDENT: {
         char *sym = (*token++)->ident;
-        vector_push(ops, op_sym(sym, op_head));
+        if (*token && (*token)->type == TOK_LPAREN) {
+          token++;
+          EXPECT(*token++, TOK_RIP, "%rip is expected");
+          EXPECT(*token++, TOK_RPAREN, "')' is expected.");
+          vector_push(ops, op_rip_rel(sym, op_head));
+        } else {
+          vector_push(ops, op_sym(sym, op_head));
+        }
       }
       break;
 

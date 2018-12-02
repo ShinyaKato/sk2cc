@@ -1,5 +1,7 @@
 #include "as.h"
 
+extern Symbol *undef_symbol();
+
 typedef struct rel {
   int offset;
   char *ident;
@@ -78,24 +80,6 @@ static void gen_disp(Mod mod, int disp) {
   }
 }
 
-static void gen_ops(Reg reg, Op *rm) {
-  if (rm->type == OP_REG) {
-    gen_mod_rm(MOD_REG, reg, rm->regcode);
-  } else if (rm->type == OP_MEM) {
-    Mod mod = mod_mem(rm->disp, rm->base);
-    if (!rm->sib) {
-      gen_mod_rm(mod, reg, rm->base);
-      if (rm->base == SP || rm->base == R12) {
-        gen_sib(0, 4, rm->base);
-      }
-    } else {
-      gen_mod_rm(mod, reg, 4);
-      gen_sib(rm->scale, rm->index, rm->base);
-    }
-    gen_disp(mod, rm->disp);
-  }
-}
-
 static void gen_imm8(unsigned char imm) {
   binary_push(text, (imm >> 0) & 0xff);
 }
@@ -112,8 +96,6 @@ static void gen_imm32(unsigned int imm) {
   binary_push(text, (imm >> 24) & 0xff);
 }
 
-extern Symbol *undef_symbol();
-
 static void gen_rel32(char *ident) {
   Symbol *symbol = map_lookup(symbols, ident);
   if (!symbol) {
@@ -122,6 +104,29 @@ static void gen_rel32(char *ident) {
   vector_push(rels, rel_new(text->length, ident));
 
   gen_imm32(0);
+}
+
+static void gen_ops(Reg reg, Op *rm) {
+  if (rm->type == OP_REG) {
+    gen_mod_rm(MOD_REG, reg, rm->regcode);
+  } else if (rm->type == OP_MEM) {
+    if (!rm->rip) {
+      Mod mod = mod_mem(rm->disp, rm->base);
+      if (!rm->sib) {
+        gen_mod_rm(mod, reg, rm->base);
+        if (rm->base == SP || rm->base == R12) {
+          gen_sib(0, 4, rm->base);
+        }
+      } else {
+        gen_mod_rm(mod, reg, 4);
+        gen_sib(rm->scale, rm->index, rm->base);
+      }
+      gen_disp(mod, rm->disp);
+    } else {
+      gen_mod_rm(0, reg, 5);
+      gen_rel32(rm->ident);
+    }
+  }
 }
 
 static void gen_push(Inst *inst) {

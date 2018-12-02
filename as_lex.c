@@ -72,9 +72,13 @@ Vector *tokenize(char *file, Vector *source) {
         while (isalnum(line[column])) {
           string_push(text, line[column++]);
         }
-        token->type = TOK_REG;
-        token->regtype = regtype(text->buffer, token);
-        token->regcode = regcode(text->buffer, token);
+        if (strcmp(text->buffer, "rip") == 0) {
+          token->type = TOK_RIP;
+        } else {
+          token->type = TOK_REG;
+          token->regtype = regtype(text->buffer, token);
+          token->regcode = regcode(text->buffer, token);
+        }
       } else if (c == '+' || c == '-' || isdigit(c)) {
         int sign = c == '-' ? -1 : 1;
         int num = isdigit(c) ? (c - '0') : 0;

@@ -74,6 +74,7 @@ typedef enum reg {
 
 typedef enum token_type {
   TOK_IDENT,
+  TOK_RIP,
   TOK_REG,
   TOK_NUM,
   TOK_IMM,
@@ -114,6 +115,7 @@ typedef struct op {
   OpType type;
   RegType regtype;
   Reg regcode;
+  bool rip;
   bool sib;
   Scale scale;
   Reg index;
