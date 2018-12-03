@@ -78,6 +78,7 @@ typedef enum token_type {
   TOK_REG,
   TOK_NUM,
   TOK_IMM,
+  TOK_STR,
   TOK_COMMA,
   TOK_LPAREN,
   TOK_RPAREN,
@@ -91,6 +92,8 @@ typedef struct token {
   Reg regcode;
   int num;
   unsigned int imm;
+  int length;
+  char *string;
   char *file;
   int lineno;
   int column;
@@ -162,6 +165,7 @@ typedef enum inst_type {
   INST_CALL,
   INST_LEAVE,
   INST_RET,
+  DATA_BYTES,
 } InstType;
 
 typedef enum inst_suffix {
@@ -177,6 +181,7 @@ typedef struct inst {
   Op *op;
   Op *src;
   Op *dest;
+  Binary *bytes;
   Token *token;
 } Inst;
 

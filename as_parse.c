@@ -75,6 +75,14 @@ Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token
   return inst;
 }
 
+Inst *data_bytes(Binary *bytes, Token *token) {
+  Inst *inst = (Inst *) calloc(1, sizeof(Inst));
+  inst->type = DATA_BYTES;
+  inst->bytes = bytes;
+  inst->token = token;
+  return inst;
+}
+
 Symbol *symbol_new(int inst) {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   symbol->global = false;
@@ -1199,6 +1207,21 @@ Unit *parse(Vector *lines) {
       } else {
         map_put(symbols, ident, undef_symbol());
       }
+    } else if (strcmp(token[0]->ident, ".ascii") == 0) {
+      if (!token[1]) {
+        ERROR(token[0], "'.ascii' directive expects string literal.");
+      }
+      EXPECT(token[1], TOK_STR, "'.ascii' directive expects string literal.");
+      if (token[2]) {
+        ERROR(token[0], "invalid directive.");
+      }
+      int length = token[1]->length;
+      char *string = token[1]->string;
+      Binary *bytes = binary_new();
+      for (int i = 0; i < length; i++) {
+        binary_push(bytes, string[i]);
+      }
+      vector_push(insts, data_bytes(bytes, token[0]));
     } else {
       vector_push(insts, parse_inst(token));
     }

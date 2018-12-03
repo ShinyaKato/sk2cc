@@ -1302,6 +1302,12 @@ static void gen_ret(Inst *inst) {
   gen_opcode(0xc3);
 }
 
+static void gen_data_bytes(Inst *inst) {
+  for (int i = 0; i < inst->bytes->length; i++) {
+    binary_push(text, inst->bytes->buffer[i]);
+  }
+}
+
 static void gen_text() {
   for (int i = 0; i < insts->length; i++) {
     Inst *inst = insts->array[i];
@@ -1412,6 +1418,9 @@ static void gen_text() {
         break;
       case INST_RET:
         gen_ret(inst);
+        break;
+      case DATA_BYTES:
+        gen_data_bytes(inst);
         break;
     }
   }

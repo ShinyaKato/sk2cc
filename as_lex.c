@@ -97,6 +97,29 @@ Vector *tokenize(char *file, Vector *source) {
         }
         token->type = TOK_IMM;
         token->imm = imm;
+      } else if (c == '"') {
+        String *text = string_new();
+        while (1) {
+          char c = line[column++];
+          if (c == '"') break;
+          if (c == '\\') {
+            switch (line[column++]) {
+              case 'n':
+                string_push(text, '\n');
+                break;
+              case '0':
+                string_push(text, '\0');
+                break;
+              default:
+                ERROR(token, "invalid escape character.");
+            }
+          } else {
+            string_push(text, c);
+          }
+        }
+        token->type = TOK_STR;
+        token->length = text->length;
+        token->string = text->buffer;
       } else if (c == ',') {
         token->type = TOK_COMMA;
       } else if (c == '(') {
