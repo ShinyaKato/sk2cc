@@ -92,13 +92,31 @@ typedef struct token {
   Reg regcode;
   int num;
   unsigned int imm;
-  int length;
   char *string;
+  int length;
   char *file;
   int lineno;
   int column;
   char *line;
 } Token;
+
+typedef struct label {
+  char *ident;
+  Token *token;
+} Label;
+
+typedef enum dir_type {
+  DIR_GLOBAL,
+  DIR_ASCII,
+} DirType;
+
+typedef struct dir {
+  DirType type;
+  char *ident;
+  char *string;
+  int length;
+  Token *token;
+} Dir;
 
 typedef enum scale {
   SCALE1 = 0,
@@ -165,7 +183,6 @@ typedef enum inst_type {
   INST_CALL,
   INST_LEAVE,
   INST_RET,
-  DATA_BYTES,
 } InstType;
 
 typedef enum inst_suffix {
@@ -181,29 +198,54 @@ typedef struct inst {
   Op *op;
   Op *src;
   Op *dest;
-  Binary *bytes;
   Token *token;
 } Inst;
 
+typedef enum stmt_type {
+  STMT_LABEL,
+  STMT_DIR,
+  STMT_INST,
+} StmtType;
+
+typedef struct stmt {
+  StmtType type;
+  Label *label;
+  Dir *dir;
+  Inst *inst;
+} Stmt;
+
+typedef struct reloc {
+  int offset;
+  char *ident;
+} Reloc;
+
 typedef struct symbol {
   bool global;
-  bool undef;
-  int inst;
+  int section;
+  int offset;
 } Symbol;
 
-typedef struct unit {
-  Vector *insts;
-  Map *symbols;
-} Unit;
-
-typedef struct section {
+typedef struct trans_unit {
   Binary *text;
-  Binary *symtab;
-  String *strtab;
-  Binary *rela_text;
-} Section;
+  Vector *relocs;
+  Map *symbols;
+} TransUnit;
 
 extern noreturn void errorf(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
+
+extern Vector *scan(char *file);
+extern Vector *tokenize(char *file, Vector *source);
+extern Vector *parse(Vector *lines);
+extern TransUnit *encode(Vector *stmts);
+extern void gen_obj(TransUnit *trans_unit, char *output);
+
+#define SHNUM 6
+#define UNDEF 0
+#define TEXT 1
+#define SYMTAB 2
+#define STRTAB 3
+#define RELA_TEXT 4
+#define SHSTRTAB 5
 
 #define ERROR(token, ...) \
   do { \

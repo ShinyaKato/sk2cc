@@ -1,5 +1,32 @@
 #include "as.h"
 
+Label *label_new(char *ident, Token *token) {
+  Label *label = (Label *) calloc(1, sizeof(Label));
+  label->ident = ident;
+  label->token = token;
+  return label;
+}
+
+Dir *dir_new(DirType type, Token *token) {
+  Dir *dir = (Dir *) calloc(1, sizeof(Dir));
+  dir->type = type;
+  dir->token = token;
+  return dir;
+}
+
+Dir *dir_global(char *ident, Token *token) {
+  Dir *dir = dir_new(DIR_GLOBAL, token);
+  dir->ident = ident;
+  return dir;
+}
+
+Dir *dir_ascii(char *string, int length, Token *token) {
+  Dir *dir = dir_new(DIR_ASCII, token);
+  dir->string = string;
+  dir->length = length;
+  return dir;
+}
+
 Op *op_new(OpType type, Token *token) {
   Op *op = (Op *) calloc(1, sizeof(Op));
   op->type = type;
@@ -75,27 +102,28 @@ Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token
   return inst;
 }
 
-Inst *data_bytes(Binary *bytes, Token *token) {
-  Inst *inst = (Inst *) calloc(1, sizeof(Inst));
-  inst->type = DATA_BYTES;
-  inst->bytes = bytes;
-  inst->token = token;
-  return inst;
+Stmt *stmt_new(StmtType type) {
+  Stmt *stmt = (Stmt *) calloc(1, sizeof(Stmt));
+  stmt->type = type;
+  return stmt;
 }
 
-Symbol *symbol_new(int inst) {
-  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
-  symbol->global = false;
-  symbol->undef = false;
-  symbol->inst = inst;
-  return symbol;
+Stmt *stmt_label(Label *label) {
+  Stmt *stmt = stmt_new(STMT_LABEL);
+  stmt->label = label;
+  return stmt;
 }
 
-Symbol *undef_symbol() {
-  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
-  symbol->global = true;
-  symbol->undef = true;
-  return symbol;
+Stmt *stmt_dir(Dir *dir) {
+  Stmt *stmt = stmt_new(STMT_DIR);
+  stmt->dir = dir;
+  return stmt;
+}
+
+Stmt *stmt_inst(Inst *inst) {
+  Stmt *stmt = stmt_new(STMT_INST);
+  stmt->inst = inst;
+  return stmt;
 }
 
 #define EXPECT(token, expect_type, ...) \
@@ -999,6 +1027,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG16) {
       ERROR(dest->token, "operand type mismatched.");
     }
+
     return inst_op2(INST_CMP, INST_WORD, src, dest, inst);
   }
 
@@ -1167,9 +1196,8 @@ static Inst *parse_inst(Token **token) {
   ERROR(inst, "unknown instruction '%s'.", inst->ident);
 }
 
-Unit *parse(Vector *lines) {
-  Vector *insts = vector_new();
-  Map *symbols = map_new();
+Vector *parse(Vector *lines) {
+  Vector *stmts = vector_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->array[i];
@@ -1183,16 +1211,7 @@ Unit *parse(Vector *lines) {
         ERROR(token[2], "invalid symbol declaration.");
       }
       char *ident = token[0]->ident;
-      Symbol *symbol = map_lookup(symbols, ident);
-      if (symbol) {
-        if (!symbol->undef) {
-          ERROR(token[0], "duplicated symbol declaration: %s.", ident);
-        }
-        symbol->undef = false;
-        symbol->inst = insts->length;
-      } else {
-        map_put(symbols, ident, symbol_new(insts->length));
-      }
+      vector_push(stmts, stmt_label(label_new(ident, token[0])));
     } else if (strcmp(token[0]->ident, ".global") == 0) {
       if (!token[1] || token[1]->type != TOK_IDENT) {
         ERROR(token[0], "identifier is expected.");
@@ -1201,12 +1220,7 @@ Unit *parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       char *ident = token[1]->ident;
-      Symbol *symbol = map_lookup(symbols, ident);
-      if (symbol) {
-        symbol->global = true;
-      } else {
-        map_put(symbols, ident, undef_symbol());
-      }
+      vector_push(stmts, stmt_dir(dir_global(ident, token[1])));
     } else if (strcmp(token[0]->ident, ".ascii") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.ascii' directive expects string literal.");
@@ -1217,19 +1231,11 @@ Unit *parse(Vector *lines) {
       }
       int length = token[1]->length;
       char *string = token[1]->string;
-      Binary *bytes = binary_new();
-      for (int i = 0; i < length; i++) {
-        binary_push(bytes, string[i]);
-      }
-      vector_push(insts, data_bytes(bytes, token[0]));
+      vector_push(stmts, stmt_dir(dir_ascii(string, length, token[1])));
     } else {
-      vector_push(insts, parse_inst(token));
+      vector_push(stmts, stmt_inst(parse_inst(token)));
     }
   }
 
-  Unit *unit = (Unit *) calloc(1, sizeof(Unit));
-  unit->insts = insts;
-  unit->symbols = symbols;
-
-  return unit;
+  return stmts;
 }
