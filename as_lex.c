@@ -104,6 +104,12 @@ Vector *tokenize(char *file, Vector *source) {
           if (c == '"') break;
           if (c == '\\') {
             switch (line[column++]) {
+              case '"':
+                string_push(text, '"');
+                break;
+              case '\\':
+                string_push(text, '\\');
+                break;
               case 'n':
                 string_push(text, '\n');
                 break;
