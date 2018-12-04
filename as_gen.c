@@ -6,6 +6,7 @@
 
 static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current) {
   Binary *bin = binary_new();
+  int section_syms[SHNUM] = { 0, TEXT_SYM, 0, DATA_SYM, 0, 0, 0, 0 };
 
   for (int i = 0; i < section->relocs->length; i++) {
     Reloc *reloc = section->relocs->array[i];
@@ -16,24 +17,20 @@ static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current)
 
       Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
       rela->r_offset = reloc->offset;
-      rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
-      rela->r_addend = -4;
+      rela->r_info = ELF64_R_INFO(index, reloc->type);
+      rela->r_addend = reloc->addend;
 
       binary_write(bin, rela, sizeof(Elf64_Rela));
     } else if (symbol->section != current) {
       Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
       rela->r_offset = reloc->offset;
-      if (symbol->section == TEXT) {
-        rela->r_info = ELF64_R_INFO(TEXT_SYM, R_X86_64_PC32);
-      } else if (symbol->section == DATA) {
-        rela->r_info = ELF64_R_INFO(DATA_SYM, R_X86_64_PC32);
-      }
-      rela->r_addend = symbol->offset - 4;
+      rela->r_info = ELF64_R_INFO(section_syms[symbol->section], reloc->type);
+      rela->r_addend = symbol->offset + reloc->addend;
 
       binary_write(bin, rela, sizeof(Elf64_Rela));
     } else {
       int *rel32 = (int *) &section->bin->buffer[reloc->offset];
-      *rel32 = symbol->offset - reloc->offset - 4;
+      *rel32 = symbol->offset - reloc->offset + reloc->addend;
     }
   }
 

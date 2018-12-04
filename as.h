@@ -111,6 +111,7 @@ typedef enum dir_type {
   DIR_GLOBAL,
   DIR_ZERO,
   DIR_LONG,
+  DIR_QUAD,
   DIR_ASCII,
 } DirType;
 
@@ -222,6 +223,8 @@ typedef struct stmt {
 typedef struct reloc {
   int offset;
   char *ident;
+  int type;
+  int addend;
 } Reloc;
 
 typedef struct section {

@@ -1,9 +1,11 @@
 #include "as.h"
 
-Reloc *reloc_new(int offset, char *ident) {
+Reloc *reloc_new(int offset, char *ident, int type, int addend) {
   Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
   reloc->offset = offset;
   reloc->ident = ident;
+  reloc->type = type;
+  reloc->addend = addend;
   return reloc;
 }
 
@@ -86,6 +88,14 @@ static void gen_dir(Dir *dir) {
       binary_push(bin, (((unsigned int) dir->num) >> 8) & 0xff);
       binary_push(bin, (((unsigned int) dir->num) >> 16) & 0xff);
       binary_push(bin, (((unsigned int) dir->num) >> 24) & 0xff);
+    }
+    break;
+
+    case DIR_QUAD: {
+      vector_push(relocs, reloc_new(bin->length, dir->ident, R_X86_64_64, 0));
+      for (int i = 0; i < 8; i++) {
+        binary_push(bin, 0);
+      }
     }
     break;
 
@@ -173,7 +183,7 @@ static void gen_rel32(char *ident) {
   if (!symbol) {
     map_put(symbols, ident, symbol_new(true, UNDEF, 0));
   }
-  vector_push(relocs, reloc_new(bin->length, ident));
+  vector_push(relocs, reloc_new(bin->length, ident, R_X86_64_PC32, -4));
 
   gen_imm32(0);
 }
