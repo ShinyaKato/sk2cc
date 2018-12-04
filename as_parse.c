@@ -28,6 +28,12 @@ Dir *dir_global(char *ident, Token *token) {
   return dir;
 }
 
+Dir *dir_long(int num, Token *token) {
+  Dir *dir = dir_new(DIR_LONG, token);
+  dir->num = num;
+  return dir;
+}
+
 Dir *dir_ascii(char *string, int length, Token *token) {
   Dir *dir = dir_new(DIR_ASCII, token);
   dir->string = string;
@@ -1233,6 +1239,16 @@ Vector *parse(Vector *lines) {
       }
       char *ident = token[1]->ident;
       vector_push(stmts, stmt_dir(dir_global(ident, token[1])));
+    } else if (strcmp(token[0]->ident, ".long") == 0) {
+      if (!token[1]) {
+        ERROR(token[0], "'.long' directive expects integer constant.");
+      }
+      EXPECT(token[1], TOK_NUM, "'.long' directive expects integer constant.");
+      if (token[2]) {
+        ERROR(token[0], "invalid directive.");
+      }
+      int num = token[1]->num;
+      vector_push(stmts, stmt_dir(dir_long(num, token[0])));
     } else if (strcmp(token[0]->ident, ".ascii") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.ascii' directive expects string literal.");

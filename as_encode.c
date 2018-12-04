@@ -74,6 +74,13 @@ static void gen_dir(Dir *dir) {
     }
     break;
 
+    case DIR_LONG: {
+      binary_push(bin, (((unsigned int) dir->num) >> 0) & 0xff);
+      binary_push(bin, (((unsigned int) dir->num) >> 8) & 0xff);
+      binary_push(bin, (((unsigned int) dir->num) >> 16) & 0xff);
+      binary_push(bin, (((unsigned int) dir->num) >> 24) & 0xff);
+    }
+
     case DIR_ASCII: {
       for (int i = 0; i < dir->length; i++) {
         binary_push(bin, dir->string[i]);

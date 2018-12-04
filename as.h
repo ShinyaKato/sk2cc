@@ -109,12 +109,14 @@ typedef enum dir_type {
   DIR_TEXT,
   DIR_DATA,
   DIR_GLOBAL,
+  DIR_LONG,
   DIR_ASCII,
 } DirType;
 
 typedef struct dir {
   DirType type;
   char *ident;
+  int num;
   char *string;
   int length;
   Token *token;
