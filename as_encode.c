@@ -181,7 +181,7 @@ static void gen_imm32(unsigned int imm) {
 static void gen_rel32(char *ident) {
   Symbol *symbol = map_lookup(symbols, ident);
   if (!symbol) {
-    map_put(symbols, ident, symbol_new(true, UNDEF, 0));
+    map_put(symbols, ident, symbol_new(false, UNDEF, 0));
   }
   vector_push(relocs, reloc_new(bin->length, ident, R_X86_64_PC32, -4));
 

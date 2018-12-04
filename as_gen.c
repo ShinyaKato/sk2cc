@@ -12,7 +12,7 @@ static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current)
     Reloc *reloc = section->relocs->array[i];
     Symbol *symbol = map_lookup(symbols, reloc->ident);
 
-    if (symbol->global) {
+    if (symbol->global || symbol->section == UNDEF) {
       int index = (int) (intptr_t) map_lookup(gsyms, reloc->ident);
 
       Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
@@ -76,7 +76,7 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     char *ident = symbols->keys[i];
     Symbol *symbol = symbols->values[i];
 
-    if (symbol->global) {
+    if (symbol->global || symbol->section == UNDEF) {
       Elf64_Sym *sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
       sym->st_name = strtab->length;
       sym->st_info = ELF64_ST_INFO(STB_GLOBAL, STT_NOTYPE);
