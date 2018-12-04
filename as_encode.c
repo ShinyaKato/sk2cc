@@ -7,6 +7,13 @@ Reloc *reloc_new(int offset, char *ident) {
   return reloc;
 }
 
+Section *section_new() {
+  Section *section = (Section *) calloc(1, sizeof(Section));
+  section->bin = binary_new();
+  section->relocs = vector_new();
+  return section;
+}
+
 Symbol *symbol_new(bool global, int section, int offset) {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   symbol->global = global;
@@ -15,29 +22,86 @@ Symbol *symbol_new(bool global, int section, int offset) {
   return symbol;
 }
 
-static Binary *text;
+TransUnit *trans_unit_new() {
+  TransUnit *trans_unit = (TransUnit *) calloc(1, sizeof(TransUnit));
+  trans_unit->text = section_new();
+  trans_unit->data = section_new();
+  trans_unit->symbols = map_new();
+  return trans_unit;
+}
+
+static TransUnit *trans_unit;
+static Binary *bin;
 static Vector *relocs;
 static Map *symbols;
+int current;
+
+static void gen_label(Label *label) {
+  Symbol *symbol = map_lookup(symbols, label->ident);
+  if (!symbol) {
+    map_put(symbols, label->ident, symbol_new(false, current, bin->length));
+  } else if (symbol->section == 0) {
+    symbol->section = current;
+    symbol->offset = bin->length;
+  } else {
+    ERROR(label->token, "duplicated symbol declaration: %s.", label->ident);
+  }
+}
+
+static void gen_dir(Dir *dir) {
+  switch (dir->type) {
+    case DIR_TEXT: {
+      bin = trans_unit->text->bin;
+      relocs = trans_unit->text->relocs;
+      current = TEXT;
+    }
+    break;
+
+    case DIR_DATA: {
+      bin = trans_unit->data->bin;
+      relocs = trans_unit->data->relocs;
+      current = DATA;
+    }
+    break;
+
+    case DIR_GLOBAL: {
+      Symbol *symbol = map_lookup(symbols, dir->ident);
+      if (!symbol) {
+        map_put(symbols, dir->ident, symbol_new(true, UNDEF, 0));
+      } else {
+        symbol->global = true;
+      }
+    }
+    break;
+
+    case DIR_ASCII: {
+      for (int i = 0; i < dir->length; i++) {
+        binary_push(bin, dir->string[i]);
+      }
+    }
+    break;
+  }
+}
 
 static void gen_rex(bool w, Reg reg, Reg index, Reg base, bool required) {
   bool r = reg & 0x08;
   bool x = index & 0x08;
   bool b = base & 0x08;
   if (required || w || r || x || b) {
-    binary_push(text, 0x40 | (w << 3) | (r << 2) | (x << 1) | b);
+    binary_push(bin, 0x40 | (w << 3) | (r << 2) | (x << 1) | b);
   }
 }
 
 static void gen_prefix(Byte opcode) {
-  binary_push(text, opcode);
+  binary_push(bin, opcode);
 }
 
 static void gen_opcode(Byte opcode) {
-  binary_push(text, opcode);
+  binary_push(bin, opcode);
 }
 
 static void gen_opcode_reg(Byte opcode, Reg reg) {
-  binary_push(text, opcode | (reg & 0x07));
+  binary_push(bin, opcode | (reg & 0x07));
 }
 
 typedef enum mod {
@@ -55,38 +119,38 @@ static Mod mod_mem(int disp, Reg base) {
 }
 
 static void gen_mod_rm(Mod mod, Reg reg, Reg rm) {
-  binary_push(text, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
+  binary_push(bin, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
 }
 
 static void gen_sib(Scale scale, Reg index, Reg base) {
-  binary_push(text, ((scale & 0x03) << 6) | ((index & 0x07) << 3) | (base & 0x07));
+  binary_push(bin, ((scale & 0x03) << 6) | ((index & 0x07) << 3) | (base & 0x07));
 }
 
 static void gen_disp(Mod mod, int disp) {
   if (mod == MOD_DISP8) {
-    binary_push(text, (unsigned char) disp);
+    binary_push(bin, (unsigned char) disp);
   } else if (mod == MOD_DISP32) {
-    binary_push(text, ((unsigned int) disp >> 0) & 0xff);
-    binary_push(text, ((unsigned int) disp >> 8) & 0xff);
-    binary_push(text, ((unsigned int) disp >> 16) & 0xff);
-    binary_push(text, ((unsigned int) disp >> 24) & 0xff);
+    binary_push(bin, ((unsigned int) disp >> 0) & 0xff);
+    binary_push(bin, ((unsigned int) disp >> 8) & 0xff);
+    binary_push(bin, ((unsigned int) disp >> 16) & 0xff);
+    binary_push(bin, ((unsigned int) disp >> 24) & 0xff);
   }
 }
 
 static void gen_imm8(unsigned char imm) {
-  binary_push(text, (imm >> 0) & 0xff);
+  binary_push(bin, (imm >> 0) & 0xff);
 }
 
 static void gen_imm16(unsigned short imm) {
-  binary_push(text, (imm >> 0) & 0xff);
-  binary_push(text, (imm >> 8) & 0xff);
+  binary_push(bin, (imm >> 0) & 0xff);
+  binary_push(bin, (imm >> 8) & 0xff);
 }
 
 static void gen_imm32(unsigned int imm) {
-  binary_push(text, (imm >> 0) & 0xff);
-  binary_push(text, (imm >> 8) & 0xff);
-  binary_push(text, (imm >> 16) & 0xff);
-  binary_push(text, (imm >> 24) & 0xff);
+  binary_push(bin, (imm >> 0) & 0xff);
+  binary_push(bin, (imm >> 8) & 0xff);
+  binary_push(bin, (imm >> 16) & 0xff);
+  binary_push(bin, (imm >> 24) & 0xff);
 }
 
 static void gen_rel32(char *ident) {
@@ -94,7 +158,7 @@ static void gen_rel32(char *ident) {
   if (!symbol) {
     map_put(symbols, ident, symbol_new(true, UNDEF, 0));
   }
-  vector_push(relocs, reloc_new(text->length, ident));
+  vector_push(relocs, reloc_new(bin->length, ident));
 
   gen_imm32(0);
 }
@@ -1295,39 +1359,6 @@ static void gen_ret(Inst *inst) {
   gen_opcode(0xc3);
 }
 
-static void gen_label(Label *label) {
-  Symbol *symbol = map_lookup(symbols, label->ident);
-  if (!symbol) {
-    map_put(symbols, label->ident, symbol_new(false, TEXT, text->length));
-  } else if (symbol->section == 0) {
-    symbol->section = 1;
-    symbol->offset = text->length;
-  } else {
-    ERROR(label->token, "duplicated symbol declaration: %s.", label->ident);
-  }
-}
-
-static void gen_dir(Dir *dir) {
-  switch (dir->type) {
-    case DIR_GLOBAL: {
-      Symbol *symbol = map_lookup(symbols, dir->ident);
-      if (!symbol) {
-        map_put(symbols, dir->ident, symbol_new(true, UNDEF, 0));
-      } else {
-        symbol->global = true;
-      }
-    }
-    break;
-
-    case DIR_ASCII: {
-      for (int i = 0; i < dir->length; i++) {
-        binary_push(text, dir->string[i]);
-      }
-    }
-    break;
-  }
-}
-
 static void gen_inst(Inst *inst) {
   switch (inst->type) {
     case INST_PUSH: gen_push(inst); break;
@@ -1369,9 +1400,11 @@ static void gen_inst(Inst *inst) {
 }
 
 TransUnit *encode(Vector *stmts) {
-  text = binary_new();
-  relocs = vector_new();
-  symbols = map_new();
+  trans_unit = trans_unit_new();
+  bin = trans_unit->text->bin;
+  relocs = trans_unit->text->relocs;
+  symbols = trans_unit->symbols;
+  current = TEXT;
 
   for (int i = 0; i < stmts->length; i++) {
     Stmt *stmt = stmts->array[i];
@@ -1381,11 +1414,6 @@ TransUnit *encode(Vector *stmts) {
       case STMT_INST: gen_inst(stmt->inst); break;
     }
   }
-
-  TransUnit *trans_unit = (TransUnit *) calloc(1, sizeof(TransUnit));
-  trans_unit->text = text;
-  trans_unit->relocs = relocs;
-  trans_unit->symbols = symbols;
 
   return trans_unit;
 }

@@ -14,6 +14,14 @@ Dir *dir_new(DirType type, Token *token) {
   return dir;
 }
 
+Dir *dir_text(Token *token) {
+  return dir_new(DIR_TEXT, token);
+}
+
+Dir *dir_data(Token *token) {
+  return dir_new(DIR_DATA, token);
+}
+
 Dir *dir_global(char *ident, Token *token) {
   Dir *dir = dir_new(DIR_GLOBAL, token);
   dir->ident = ident;
@@ -1212,6 +1220,10 @@ Vector *parse(Vector *lines) {
       }
       char *ident = token[0]->ident;
       vector_push(stmts, stmt_label(label_new(ident, token[0])));
+    } else if (strcmp(token[0]->ident, ".text") == 0) {
+      vector_push(stmts, stmt_dir(dir_text(token[0])));
+    } else if (strcmp(token[0]->ident, ".data") == 0) {
+      vector_push(stmts, stmt_dir(dir_data(token[0])));
     } else if (strcmp(token[0]->ident, ".global") == 0) {
       if (!token[1] || token[1]->type != TOK_IDENT) {
         ERROR(token[0], "identifier is expected.");

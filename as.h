@@ -106,6 +106,8 @@ typedef struct label {
 } Label;
 
 typedef enum dir_type {
+  DIR_TEXT,
+  DIR_DATA,
   DIR_GLOBAL,
   DIR_ASCII,
 } DirType;
@@ -219,6 +221,11 @@ typedef struct reloc {
   char *ident;
 } Reloc;
 
+typedef struct section {
+  Binary *bin;
+  Vector *relocs;
+} Section;
+
 typedef struct symbol {
   bool global;
   int section;
@@ -226,8 +233,8 @@ typedef struct symbol {
 } Symbol;
 
 typedef struct trans_unit {
-  Binary *text;
-  Vector *relocs;
+  Section *text;
+  Section *data;
   Map *symbols;
 } TransUnit;
 
@@ -239,13 +246,15 @@ extern Vector *parse(Vector *lines);
 extern TransUnit *encode(Vector *stmts);
 extern void gen_obj(TransUnit *trans_unit, char *output);
 
-#define SHNUM 6
+#define SHNUM 8
 #define UNDEF 0
 #define TEXT 1
-#define SYMTAB 2
-#define STRTAB 3
-#define RELA_TEXT 4
-#define SHSTRTAB 5
+#define RELA_TEXT 2
+#define DATA 3
+#define RELA_DATA 4
+#define SYMTAB 5
+#define STRTAB 6
+#define SHSTRTAB 7
 
 #define ERROR(token, ...) \
   do { \

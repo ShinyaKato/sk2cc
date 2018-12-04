@@ -1,16 +1,78 @@
 #include "as.h"
 
+#define LOCAL_SYMS 3
+#define TEXT_SYM 1
+#define DATA_SYM 2
+
+static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current) {
+  Binary *bin = binary_new();
+
+  for (int i = 0; i < section->relocs->length; i++) {
+    Reloc *reloc = section->relocs->array[i];
+    Symbol *symbol = map_lookup(symbols, reloc->ident);
+
+    if (symbol->global) {
+      int index = (int) (intptr_t) map_lookup(gsyms, reloc->ident);
+
+      Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
+      rela->r_offset = reloc->offset;
+      rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
+      rela->r_addend = -4;
+
+      binary_write(bin, rela, sizeof(Elf64_Rela));
+    } else if (symbol->section != current) {
+      Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
+      rela->r_offset = reloc->offset;
+      if (symbol->section == TEXT) {
+        rela->r_info = ELF64_R_INFO(TEXT_SYM, R_X86_64_PC32);
+      } else if (symbol->section == DATA) {
+        rela->r_info = ELF64_R_INFO(DATA_SYM, R_X86_64_PC32);
+      }
+      rela->r_addend = symbol->offset - 4;
+
+      binary_write(bin, rela, sizeof(Elf64_Rela));
+    } else {
+      int *rel32 = (int *) &section->bin->buffer[reloc->offset];
+      *rel32 = symbol->offset - reloc->offset - 4;
+    }
+  }
+
+  return bin;
+}
+
 void gen_obj(TransUnit *trans_unit, char *output) {
-  Binary *text = trans_unit->text;
-  Vector *relocs = trans_unit->relocs;
+  Section *text = trans_unit->text;
+  Section *data = trans_unit->data;
   Map *symbols = trans_unit->symbols;
+  Map *gsyms = map_new();
 
   // .symtab and .strtab
   Binary *symtab = binary_new();
   String *strtab = string_new();
-  Map *gsyms = map_new();
 
   binary_write(symtab, calloc(1, sizeof(Elf64_Sym)), sizeof(Elf64_Sym));
+  string_push(strtab, '\0');
+
+  Elf64_Sym *text_sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
+  text_sym->st_name = strtab->length;
+  text_sym->st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
+  text_sym->st_other = STV_DEFAULT;
+  text_sym->st_shndx = TEXT;
+  text_sym->st_value = 0;
+
+  binary_write(symtab, text_sym, sizeof(Elf64_Sym));
+  string_write(strtab, ".text");
+  string_push(strtab, '\0');
+
+  Elf64_Sym *data_sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
+  data_sym->st_name = strtab->length;
+  data_sym->st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
+  data_sym->st_other = STV_DEFAULT;
+  data_sym->st_shndx = DATA;
+  data_sym->st_value = 0;
+
+  binary_write(symtab, data_sym, sizeof(Elf64_Sym));
+  string_write(strtab, ".data");
   string_push(strtab, '\0');
 
   for (int i = 0; i < symbols->count; i++) {
@@ -28,37 +90,26 @@ void gen_obj(TransUnit *trans_unit, char *output) {
       binary_write(symtab, sym, sizeof(Elf64_Sym));
       string_write(strtab, ident);
       string_push(strtab, '\0');
-      map_put(gsyms, ident, (void *) (intptr_t) (gsyms->count + 1));
+      map_put(gsyms, ident, (void *) (intptr_t) (gsyms->count + LOCAL_SYMS));
     }
   }
 
-  // .reloc.text
-  Binary *rela_text = binary_new();
-
-  for (int i = 0; i < relocs->length; i++) {
-    Reloc *reloc = relocs->array[i];
-    Symbol *symbol = map_lookup(symbols, reloc->ident);
-
-    if (symbol->global) {
-      int index = (int) (intptr_t) map_lookup(gsyms, reloc->ident);
-
-      Elf64_Rela *rela = (Elf64_Rela *) calloc(1, sizeof(Elf64_Rela));
-      rela->r_offset = reloc->offset;
-      rela->r_info = ELF64_R_INFO(index, R_X86_64_PC32);
-      rela->r_addend = -4;
-
-      binary_write(rela_text, rela, sizeof(Elf64_Rela));
-    } else {
-      int *rel32 = (int *) &text->buffer[reloc->offset];
-      *rel32 = symbol->offset - (reloc->offset + 4);
-    }
-  }
+  // .reloc.text and .rela.data
+  Binary *rela_text = gen_rela(text, symbols, gsyms, TEXT);
+  Binary *rela_data = gen_rela(data, symbols, gsyms, DATA);
 
   // .shstrtab
   String *shstrtab = string_new();
   int names[SHNUM];
   char *sections[SHNUM] = {
-    "", ".text", ".symtab", ".strtab", ".rela.text", ".shstrtab"
+    "",
+    ".text",
+    ".rela.text",
+    ".data",
+    ".rela.data",
+    ".symtab",
+    ".strtab",
+    ".shstrtab",
   };
   for (int i = 0; i < SHNUM; i++) {
     names[i] = shstrtab->length;
@@ -75,25 +126,8 @@ void gen_obj(TransUnit *trans_unit, char *output) {
   shdrtab[TEXT].sh_type = SHT_PROGBITS;
   shdrtab[TEXT].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
   shdrtab[TEXT].sh_offset = offset;
-  shdrtab[TEXT].sh_size = text->length;
-  offset += text->length;
-
-  // section header for .symtab
-  shdrtab[SYMTAB].sh_name = names[SYMTAB];
-  shdrtab[SYMTAB].sh_type = SHT_SYMTAB;
-  shdrtab[SYMTAB].sh_offset = offset;
-  shdrtab[SYMTAB].sh_size = symtab->length;
-  shdrtab[SYMTAB].sh_link = STRTAB;
-  shdrtab[SYMTAB].sh_info = 1;
-  shdrtab[SYMTAB].sh_entsize = sizeof(Elf64_Sym);
-  offset += symtab->length;
-
-  // section header for .strtab
-  shdrtab[STRTAB].sh_name = names[STRTAB];
-  shdrtab[STRTAB].sh_type = SHT_STRTAB;
-  shdrtab[STRTAB].sh_offset = offset;
-  shdrtab[STRTAB].sh_size = strtab->length;
-  offset += strtab->length;
+  shdrtab[TEXT].sh_size = text->bin->length;
+  offset += text->bin->length;
 
   // section header for .rela.text
   if (rela_text->length > 0) {
@@ -107,6 +141,44 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     shdrtab[RELA_TEXT].sh_entsize = sizeof(Elf64_Rela);
     offset += rela_text->length;
   }
+
+  // section header for .data
+  shdrtab[DATA].sh_name = names[DATA];
+  shdrtab[DATA].sh_type = SHT_PROGBITS;
+  shdrtab[DATA].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+  shdrtab[DATA].sh_offset = offset;
+  shdrtab[DATA].sh_size = data->bin->length;
+  offset += data->bin->length;
+
+  // section header for .rela.data
+  if (rela_data->length > 0) {
+    shdrtab[RELA_DATA].sh_name = names[RELA_DATA];
+    shdrtab[RELA_DATA].sh_type = SHT_RELA;
+    shdrtab[RELA_DATA].sh_flags = SHF_INFO_LINK;
+    shdrtab[RELA_DATA].sh_offset = offset;
+    shdrtab[RELA_DATA].sh_size = rela_data->length;
+    shdrtab[RELA_DATA].sh_link = SYMTAB;
+    shdrtab[RELA_DATA].sh_info = DATA;
+    shdrtab[RELA_DATA].sh_entsize = sizeof(Elf64_Rela);
+    offset += rela_data->length;
+  }
+
+  // section header for .symtab
+  shdrtab[SYMTAB].sh_name = names[SYMTAB];
+  shdrtab[SYMTAB].sh_type = SHT_SYMTAB;
+  shdrtab[SYMTAB].sh_offset = offset;
+  shdrtab[SYMTAB].sh_size = symtab->length;
+  shdrtab[SYMTAB].sh_link = STRTAB;
+  shdrtab[SYMTAB].sh_info = LOCAL_SYMS;
+  shdrtab[SYMTAB].sh_entsize = sizeof(Elf64_Sym);
+  offset += symtab->length;
+
+  // section header for .strtab
+  shdrtab[STRTAB].sh_name = names[STRTAB];
+  shdrtab[STRTAB].sh_type = SHT_STRTAB;
+  shdrtab[STRTAB].sh_offset = offset;
+  shdrtab[STRTAB].sh_size = strtab->length;
+  offset += strtab->length;
 
   // section header for .shstrtab
   shdrtab[SHSTRTAB].sh_name = names[SHSTRTAB];
@@ -142,10 +214,12 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     exit(1);
   }
   fwrite(ehdr, sizeof(Elf64_Ehdr), 1, out);
-  fwrite(text->buffer, text->length, 1, out);
+  fwrite(text->bin->buffer, text->bin->length, 1, out);
+  fwrite(rela_text->buffer, rela_text->length, 1, out);
+  fwrite(data->bin->buffer, data->bin->length, 1, out);
+  fwrite(rela_data->buffer, rela_data->length, 1, out);
   fwrite(symtab->buffer, symtab->length, 1, out);
   fwrite(strtab->buffer, strtab->length, 1, out);
-  fwrite(rela_text->buffer, rela_text->length, 1, out);
   fwrite(shstrtab->buffer, shstrtab->length, 1, out);
   fwrite(shdrtab, sizeof(Elf64_Shdr), SHNUM, out);
   fclose(out);
