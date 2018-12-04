@@ -28,6 +28,12 @@ Dir *dir_global(char *ident, Token *token) {
   return dir;
 }
 
+Dir *dir_zero(int num, Token *token) {
+  Dir *dir = dir_new(DIR_ZERO, token);
+  dir->num = num;
+  return dir;
+}
+
 Dir *dir_long(int num, Token *token) {
   Dir *dir = dir_new(DIR_LONG, token);
   dir->num = num;
@@ -1239,6 +1245,16 @@ Vector *parse(Vector *lines) {
       }
       char *ident = token[1]->ident;
       vector_push(stmts, stmt_dir(dir_global(ident, token[1])));
+    } else if (strcmp(token[0]->ident, ".zero") == 0) {
+      if (!token[1]) {
+        ERROR(token[0], "'.zero' directive expects integer constant.");
+      }
+      EXPECT(token[1], TOK_NUM, "'.zero' directive expects integer constant.");
+      if (token[2]) {
+        ERROR(token[0], "invalid directive.");
+      }
+      int num = token[1]->num;
+      vector_push(stmts, stmt_dir(dir_zero(num, token[0])));
     } else if (strcmp(token[0]->ident, ".long") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.long' directive expects integer constant.");

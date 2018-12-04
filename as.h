@@ -109,6 +109,7 @@ typedef enum dir_type {
   DIR_TEXT,
   DIR_DATA,
   DIR_GLOBAL,
+  DIR_ZERO,
   DIR_LONG,
   DIR_ASCII,
 } DirType;
