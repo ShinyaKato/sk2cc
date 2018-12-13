@@ -57,6 +57,7 @@ typedef struct node Node;
 
 typedef enum type_type TypeType;
 typedef struct type Type;
+typedef struct struct_member StructMember;
 
 typedef enum symbol_type SymbolType;
 typedef struct symbol Symbol;
@@ -246,15 +247,20 @@ struct type {
   Type *pointer_to;
   Type *array_of;
   int array_size;
-  Map *members, *offsets;
   Type *function_returning;
   Vector *params;
   bool ellipsis;
+  Map *members;
   int original_size;
   bool array_pointer;
   bool definition;
   bool external;
   bool incomplete;
+};
+
+struct struct_member {
+  Type *value_type;
+  int offset;
 };
 
 enum symbol_type {
@@ -296,8 +302,8 @@ extern Type *type_double();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_incomplete_array_of(Type *type);
-extern Type *type_struct(Vector *identifiers, Map *members);
 extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
+extern Type *type_struct(Vector *symbols);
 extern Type *type_convert(Type *type);
 extern void type_copy(Type *dest, Type *src);
 extern bool type_integer(Type *type);

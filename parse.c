@@ -536,8 +536,7 @@ Type *struct_or_union_specifier() {
     return map_lookup(tags, token->identifier);
   }
 
-  Vector *identifiers = vector_new();
-  Map *members = map_new();
+  Vector *symbols = vector_new();
   do {
     Type *specifier = type_specifier();
     do {
@@ -545,14 +544,13 @@ Type *struct_or_union_specifier() {
       if (symbol->value_type->incomplete) {
         error(symbol->token, "declaration with incomplete type.");
       }
-      vector_push(identifiers, symbol->identifier);
-      map_put(members, symbol->identifier, symbol->value_type);
+      vector_push(symbols, symbol);
     } while (read_token(tCOMMA));
     expect_token(tSEMICOLON);
   } while (!check_token(tRBRACE) && !check_token(tEND));
   expect_token(tRBRACE);
 
-  Type *type = type_struct(identifiers, members);
+  Type *type = type_struct(symbols);
   if (!token) return type;
 
   Type *dest = map_lookup(tags, token->identifier);

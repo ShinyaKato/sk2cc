@@ -5,6 +5,13 @@ Type *type_new() {
   return type;
 }
 
+StructMember *struct_member_new(Type *value_type, int offset) {
+  StructMember *member = (StructMember *) calloc(1, sizeof(StructMember));
+  member->value_type = value_type;
+  member->offset = offset;
+  return member;
+}
+
 Type *type_void() {
   Type *void_type = type_new();
   void_type->type = VOID;
@@ -148,21 +155,32 @@ Type *type_incomplete_array_of(Type *type) {
   return array;
 }
 
-Type *type_struct(Vector *identifiers, Map *members) {
-  Map *offsets = map_new();
+Type *type_function_returning(Type *returning, Vector *params, bool ellipsis) {
+  Type *function_type = type_new();
+  function_type->type = FUNCTION;
+  function_type->function_returning = returning;
+  function_type->params = params;
+  function_type->array_pointer = false;
+  function_type->definition = false;
+  function_type->incomplete = false;
+  function_type->ellipsis = ellipsis;
+  return function_type;
+}
+
+Type *type_struct(Vector *symbols) {
+  Map *members = map_new();
   int align = 0, size = 0;
 
-  for (int i = 0; i < identifiers->length; i++) {
-    char *identifier = identifiers->buffer[i];
-    Type *type = map_lookup(members, identifier);
+  for (int i = 0; i < symbols->length; i++) {
+    Symbol *symbol = symbols->buffer[i];
+    Type *type = symbol->value_type;
 
     if (size % type->align != 0) {
       size = size / type->align * type->align + type->align;
     }
 
-    int *offset = (int *) calloc(1, sizeof(int));
-    *offset = size;
-    map_put(offsets, identifier, offset);
+    StructMember *member = struct_member_new(type, size);
+    map_put(members, symbol->identifier, member);
 
     size += type->size;
     if (align < type->align) {
@@ -179,24 +197,11 @@ Type *type_struct(Vector *identifiers, Map *members) {
   struct_type->align = align;
   struct_type->size = size;
   struct_type->members = members;
-  struct_type->offsets = offsets;
   struct_type->original_size = size;
   struct_type->array_pointer = false;
   struct_type->definition = false;
   struct_type->incomplete = false;
   return struct_type;
-}
-
-Type *type_function_returning(Type *returning, Vector *params, bool ellipsis) {
-  Type *function_type = type_new();
-  function_type->type = FUNCTION;
-  function_type->function_returning = returning;
-  function_type->params = params;
-  function_type->array_pointer = false;
-  function_type->definition = false;
-  function_type->incomplete = false;
-  function_type->ellipsis = ellipsis;
-  return function_type;
 }
 
 Type *type_convert(Type *type) {
@@ -217,7 +222,6 @@ void type_copy(Type *dest, Type *src) {
   dest->array_of = src->array_of;
   dest->array_size = src->array_size;
   dest->members = src->members;
-  dest->offsets = src->offsets;
   dest->original_size = src->original_size;
   dest->array_pointer = src->array_pointer;
   dest->definition = src->definition;

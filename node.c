@@ -102,19 +102,17 @@ Node *node_dot(Node *expr, char *member, Token *token) {
     error(token, "operand of . operator should have struct type.");
   }
 
-  Type *value_type = map_lookup(expr->value_type->members, member);
-  if (!value_type) {
+  StructMember *s_member = map_lookup(expr->value_type->members, member);
+  if (!s_member) {
     error(token, "undefined struct member: %s.", member);
   }
 
-  int *offset = map_lookup(expr->value_type->offsets, member);
-
   Node *node = node_new();
   node->type = DOT;
-  node->value_type = type_convert(value_type);
+  node->value_type = type_convert(s_member->value_type);
   node->expr = expr;
   node->member = member;
-  node->member_offset = *offset;
+  node->member_offset = s_member->offset;
   node->token = token;
   return node;
 }
