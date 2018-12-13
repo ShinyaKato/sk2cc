@@ -8,7 +8,7 @@ int main(void) {
 
   for (int i = 0; i < 64; i++) {
     assert(string->length == i);
-    assert(string->size == 64);
+    assert(string->capacity == 64);
 
     char c = 'a' + i % 26;
     string_push(string, c);
@@ -19,7 +19,7 @@ int main(void) {
 
   for (int i = 64; i < 128; i++) {
     assert(string->length == i);
-    assert(string->size == 128);
+    assert(string->capacity == 128);
 
     char c = 'a' + i % 26;
     string_push(string, c);
@@ -29,7 +29,7 @@ int main(void) {
   }
 
   assert(string->length == 128);
-  assert(string->size == 256);
+  assert(string->capacity == 256);
 
   return 0;
 }

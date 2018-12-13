@@ -4,7 +4,7 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 
 typedef struct string {
-  int size, length;
+  int capacity, length;
   char *buffer;
 } String;
 
