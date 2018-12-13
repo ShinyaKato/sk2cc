@@ -17,7 +17,5 @@ typedef struct map {
 } Map;
 
 extern Map *map_new();
-extern int map_count(Map *map);
 extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
-extern void map_clear();
