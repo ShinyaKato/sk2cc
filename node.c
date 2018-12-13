@@ -1,7 +1,7 @@
 #include "sk2cc.h"
 
 bool node_lvalue(Node *node) {
-  return node->type == IDENTIFIER || node->type == INDIRECT || node->type == DOT;
+  return node->nd_type == IDENTIFIER || node->nd_type == INDIRECT || node->nd_type == DOT;
 }
 
 Node *node_new() {
@@ -11,8 +11,8 @@ Node *node_new() {
 
 Node *node_int_const(int int_value, Token *token) {
   Node *node = node_new();
-  node->type = INT_CONST;
-  node->value_type = type_int();
+  node->nd_type = INT_CONST;
+  node->type = type_int();
   node->int_value = int_value;
   node->token = token;
   return node;
@@ -20,8 +20,8 @@ Node *node_int_const(int int_value, Token *token) {
 
 Node *node_float_const(double double_value, Token *token) {
   Node *node = node_new();
-  node->type = FLOAT_CONST;
-  node->value_type = type_double();
+  node->nd_type = FLOAT_CONST;
+  node->type = type_double();
   node->double_value = double_value;
   node->token = token;
   return node;
@@ -29,8 +29,8 @@ Node *node_float_const(double double_value, Token *token) {
 
 Node *node_string_literal(String *string_value, int string_label, Token *token) {
   Node *node = node_new();
-  node->type = STRING_LITERAL;
-  node->value_type = type_convert(type_array_of(type_char(), string_value->length));
+  node->nd_type = STRING_LITERAL;
+  node->type = type_convert(type_array_of(type_char(), string_value->length));
   node->string_value = string_value;
   node->string_label = string_label;
   node->token = token;
@@ -39,8 +39,8 @@ Node *node_string_literal(String *string_value, int string_label, Token *token) 
 
 Node *node_identifier(char *identifier, Symbol *symbol, Token *token) {
   Node *node = node_new();
-  node->type = IDENTIFIER;
-  node->value_type = symbol ? type_convert(symbol->value_type) : type_int();
+  node->nd_type = IDENTIFIER;
+  node->type = symbol ? type_convert(symbol->type) : type_int();
   node->identifier = identifier;
   node->symbol = symbol;
   node->token = token;
@@ -48,7 +48,7 @@ Node *node_identifier(char *identifier, Symbol *symbol, Token *token) {
 }
 
 Node *node_func_call(Node *expr, Vector *args, Token *token) {
-  if (expr->type != IDENTIFIER) {
+  if (expr->nd_type != IDENTIFIER) {
     error(token, "invalid function call.");
   }
 
@@ -57,9 +57,9 @@ Node *node_func_call(Node *expr, Vector *args, Token *token) {
   }
 
   if (expr->symbol) {
-    Vector *params = expr->value_type->params;
+    Vector *params = expr->type->params;
 
-    if (!expr->value_type->ellipsis) {
+    if (!expr->type->ellipsis) {
       if (args->length != params->length) {
         error(token, "number of parameters should be %d, but got %d.", params->length, args->length);
       }
@@ -72,25 +72,25 @@ Node *node_func_call(Node *expr, Vector *args, Token *token) {
     for (int i = 0; i < params->length; i++) {
       Node *arg = args->buffer[i];
       Symbol *param = params->buffer[i];
-      if (!type_same(arg->value_type, param->value_type)) {
+      if (!type_same(arg->type, param->type)) {
         error(token, "parameter types and argument types should be the same.");
       }
     }
   }
 
-  Type *value_type;
+  Type *type;
   if (expr->symbol) {
-    if (expr->value_type->type != FUNCTION) {
+    if (expr->type->ty_type != FUNCTION) {
       error(token, "operand of function call should have function type.");
     }
-    value_type = expr->value_type->function_returning;
+    type = expr->type->function_returning;
   } else {
-    value_type = type_int();
+    type = type_int();
   }
 
   Node *node = node_new();
-  node->type = FUNC_CALL;
-  node->value_type = value_type;
+  node->nd_type = FUNC_CALL;
+  node->type = type;
   node->expr = expr;
   node->args = args;
   node->token = token;
@@ -98,18 +98,18 @@ Node *node_func_call(Node *expr, Vector *args, Token *token) {
 }
 
 Node *node_dot(Node *expr, char *member, Token *token) {
-  if (expr->value_type->type != STRUCT) {
+  if (expr->type->ty_type != STRUCT) {
     error(token, "operand of . operator should have struct type.");
   }
 
-  StructMember *s_member = map_lookup(expr->value_type->members, member);
+  StructMember *s_member = map_lookup(expr->type->members, member);
   if (!s_member) {
     error(token, "undefined struct member: %s.", member);
   }
 
   Node *node = node_new();
-  node->type = DOT;
-  node->value_type = type_convert(s_member->value_type);
+  node->nd_type = DOT;
+  node->type = type_convert(s_member->type);
   node->expr = expr;
   node->member = member;
   node->member_offset = s_member->offset;
@@ -121,13 +121,13 @@ Node *node_post_inc(Node *expr, Token *token) {
   Symbol *sym_addr = symbol_new();
   sym_addr->token = token;
   sym_addr->identifier = NULL;
-  sym_addr->value_type = type_pointer_to(expr->value_type);
+  sym_addr->type = type_pointer_to(expr->type);
   symbol_put(NULL, sym_addr);
 
   Symbol *sym_val = symbol_new();
   sym_val->token = token;
   sym_val->identifier = NULL;
-  sym_val->value_type = expr->value_type;
+  sym_val->type = expr->type;
   symbol_put(NULL, sym_val);
 
   Node *addr_id = node_identifier(NULL, sym_addr, token);
@@ -145,13 +145,13 @@ Node *node_post_dec(Node *expr, Token *token) {
   Symbol *sym_addr = symbol_new();
   sym_addr->token = token;
   sym_addr->identifier = NULL;
-  sym_addr->value_type = type_pointer_to(expr->value_type);
+  sym_addr->type = type_pointer_to(expr->type);
   symbol_put(NULL, sym_addr);
 
   Symbol *sym_val = symbol_new();
   sym_val->token = token;
   sym_val->identifier = NULL;
-  sym_val->value_type = expr->value_type;
+  sym_val->type = expr->type;
   symbol_put(NULL, sym_val);
 
   Node *addr_id = node_identifier(NULL, sym_addr, token);
@@ -165,10 +165,10 @@ Node *node_post_dec(Node *expr, Token *token) {
   return node_comma(node_comma(node_comma(addr_assign, val_assign, token), dec, token), val_id, token);
 }
 
-Node *node_unary_expr(NodeType type, Type *value_type, Node *expr, Token *token) {
+Node *node_unary_expr(NodeType nd_type, Type *type, Node *expr, Token *token) {
   Node *node = node_new();
+  node->nd_type = nd_type;
   node->type = type;
-  node->value_type = value_type;
   node->expr = expr;
   node->token = token;
   return node;
@@ -184,59 +184,59 @@ Node *node_pre_dec(Node *expr, Token *token) {
 
 Node *node_address(Node *expr, Token *token) {
   if (!node_lvalue(expr)) {
-    error(token, "operand of %s operator should be lvalue.", token->type_name);
+    error(token, "operand of %s operator should be lvalue.", token->tk_name);
   }
 
-  return node_unary_expr(ADDRESS, type_pointer_to(expr->value_type), expr, token);
+  return node_unary_expr(ADDRESS, type_pointer_to(expr->type), expr, token);
 }
 
 Node *node_indirect(Node *expr, Token *token) {
-  if (!type_pointer(expr->value_type)) {
-    error(token, "operand of %s operator should have pointer type.", token->type_name);
+  if (!type_pointer(expr->type)) {
+    error(token, "operand of %s operator should have pointer type.", token->tk_name);
   }
 
-  return node_unary_expr(INDIRECT, type_convert(expr->value_type->pointer_to), expr, token);
+  return node_unary_expr(INDIRECT, type_convert(expr->type->pointer_to), expr, token);
 }
 
-Node *node_unary_arithmetic(NodeType type, Node *expr, Token *token) {
-  Type *value_type;
-  if (type == UPLUS || type == UMINUS) {
-    if (!type_integer(expr->value_type)) {
-      if (type == UPLUS) {
+Node *node_unary_arithmetic(NodeType nd_type, Node *expr, Token *token) {
+  Type *type;
+  if (nd_type == UPLUS || nd_type == UMINUS) {
+    if (!type_integer(expr->type)) {
+      if (nd_type == UPLUS) {
         error(token, "operand of unary + operator should have integer type.");
-      } else if (type == UMINUS) {
+      } else if (nd_type == UMINUS) {
         error(token, "operand of unary - operator should have integer type.");
       }
     }
-    value_type = expr->value_type;
-  } else if (type == NOT) {
-    if (!type_integer(expr->value_type)) {
+    type = expr->type;
+  } else if (nd_type == NOT) {
+    if (!type_integer(expr->type)) {
       error(token, "operand of ~ operator should have integer type.");
     }
-    value_type = type_int();
-  } else if (type == LNOT) {
-    if (!type_scalar(expr->value_type)) {
+    type = type_int();
+  } else if (nd_type == LNOT) {
+    if (!type_scalar(expr->type)) {
       error(token, "operand of ! operator should have scalar type.");
     }
-    value_type = type_int();
+    type = type_int();
   }
 
-  return node_unary_expr(type, value_type, expr, token);
+  return node_unary_expr(nd_type, type, expr, token);
 }
 
-Node *node_cast(Type *value_type, Node *expr, Token *token) {
+Node *node_cast(Type *type, Node *expr, Token *token) {
   Node *node = node_new();
-  node->type = CAST;
-  node->value_type = value_type;
+  node->nd_type = CAST;
+  node->type = type;
   node->expr = expr;
   node->token = token;
   return node;
 }
 
-Node *node_binary_expr(NodeType type, Type *value_type, Node *left, Node *right, Token *token) {
+Node *node_binary_expr(NodeType nd_type, Type *type, Node *left, Node *right, Token *token) {
   Node *node = node_new();
+  node->nd_type = nd_type;
   node->type = type;
-  node->value_type = value_type;
   node->left = left;
   node->right = right;
   node->token = token;
@@ -244,11 +244,11 @@ Node *node_binary_expr(NodeType type, Type *value_type, Node *left, Node *right,
 }
 
 Type *semantics_mul(Node *left, Node *right, Token *token) {
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
+  if (type_integer(left->type) && type_integer(right->type)) {
     return type_int();
   }
 
-  error(token, "operands of %s operator should have integer type.", token->type_name);
+  error(token, "operands of %s operator should have integer type.", token->tk_name);
 }
 
 Node *node_mul(Node *left, Node *right, Token *token) {
@@ -262,145 +262,145 @@ Node *node_div(Node *left, Node *right, Token *token) {
 }
 
 Node *node_mod(Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
   } else {
-    error(token, "operands of %s operator should have integer type.", token->type_name);
+    error(token, "operands of %s operator should have integer type.", token->tk_name);
   }
 
-  return node_binary_expr(MOD, value_type, left, right, token);
+  return node_binary_expr(MOD, type, left, right, token);
 }
 
 Node *node_add(Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_integer(right->value_type)) {
-    value_type = left->value_type;
-  } else if (type_integer(left->value_type) && type_pointer(right->value_type)) {
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
+  } else if (type_pointer(left->type) && type_integer(right->type)) {
+    type = left->type;
+  } else if (type_integer(left->type) && type_pointer(right->type)) {
     Node *temp = left;
     left = right;
     right = temp;
-    value_type = left->value_type;
+    type = left->type;
   } else {
-    error(token, "invalid operand types for %s operator.", token->type_name);
+    error(token, "invalid operand types for %s operator.", token->tk_name);
   }
 
-  return node_binary_expr(ADD, value_type, left, right, token);
+  return node_binary_expr(ADD, type, left, right, token);
 }
 
 Node *node_sub(Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_integer(right->value_type)) {
-    value_type = left->value_type;
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
+  } else if (type_pointer(left->type) && type_integer(right->type)) {
+    type = left->type;
   } else {
-    error(token, "invalid operand types for %s operator.", token->type_name);
+    error(token, "invalid operand types for %s operator.", token->tk_name);
   }
 
-  return node_binary_expr(SUB, value_type, left, right, token);
+  return node_binary_expr(SUB, type, left, right, token);
 }
 
-Node *node_shift(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
+Node *node_shift(NodeType nd_type, Node *left, Node *right, Token *token) {
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
   } else {
-    if (type == LSHIFT) {
+    if (nd_type == LSHIFT) {
       error(token, "operands of << operator should be integer type.");
-    } else if (type == RSHIFT) {
+    } else if (nd_type == RSHIFT) {
       error(token, "operands of >> operator should be integer type.");
     }
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  return node_binary_expr(nd_type, type, left, right, token);
 }
 
-Node *node_relational(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_pointer(right->value_type)) {
-    value_type = type_int();
+Node *node_relational(NodeType nd_type, Node *left, Node *right, Token *token) {
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
+  } else if (type_pointer(left->type) && type_pointer(right->type)) {
+    type = type_int();
   } else {
-    if (type == LT) {
+    if (nd_type == LT) {
       error(token, "operands of < operator should be integer type.");
-    } else if (type == GT) {
+    } else if (nd_type == GT) {
       error(token, "operands of > operator should be integer type.");
-    } else if (type == LTE) {
+    } else if (nd_type == LTE) {
       error(token, "operands of <= operator should be integer type.");
-    } else if (type == GTE) {
+    } else if (nd_type == GTE) {
       error(token, "operands of >= operator should be integer type.");
     }
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  return node_binary_expr(nd_type, type, left, right, token);
 }
 
-Node *node_equality(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_pointer(right->value_type)) {
-    value_type = type_int();
+Node *node_equality(NodeType nd_type, Node *left, Node *right, Token *token) {
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
+  } else if (type_pointer(left->type) && type_pointer(right->type)) {
+    type = type_int();
   } else {
-    if (type == EQ) {
+    if (nd_type == EQ) {
       error(token, "operands of == operator should be integer type.");
-    } else if (type == NEQ) {
+    } else if (nd_type == NEQ) {
       error(token, "operands of != operator should be integer type.");
     }
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  return node_binary_expr(nd_type, type, left, right, token);
 }
 
-Node *node_bitwise(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
+Node *node_bitwise(NodeType nd_type, Node *left, Node *right, Token *token) {
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
   } else {
-    if (type == AND) {
+    if (nd_type == AND) {
       error(token, "operands of & operator should be integer type.");
-    } else if (type == XOR) {
+    } else if (nd_type == XOR) {
       error(token, "operands of ^ operator should be integer type.");
-    } else if (type == OR) {
+    } else if (nd_type == OR) {
       error(token, "operands of | operator should be integer type.");
     }
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  return node_binary_expr(nd_type, type, left, right, token);
 }
 
-Node *node_logical(NodeType type, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_scalar(left->value_type) && type_scalar(right->value_type)) {
-    value_type = type_int();
+Node *node_logical(NodeType nd_type, Node *left, Node *right, Token *token) {
+  Type *type;
+  if (type_scalar(left->type) && type_scalar(right->type)) {
+    type = type_int();
   } else {
-    if (type == LAND) {
+    if (nd_type == LAND) {
       error(token, "operands of && operator should be integer type.");
-    } else if (type == LOR) {
+    } else if (nd_type == LOR) {
       error(token, "operands of || operator should be integer type.");
     }
   }
 
-  return node_binary_expr(type, value_type, left, right, token);
+  return node_binary_expr(nd_type, type, left, right, token);
 }
 
 Node *node_conditional(Node *control, Node *left, Node *right, Token *token) {
-  Type *value_type;
-  if (type_integer(left->value_type) && type_integer(right->value_type)) {
-    value_type = type_int();
-  } else if (type_pointer(left->value_type) && type_pointer(right->value_type)) {
-    value_type = left->value_type;
+  Type *type;
+  if (type_integer(left->type) && type_integer(right->type)) {
+    type = type_int();
+  } else if (type_pointer(left->type) && type_pointer(right->type)) {
+    type = left->type;
   } else {
     error(token, "second and third operands of ?: operator should have the same type.");
   }
 
   Node *node = node_new();
-  node->type = CONDITION;
-  node->value_type = value_type;
+  node->nd_type = CONDITION;
+  node->type = type;
   node->control = control;
   node->left = left;
   node->right = right;
@@ -410,17 +410,17 @@ Node *node_conditional(Node *control, Node *left, Node *right, Token *token) {
 
 Node *node_assign(Node *left, Node *right, Token *token) {
   if (!node_lvalue(left)) {
-    error(token, "left side of %s operator should be lvalue.", token->type_name);
+    error(token, "left side of %s operator should be lvalue.", token->tk_name);
   }
 
-  return node_binary_expr(ASSIGN, left->value_type, left, right, token);
+  return node_binary_expr(ASSIGN, left->type, left, right, token);
 }
 
-Node *node_compound_assign(NodeType type, Node *left, Node *right, Token *token) {
+Node *node_compound_assign(NodeType nd_type, Node *left, Node *right, Token *token) {
   Symbol *symbol = symbol_new();
   symbol->token = token;
   symbol->identifier = NULL;
-  symbol->value_type = type_pointer_to(left->value_type);
+  symbol->type = type_pointer_to(left->type);
   symbol_put(NULL, symbol);
 
   Node *id = node_identifier(NULL, symbol, token);
@@ -429,11 +429,11 @@ Node *node_compound_assign(NodeType type, Node *left, Node *right, Token *token)
   Node *indirect = node_indirect(id, token);
 
   Node *op;
-  if (type == ADD) op = node_add(indirect, right, token);
-  else if (type == SUB) op = node_sub(indirect, right, token);
-  else if (type == MUL) op = node_mul(indirect, right, token);
-  else if (type == DIV) op = node_div(indirect, right, token);
-  else if (type == MOD) op = node_mod(indirect, right, token);
+  if (nd_type == ADD) op = node_add(indirect, right, token);
+  else if (nd_type == SUB) op = node_sub(indirect, right, token);
+  else if (nd_type == MUL) op = node_mul(indirect, right, token);
+  else if (nd_type == DIV) op = node_div(indirect, right, token);
+  else if (nd_type == MOD) op = node_mod(indirect, right, token);
 
   return node_comma(assign, node_assign(indirect, op, token), token);
 }
@@ -459,49 +459,49 @@ Node *node_mod_assign(Node *left, Node *right, Token *token) {
 }
 
 Node *node_comma(Node *left, Node *right, Token *token) {
-  return node_binary_expr(COMMA, right->value_type, left, right, token);
+  return node_binary_expr(COMMA, right->type, left, right, token);
 }
 
-Node *node_init(Node *init, Type *value_type) {
+Node *node_init(Node *init, Type *type) {
   Node *node = node_new();
-  node->type = INIT;
-  node->value_type = value_type;
+  node->nd_type = INIT;
+  node->type = type;
   node->init = init;
   return node;
 }
 
-Node *node_array_init(Vector *array_init, Type *value_type) {
+Node *node_array_init(Vector *array_init, Type *type) {
   Node *node = node_new();
-  node->type = ARRAY_INIT;
-  node->value_type = value_type;
+  node->nd_type = ARRAY_INIT;
+  node->type = type;
   node->array_init = array_init;
   return node;
 }
 
 Node *node_decl(Vector *declarations) {
   Node *node = node_new();
-  node->type = VAR_DECL;
+  node->nd_type = VAR_DECL;
   node->declarations = declarations;
   return node;
 }
 
 Node *node_comp_stmt(Vector *statements) {
   Node *node = node_new();
-  node->type = COMP_STMT;
+  node->nd_type = COMP_STMT;
   node->statements = statements;
   return node;
 }
 
 Node *node_expr_stmt(Node *expr) {
   Node *node = node_new();
-  node->type = EXPR_STMT;
+  node->nd_type = EXPR_STMT;
   node->expr = expr;
   return node;
 }
 
 Node *node_if_stmt(Node *if_control, Node *if_body, Node *else_body) {
   Node *node = node_new();
-  node->type = IF_STMT;
+  node->nd_type = IF_STMT;
   node->if_control = if_control;
   node->if_body = if_body;
   node->else_body = else_body;
@@ -510,7 +510,7 @@ Node *node_if_stmt(Node *if_control, Node *if_body, Node *else_body) {
 
 Node *node_while_stmt(Node *loop_control, Node *loop_body) {
   Node *node = node_new();
-  node->type = WHILE_STMT;
+  node->nd_type = WHILE_STMT;
   node->loop_control = loop_control;
   node->loop_body = loop_body;
   return node;
@@ -518,7 +518,7 @@ Node *node_while_stmt(Node *loop_control, Node *loop_body) {
 
 Node *node_do_while_stmt(Node *loop_control, Node *loop_body) {
   Node *node = node_new();
-  node->type = DO_WHILE_STMT;
+  node->nd_type = DO_WHILE_STMT;
   node->loop_control = loop_control;
   node->loop_body = loop_body;
   return node;
@@ -526,7 +526,7 @@ Node *node_do_while_stmt(Node *loop_control, Node *loop_body) {
 
 Node *node_for_stmt(Node *loop_init, Node *loop_control, Node *loop_afterthrough, Node *loop_body) {
   Node *node = node_new();
-  node->type = FOR_STMT;
+  node->nd_type = FOR_STMT;
   node->loop_init = loop_init;
   node->loop_control = loop_control;
   node->loop_afterthrough = loop_afterthrough;
@@ -540,7 +540,7 @@ Node *node_continue_stmt(int continue_level, Token *token) {
   }
 
   Node *node = node_new();
-  node->type = CONTINUE_STMT;
+  node->nd_type = CONTINUE_STMT;
   node->token = token;
   return node;
 }
@@ -551,29 +551,29 @@ Node *node_break_stmt(int break_level, Token *token) {
   }
 
   Node *node = node_new();
-  node->type = BREAK_STMT;
+  node->nd_type = BREAK_STMT;
   node->token = token;
   return node;
 }
 
 Node *node_return_stmt(Node *expr) {
   Node *node = node_new();
-  node->type = RETURN_STMT;
+  node->nd_type = RETURN_STMT;
   node->expr = expr;
   return node;
 }
 
 Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token) {
-  if (symbol->value_type->function_returning->type == ARRAY) {
+  if (symbol->type->function_returning->ty_type == ARRAY) {
     error(symbol->token, "returning type of function should not be array type.");
   }
 
-  if (symbol->value_type->params->length > 6) {
+  if (symbol->type->params->length > 6) {
     error(token, "too many parameters.");
   }
 
   Node *node = node_new();
-  node->type = FUNC_DEF;
+  node->nd_type = FUNC_DEF;
   node->symbol = symbol;
   node->local_vars_size = local_vars_size;
   node->function_body = function_body;
@@ -583,7 +583,7 @@ Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, To
 
 Node *node_trans_unit(Vector *string_literals, Vector *declarations, Vector *definitions) {
   Node *node = node_new();
-  node->type = TLANS_UNIT;
+  node->nd_type = TLANS_UNIT;
   node->string_literals = string_literals;
   node->declarations = declarations;
   node->definitions = definitions;

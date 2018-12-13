@@ -5,16 +5,16 @@ Type *type_new() {
   return type;
 }
 
-StructMember *struct_member_new(Type *value_type, int offset) {
+StructMember *struct_member_new(Type *type, int offset) {
   StructMember *member = (StructMember *) calloc(1, sizeof(StructMember));
-  member->value_type = value_type;
+  member->type = type;
   member->offset = offset;
   return member;
 }
 
 Type *type_void() {
   Type *void_type = type_new();
-  void_type->type = VOID;
+  void_type->ty_type = VOID;
   void_type->array_pointer = false;
   void_type->definition = false;
   void_type->incomplete = true;
@@ -23,7 +23,7 @@ Type *type_void() {
 
 Type *type_bool() {
   Type *bool_type = type_new();
-  bool_type->type = BOOL;
+  bool_type->ty_type = BOOL;
   bool_type->size = 1;
   bool_type->align = 1;
   bool_type->original_size = 1;
@@ -35,7 +35,7 @@ Type *type_bool() {
 
 Type *type_char() {
   Type *char_type = type_new();
-  char_type->type = CHAR;
+  char_type->ty_type = CHAR;
   char_type->size = 1;
   char_type->align = 1;
   char_type->original_size = 1;
@@ -47,7 +47,7 @@ Type *type_char() {
 
 Type *type_uchar() {
   Type *uchar_type = type_new();
-  uchar_type->type = UCHAR;
+  uchar_type->ty_type = UCHAR;
   uchar_type->size = 1;
   uchar_type->align = 1;
   uchar_type->original_size = 1;
@@ -59,7 +59,7 @@ Type *type_uchar() {
 
 Type *type_short() {
   Type *short_type = type_new();
-  short_type->type = SHORT;
+  short_type->ty_type = SHORT;
   short_type->size = 2;
   short_type->align = 2;
   short_type->original_size = 2;
@@ -71,7 +71,7 @@ Type *type_short() {
 
 Type *type_ushort() {
   Type *ushort_type = type_new();
-  ushort_type->type = USHORT;
+  ushort_type->ty_type = USHORT;
   ushort_type->size = 2;
   ushort_type->align = 2;
   ushort_type->original_size = 2;
@@ -83,7 +83,7 @@ Type *type_ushort() {
 
 Type *type_int() {
   Type *int_type = type_new();
-  int_type->type = INT;
+  int_type->ty_type = INT;
   int_type->size = 4;
   int_type->align = 4;
   int_type->original_size = 4;
@@ -95,7 +95,7 @@ Type *type_int() {
 
 Type *type_uint() {
   Type *uint_type = type_new();
-  uint_type->type = UINT;
+  uint_type->ty_type = UINT;
   uint_type->size = 4;
   uint_type->align = 4;
   uint_type->original_size = 4;
@@ -107,7 +107,7 @@ Type *type_uint() {
 
 Type *type_double() {
   Type *double_type = type_new();
-  double_type->type = DOUBLE;
+  double_type->ty_type = DOUBLE;
   double_type->size = 8;
   double_type->align = 8;
   double_type->original_size = 8;
@@ -119,7 +119,7 @@ Type *type_double() {
 
 Type *type_pointer_to(Type *type) {
   Type *pointer = type_new();
-  pointer->type = POINTER;
+  pointer->ty_type = POINTER;
   pointer->size = 8;
   pointer->align = 8;
   pointer->pointer_to = type;
@@ -132,7 +132,7 @@ Type *type_pointer_to(Type *type) {
 
 Type *type_array_of(Type *type, int array_size) {
   Type *array = type_new();
-  array->type = ARRAY;
+  array->ty_type = ARRAY;
   array->size = type->size * array_size;
   array->align = type->align;
   array->array_of = type;
@@ -146,7 +146,7 @@ Type *type_array_of(Type *type, int array_size) {
 
 Type *type_incomplete_array_of(Type *type) {
   Type *array = type_new();
-  array->type = ARRAY;
+  array->ty_type = ARRAY;
   array->align = type->align;
   array->array_of = type;
   array->array_pointer = false;
@@ -157,7 +157,7 @@ Type *type_incomplete_array_of(Type *type) {
 
 Type *type_function_returning(Type *returning, Vector *params, bool ellipsis) {
   Type *function_type = type_new();
-  function_type->type = FUNCTION;
+  function_type->ty_type = FUNCTION;
   function_type->function_returning = returning;
   function_type->params = params;
   function_type->array_pointer = false;
@@ -173,7 +173,7 @@ Type *type_struct(Vector *symbols) {
 
   for (int i = 0; i < symbols->length; i++) {
     Symbol *symbol = symbols->buffer[i];
-    Type *type = symbol->value_type;
+    Type *type = symbol->type;
 
     if (size % type->align != 0) {
       size = size / type->align * type->align + type->align;
@@ -193,7 +193,7 @@ Type *type_struct(Vector *symbols) {
   }
 
   Type *struct_type = type_new();
-  struct_type->type = STRUCT;
+  struct_type->ty_type = STRUCT;
   struct_type->align = align;
   struct_type->size = size;
   struct_type->members = members;
@@ -205,7 +205,7 @@ Type *type_struct(Vector *symbols) {
 }
 
 Type *type_convert(Type *type) {
-  if (type->type == ARRAY) {
+  if (type->ty_type == ARRAY) {
     Type *pointer = type_pointer_to(type->array_of);
     pointer->original_size = type->size;
     pointer->array_pointer = true;
@@ -215,7 +215,7 @@ Type *type_convert(Type *type) {
 }
 
 void type_copy(Type *dest, Type *src) {
-  dest->type = src->type;
+  dest->ty_type = src->ty_type;
   dest->size = src->size;
   dest->align = src->align;
   dest->pointer_to = src->pointer_to;
@@ -229,18 +229,18 @@ void type_copy(Type *dest, Type *src) {
 }
 
 bool type_integer(Type *type) {
-  if (type->type == BOOL) return true;
-  if (type->type == CHAR) return true;
-  if (type->type == UCHAR) return true;
-  if (type->type == SHORT) return true;
-  if (type->type == USHORT) return true;
-  if (type->type == INT) return true;
-  if (type->type == UINT) return true;
+  if (type->ty_type == BOOL) return true;
+  if (type->ty_type == CHAR) return true;
+  if (type->ty_type == UCHAR) return true;
+  if (type->ty_type == SHORT) return true;
+  if (type->ty_type == USHORT) return true;
+  if (type->ty_type == INT) return true;
+  if (type->ty_type == UINT) return true;
   return false;
 }
 
 bool type_pointer(Type *type) {
-  return type->type == POINTER;
+  return type->ty_type == POINTER;
 }
 
 bool type_scalar(Type *type) {
@@ -250,6 +250,6 @@ bool type_scalar(Type *type) {
 bool type_same(Type *type1, Type *type2) {
   if (type_integer(type1) && type_integer(type2)) return true;
   if (type_pointer(type1) && type_pointer(type2)) return true;
-  if (type1->type == DOUBLE && type2->type == DOUBLE) return true;
+  if (type1->ty_type == DOUBLE && type2->ty_type == DOUBLE) return true;
   return false;
 }

@@ -1,6 +1,6 @@
 #include "sk2cc.h"
 
-char *token_type_name[] = {
+char *tk_name[] = {
   "void",
   "bool",
   "char",
@@ -137,14 +137,14 @@ Token *lex() {
       while (isdigit(peek_char())) {
         string_push(s, get_char());
       }
-      token->type = tFLOAT_CONST;
+      token->tk_type = tFLOAT_CONST;
       token->double_value = strtod(s->buffer, NULL);
     } else {
       int int_value = 0;
       for (int i = 0; i < s->length; i++) {
         int_value = int_value * 10 + (s->buffer[i] - '0');
       }
-      token->type = tINT_CONST;
+      token->tk_type = tINT_CONST;
       token->int_value = int_value;
     }
   } else if (read_char('\'')) {
@@ -155,7 +155,7 @@ Token *lex() {
       int_value = get_char();
     }
     expect_char('\'');
-    token->type = tINT_CONST;
+    token->tk_type = tINT_CONST;
     token->int_value = int_value;
   } else if (read_char('"')) {
     String *string_value = string_new();
@@ -166,7 +166,7 @@ Token *lex() {
     }
     get_char();
     string_push(string_value, '\0');
-    token->type = tSTRING_LITERAL;
+    token->tk_type = tSTRING_LITERAL;
     token->string_value = string_value;
   } else if (isalpha(peek_char()) || peek_char() == '_') {
     String *identifier = string_new();
@@ -175,187 +175,187 @@ Token *lex() {
       string_push(identifier, get_char());
     }
     if (strcmp(identifier->buffer, "void") == 0) {
-      token->type = tVOID;
+      token->tk_type = tVOID;
     } else if (strcmp(identifier->buffer, "_Bool") == 0) {
-      token->type = tBOOL;
+      token->tk_type = tBOOL;
     } else if (strcmp(identifier->buffer, "char") == 0) {
-      token->type = tCHAR;
+      token->tk_type = tCHAR;
     } else if (strcmp(identifier->buffer, "short") == 0) {
-      token->type = tSHORT;
+      token->tk_type = tSHORT;
     } else if (strcmp(identifier->buffer, "int") == 0) {
-      token->type = tINT;
+      token->tk_type = tINT;
     } else if (strcmp(identifier->buffer, "double") == 0) {
-      token->type = tDOUBLE;
+      token->tk_type = tDOUBLE;
     } else if (strcmp(identifier->buffer, "unsigned") == 0) {
-      token->type = tUNSIGNED;
+      token->tk_type = tUNSIGNED;
     } else if (strcmp(identifier->buffer, "struct") == 0) {
-      token->type = tSTRUCT;
+      token->tk_type = tSTRUCT;
     } else if (strcmp(identifier->buffer, "enum") == 0) {
-      token->type = tENUM;
+      token->tk_type = tENUM;
     } else if (strcmp(identifier->buffer, "typedef") == 0) {
-      token->type = tTYPEDEF;
+      token->tk_type = tTYPEDEF;
     } else if (strcmp(identifier->buffer, "extern") == 0) {
-      token->type = tEXTERN;
+      token->tk_type = tEXTERN;
     } else if (strcmp(identifier->buffer, "_Noreturn") == 0) {
-      token->type = tNORETURN;
+      token->tk_type = tNORETURN;
     } else if (strcmp(identifier->buffer, "sizeof") == 0) {
-      token->type = tSIZEOF;
+      token->tk_type = tSIZEOF;
     } else if (strcmp(identifier->buffer, "_Alignof") == 0) {
-      token->type = tALIGNOF;
+      token->tk_type = tALIGNOF;
     } else if (strcmp(identifier->buffer, "if") == 0) {
-      token->type = tIF;
+      token->tk_type = tIF;
     } else if (strcmp(identifier->buffer, "else") == 0) {
-      token->type = tELSE;
+      token->tk_type = tELSE;
     } else if (strcmp(identifier->buffer, "while") == 0) {
-      token->type = tWHILE;
+      token->tk_type = tWHILE;
     } else if (strcmp(identifier->buffer, "do") == 0) {
-      token->type = tDO;
+      token->tk_type = tDO;
     } else if (strcmp(identifier->buffer, "for") == 0) {
-      token->type = tFOR;
+      token->tk_type = tFOR;
     } else if (strcmp(identifier->buffer, "continue") == 0) {
-      token->type = tCONTINUE;
+      token->tk_type = tCONTINUE;
     } else if (strcmp(identifier->buffer, "break") == 0) {
-      token->type = tBREAK;
+      token->tk_type = tBREAK;
     } else if (strcmp(identifier->buffer, "return") == 0) {
-      token->type = tRETURN;
+      token->tk_type = tRETURN;
     } else {
-      token->type = tIDENTIFIER;
+      token->tk_type = tIDENTIFIER;
       token->identifier = identifier->buffer;
     }
   } else if (read_char('~')) {
-    token->type = tNOT;
+    token->tk_type = tNOT;
   } else if (read_char('+')) {
     if (read_char('+')) {
-      token->type = tINC;
+      token->tk_type = tINC;
     } else if (read_char('=')) {
-      token->type = tADD_ASSIGN;
+      token->tk_type = tADD_ASSIGN;
     } else {
-      token->type = tADD;
+      token->tk_type = tADD;
     }
   } else if (read_char('-')) {
     if (read_char('>')) {
-      token->type = tARROW;
+      token->tk_type = tARROW;
     } else if (read_char('-')) {
-      token->type = tDEC;
+      token->tk_type = tDEC;
     } else if (read_char('=')) {
-      token->type = tSUB_ASSIGN;
+      token->tk_type = tSUB_ASSIGN;
     } else {
-      token->type = tSUB;
+      token->tk_type = tSUB;
     }
   } else if (read_char('*')) {
     if (read_char('=')) {
-      token->type = tMUL_ASSIGN;
+      token->tk_type = tMUL_ASSIGN;
     } else {
-      token->type = tMUL;
+      token->tk_type = tMUL;
     }
   } else if (read_char('/')) {
     if (read_char('=')) {
-      token->type = tDIV_ASSIGN;
+      token->tk_type = tDIV_ASSIGN;
     } else if (read_char('/')) {
       while (1) {
         char c = get_char();
         if (c == '\n') break;
       }
-      token->type = tSPACE;
+      token->tk_type = tSPACE;
     } else if (read_char('*')) {
       while (1) {
         char c = get_char();
         if (c == '*' && read_char('/')) break;
       }
-      token->type = tSPACE;
+      token->tk_type = tSPACE;
     } else {
-      token->type = tDIV;
+      token->tk_type = tDIV;
     }
   } else if (read_char('%')) {
     if (read_char('=')) {
-      token->type = tMOD_ASSIGN;
+      token->tk_type = tMOD_ASSIGN;
     } else {
-      token->type = tMOD;
+      token->tk_type = tMOD;
     }
   } else if (read_char('<')) {
     if (read_char('=')) {
-      token->type = tLTE;
+      token->tk_type = tLTE;
     } else if (read_char('<')) {
-      token->type = tLSHIFT;
+      token->tk_type = tLSHIFT;
     } else {
-      token->type = tLT;
+      token->tk_type = tLT;
     }
   } else if (read_char('>')) {
     if (read_char('=')) {
-      token->type = tGTE;
+      token->tk_type = tGTE;
     } else if (read_char('>')) {
-      token->type = tRSHIFT;
+      token->tk_type = tRSHIFT;
     } else {
-      token->type = tGT;
+      token->tk_type = tGT;
     }
   } else if (read_char('=')) {
     if (read_char('=')) {
-      token->type = tEQ;
+      token->tk_type = tEQ;
     } else {
-      token->type = tASSIGN;
+      token->tk_type = tASSIGN;
     }
   } else if (read_char('!')) {
     if (read_char('=')) {
-      token->type = tNEQ;
+      token->tk_type = tNEQ;
     } else {
-      token->type = tLNOT;
+      token->tk_type = tLNOT;
     }
   } else if (read_char('&')) {
     if (read_char('&')) {
-      token->type = tLAND;
+      token->tk_type = tLAND;
     } else {
-      token->type = tAND;
+      token->tk_type = tAND;
     }
   } else if (read_char('|')) {
     if (read_char('|')) {
-      token->type = tLOR;
+      token->tk_type = tLOR;
     } else {
-      token->type = tOR;
+      token->tk_type = tOR;
     }
   } else if (read_char('^')) {
-    token->type = tXOR;
+    token->tk_type = tXOR;
   } else if (read_char('?')) {
-    token->type = tQUESTION;
+    token->tk_type = tQUESTION;
   } else if (read_char(':')) {
-    token->type = tCOLON;
+    token->tk_type = tCOLON;
   } else if (read_char(';')) {
-    token->type = tSEMICOLON;
+    token->tk_type = tSEMICOLON;
   } else if (read_char('[')) {
-    token->type = tLBRACKET;
+    token->tk_type = tLBRACKET;
   } else if (read_char(']')) {
-    token->type = tRBRACKET;
+    token->tk_type = tRBRACKET;
   } else if (read_char('(')) {
-    token->type = tLPAREN;
+    token->tk_type = tLPAREN;
   } else if (read_char(')')) {
-    token->type = tRPAREN;
+    token->tk_type = tRPAREN;
   } else if (read_char('{')) {
-    token->type = tLBRACE;
+    token->tk_type = tLBRACE;
   } else if (read_char('}')) {
-    token->type = tRBRACE;
+    token->tk_type = tRBRACE;
   } else if (read_char(',')) {
-    token->type = tCOMMA;
+    token->tk_type = tCOMMA;
   } else if (read_char('.')) {
     if (read_char('.')) {
       if (!read_char('.')) {
         error(token, "invalid token '..'");
       }
-      token->type = tELLIPSIS;
+      token->tk_type = tELLIPSIS;
     } else {
-      token->type = tDOT;
+      token->tk_type = tDOT;
     }
   } else if (read_char('#')) {
-    token->type = tHASH;
+    token->tk_type = tHASH;
   } else if (read_char(' ')) {
-    token->type = tSPACE;
+    token->tk_type = tSPACE;
   } else if (read_char('\n')) {
-    token->type = tNEWLINE;
+    token->tk_type = tNEWLINE;
   } else if (peek_char() == EOF) {
-    token->type = tEND;
+    token->tk_type = tEND;
   } else {
     error(token, "unexpected character: %c.", peek_char());
   }
 
-  token->type_name = token_type_name[token->type];
+  token->tk_name = tk_name[token->tk_type];
   token->schar_end = (SourceChar **) &(src->buffer[src_pos]);
 
   return token;
@@ -369,7 +369,7 @@ Vector *tokenize(Vector *input_src) {
   while (1) {
     Token *pp_token = lex();
     vector_push(pp_tokens, pp_token);
-    if (pp_token->type == tEND) break;
+    if (pp_token->tk_type == tEND) break;
   }
 
   return pp_tokens;

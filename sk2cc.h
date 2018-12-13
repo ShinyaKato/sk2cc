@@ -142,8 +142,8 @@ enum token_type {
 };
 
 struct token {
-  TokenType type;
-  char *type_name;
+  TokenType tk_type;
+  char *tk_name;
   int int_value;
   double double_value;
   String *string_value;
@@ -203,9 +203,9 @@ enum node_type {
 };
 
 struct node {
-  NodeType type;
+  NodeType nd_type;
   Token *token;
-  Type *value_type;
+  Type *type;
   int int_value;
   double double_value;
   String *string_value;
@@ -242,7 +242,7 @@ enum type_type {
 };
 
 struct type {
-  TypeType type;
+  TypeType ty_type;
   int size, align;
   Type *pointer_to;
   Type *array_of;
@@ -259,7 +259,7 @@ struct type {
 };
 
 struct struct_member {
-  Type *value_type;
+  Type *type;
   int offset;
 };
 
@@ -271,10 +271,10 @@ enum symbol_type {
 };
 
 struct symbol {
-  SymbolType type;
+  SymbolType sy_type;
   Token *token;
   char *identifier;
-  Type *value_type;
+  Type *type;
   Node *initializer;
   int enum_value;
   int offset;
@@ -324,18 +324,18 @@ extern Node *node_pre_inc(Node *expr, Token *token);
 extern Node *node_pre_dec(Node *expr, Token *token);
 extern Node *node_address(Node *expr, Token *token);
 extern Node *node_indirect(Node *expr, Token *token);
-extern Node *node_unary_arithmetic(NodeType type, Node *expr, Token *token);
-extern Node *node_cast(Type *value_type, Node *expr, Token *token);
+extern Node *node_unary_arithmetic(NodeType nd_type, Node *expr, Token *token);
+extern Node *node_cast(Type *type, Node *expr, Token *token);
 extern Node *node_mul(Node *left, Node *right, Token *token);
 extern Node *node_div(Node *left, Node *right, Token *token);
 extern Node *node_mod(Node *left, Node *right, Token *token);
 extern Node *node_add(Node *left, Node *right, Token *token);
 extern Node *node_sub(Node *left, Node *right, Token *token);
-extern Node *node_shift(NodeType type, Node *left, Node *right, Token *token);
-extern Node *node_relational(NodeType type, Node *left, Node *right, Token *token);
-extern Node *node_equality(NodeType type, Node *left, Node *right, Token *token);
-extern Node *node_bitwise(NodeType type, Node *left, Node *right, Token *token);
-extern Node *node_logical(NodeType type, Node *left, Node *right, Token *token);
+extern Node *node_shift(NodeType nd_type, Node *left, Node *right, Token *token);
+extern Node *node_relational(NodeType nd_type, Node *left, Node *right, Token *token);
+extern Node *node_equality(NodeType nd_type, Node *left, Node *right, Token *token);
+extern Node *node_bitwise(NodeType nd_type, Node *left, Node *right, Token *token);
+extern Node *node_logical(NodeType nd_type, Node *left, Node *right, Token *token);
 extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
 extern Node *node_assign(Node *left, Node *right, Token *token);
 extern Node *node_add_assign(Node *left, Node *right, Token *token);
@@ -344,8 +344,8 @@ extern Node *node_mul_assign(Node *left, Node *right, Token *token);
 extern Node *node_div_assign(Node *left, Node *right, Token *token);
 extern Node *node_mod_assign(Node *left, Node *right, Token *token);
 extern Node *node_comma(Node *left, Node *right, Token *token);
-extern Node *node_init(Node *init, Type *value_type);
-extern Node *node_array_init(Vector *array_init, Type *value_type);
+extern Node *node_init(Node *init, Type *type);
+extern Node *node_array_init(Vector *array_init, Type *type);
 extern Node *node_decl(Vector *declarations);
 extern Node *node_comp_stmt(Vector *statements);
 extern Node *node_expr_stmt(Node *expr);

@@ -27,7 +27,7 @@ Symbol *symbol_lookup(char *identifier) {
 void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->buffer[scopes->length - 1];
 
-  if (symbol->type != TYPENAME && symbol->type != ENUM_CONST) {
+  if (symbol->sy_type != TYPENAME && symbol->sy_type != ENUM_CONST) {
     if (identifier) {
       Symbol *previous = map_lookup(map, identifier);
       if (previous && previous->defined) {
@@ -36,13 +36,13 @@ void symbol_put(char *identifier, Symbol *symbol) {
     }
 
     if (scopes->length == 1) {
-      symbol->type = GLOBAL;
+      symbol->sy_type = GLOBAL;
     } else {
-      int size = symbol->value_type->size;
+      int size = symbol->type->size;
       if (size % 8 != 0) size = size / 8 * 8 + 8;
       local_vars_size += size;
 
-      symbol->type = LOCAL;
+      symbol->sy_type = LOCAL;
       symbol->offset = local_vars_size;
     }
   }
@@ -61,10 +61,10 @@ void end_scope() {
 void begin_function_scope(Symbol *symbol) {
   symbol_put(symbol->identifier, symbol);
 
-  local_vars_size = symbol->value_type->ellipsis ? 176 : 0;
+  local_vars_size = symbol->type->ellipsis ? 176 : 0;
   begin_scope();
 
-  Vector *params = symbol->value_type->params;
+  Vector *params = symbol->type->params;
   for (int i = 0; i < params->length; i++) {
     Symbol *param = params->buffer[i];
     symbol_put(param->identifier, param);
@@ -84,31 +84,31 @@ Token *get_token() {
   return tokens->buffer[tokens_pos++];
 }
 
-Token *expect_token(TokenType type) {
+Token *expect_token(TokenType tk_type) {
   Token *token = get_token();
-  if (token->type != type) {
-    error(token, "%s is expected.", token->type_name);
+  if (token->tk_type != tk_type) {
+    error(token, "%s is expected.", token->tk_name);
   }
   return token;
 }
 
-Token *optional_token(TokenType type) {
-  if (peek_token()->type == type) {
+Token *optional_token(TokenType tk_type) {
+  if (peek_token()->tk_type == tk_type) {
     return get_token();
   }
   return NULL;
 }
 
-bool read_token(TokenType type) {
-  if (peek_token()->type == type) {
+bool read_token(TokenType tk_type) {
+  if (peek_token()->tk_type == tk_type) {
     get_token();
     return true;
   }
   return false;
 }
 
-bool check_token(TokenType type) {
-  return peek_token()->type == type;
+bool check_token(TokenType tk_type) {
+  return peek_token()->tk_type == tk_type;
 }
 
 bool check_type_specifier() {
@@ -124,7 +124,7 @@ bool check_type_specifier() {
 
   if (check_token(tIDENTIFIER)) {
     Symbol *symbol = symbol_lookup(peek_token()->identifier);
-    return symbol && symbol->type == TYPENAME;
+    return symbol && symbol->sy_type == TYPENAME;
   }
 
   return false;
@@ -158,20 +158,20 @@ Type *type_name();
 Node *primary_expression() {
   Token *token = get_token();
 
-  if (token->type == tINT_CONST) {
+  if (token->tk_type == tINT_CONST) {
     return node_int_const(token->int_value, token);
   }
-  if (token->type == tFLOAT_CONST) {
+  if (token->tk_type == tFLOAT_CONST) {
     return node_float_const(token->double_value, token);
   }
-  if (token->type == tSTRING_LITERAL) {
+  if (token->tk_type == tSTRING_LITERAL) {
     int string_label = string_literals->length;
     vector_push(string_literals, token->string_value);
     return node_string_literal(token->string_value, string_label, token);
   }
-  if (token->type == tIDENTIFIER) {
+  if (token->tk_type == tIDENTIFIER) {
     Symbol *symbol = symbol_lookup(token->identifier);
-    if (symbol && symbol->type == ENUM_CONST) {
+    if (symbol && symbol->sy_type == ENUM_CONST) {
       return node_int_const(symbol->enum_value, token);
     }
     if (!check_token(tLPAREN) && !symbol) {
@@ -179,7 +179,7 @@ Node *primary_expression() {
     }
     return node_identifier(token->identifier, symbol, token);
   }
-  if (token->type == tLPAREN) {
+  if (token->tk_type == tLPAREN) {
     Node *node = expression();
     expect_token(tRPAREN);
     return node;
@@ -235,11 +235,11 @@ Node *unary_expression() {
       if (check_type_specifier()) {
         type = type_name();
       } else {
-        type = expression()->value_type;
+        type = expression()->type;
       }
       expect_token(tRPAREN);
     } else {
-      type = unary_expression()->value_type;
+      type = unary_expression()->type;
     }
     return node_int_const(type->original_size, token);
   }
@@ -339,13 +339,13 @@ Node *shift_expression(Node *cast_expr) {
 
   while (1) {
     Token *token = peek_token();
-    NodeType type;
-    if (read_token(tLSHIFT)) type = LSHIFT;
-    else if (read_token(tRSHIFT)) type = RSHIFT;
+    NodeType nd_type;
+    if (read_token(tLSHIFT)) nd_type = LSHIFT;
+    else if (read_token(tRSHIFT)) nd_type = RSHIFT;
     else break;
 
     Node *right = additive_expression(cast_expression());
-    node = node_shift(type, node, right, token);
+    node = node_shift(nd_type, node, right, token);
   }
 
   return node;
@@ -356,15 +356,15 @@ Node *relational_expression(Node *cast_expr) {
 
   while (1) {
     Token *token = peek_token();
-    NodeType type;
-    if (read_token(tLT)) type = LT;
-    else if (read_token(tGT)) type = GT;
-    else if (read_token(tLTE)) type = LTE;
-    else if (read_token(tGTE)) type = GTE;
+    NodeType nd_type;
+    if (read_token(tLT)) nd_type = LT;
+    else if (read_token(tGT)) nd_type = GT;
+    else if (read_token(tLTE)) nd_type = LTE;
+    else if (read_token(tGTE)) nd_type = GTE;
     else break;
 
     Node *right = shift_expression(cast_expression());
-    node = node_relational(type, node, right, token);
+    node = node_relational(nd_type, node, right, token);
   }
 
   return node;
@@ -375,13 +375,13 @@ Node *equality_expression(Node *cast_expr) {
 
   while (1) {
     Token *token = peek_token();
-    NodeType type;
-    if (read_token(tEQ)) type = EQ;
-    else if (read_token(tNEQ)) type = NEQ;
+    NodeType nd_type;
+    if (read_token(tEQ)) nd_type = EQ;
+    else if (read_token(tNEQ)) nd_type = NEQ;
     else break;
 
     Node *right = relational_expression(cast_expression());
-    node = node_equality(type, node, right, token);
+    node = node_equality(nd_type, node, right, token);
   }
 
   return node;
@@ -526,7 +526,7 @@ Type *struct_or_union_specifier() {
   Token *token = optional_token(tIDENTIFIER);
   if (token && !map_lookup(tags, token->identifier)) {
     Type *incomplete_type = type_new();
-    incomplete_type->type = STRUCT;
+    incomplete_type->ty_type = STRUCT;
     incomplete_type->incomplete = true;
     map_put(tags, token->identifier, incomplete_type);
   }
@@ -541,7 +541,7 @@ Type *struct_or_union_specifier() {
     Type *specifier = type_specifier();
     do {
       Symbol *symbol = declarator(specifier);
-      if (symbol->value_type->incomplete) {
+      if (symbol->type->incomplete) {
         error(symbol->token, "declaration with incomplete type.");
       }
       vector_push(symbols, symbol);
@@ -577,10 +577,10 @@ Type *enum_specifier() {
   do {
     Token *token = expect_token(tIDENTIFIER);
     Symbol *symbol = symbol_new();
-    symbol->type = ENUM_CONST;
+    symbol->sy_type = ENUM_CONST;
     symbol->identifier = token->identifier;
     symbol->token = token;
-    symbol->value_type = type_int();
+    symbol->type = type_int();
     symbol->enum_value = enum_value++;
     symbol_put(token->identifier, symbol);
   } while (read_token(tCOMMA));
@@ -625,8 +625,8 @@ Type *type_specifier() {
 
   Token *token = expect_token(tIDENTIFIER);
   Symbol *symbol = symbol_lookup(token->identifier);
-  if (symbol && symbol->type == TYPENAME) {
-    return symbol->value_type;
+  if (symbol && symbol->sy_type == TYPENAME) {
+    return symbol->type;
   }
   error(token, "type specifier is expected.");
 }
@@ -664,8 +664,8 @@ Type *direct_declarator(Type *type) {
         }
         Type *specifier = declaration_specifiers();
         Symbol *param = declarator(specifier);
-        if (param->value_type->type == ARRAY) {
-          param->value_type = type_pointer_to(param->value_type->array_of);
+        if (param->type->ty_type == ARRAY) {
+          param->type = type_pointer_to(param->type->array_of);
         }
         vector_push(params, param);
       } while (read_token(tCOMMA));
@@ -688,14 +688,14 @@ Symbol *declarator(Type *specifier) {
   Symbol *symbol = symbol_new();
   symbol->token = token;
   symbol->identifier = token->identifier;
-  symbol->value_type = type;
-  symbol->defined = type->type != FUNCTION;
+  symbol->type = type;
+  symbol->defined = type->ty_type != FUNCTION;
 
   return symbol;
 }
 
 Node *initializer(Type *type) {
-  if (type->type == ARRAY) {
+  if (type->ty_type == ARRAY) {
     Vector *array_init = vector_new();
     expect_token(tLBRACE);
     do {
@@ -710,14 +710,14 @@ Node *initializer(Type *type) {
 
 Symbol *init_declarator(Type *specifier, Symbol *symbol) {
   if (read_token(tASSIGN)) {
-    symbol->initializer = initializer(symbol->value_type);
-    if (symbol->value_type->type == ARRAY) {
+    symbol->initializer = initializer(symbol->type);
+    if (symbol->type->ty_type == ARRAY) {
       int length = symbol->initializer->array_init->length;
-      if (symbol->value_type->incomplete) {
-        Type *type = type_array_of(symbol->value_type->array_of, length);
-        type_copy(symbol->value_type, type);
+      if (symbol->type->incomplete) {
+        Type *type = type_array_of(symbol->type->array_of, length);
+        type_copy(symbol->type, type);
       } else {
-        if (symbol->value_type->array_size < length) {
+        if (symbol->type->array_size < length) {
           error(symbol->token, "too many array elements.");
         }
       }
@@ -731,44 +731,44 @@ Vector *declaration(Type *specifier, Symbol *first_symbol) {
   Vector *symbols = vector_new();
   if (first_symbol) {
     Symbol *symbol = init_declarator(specifier, first_symbol);
-    if (!specifier->definition && symbol->value_type->incomplete) {
+    if (!specifier->definition && symbol->type->incomplete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->type = TYPENAME;
+      symbol->sy_type = TYPENAME;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
   } else if (!check_token(tSEMICOLON)) {
     Symbol *symbol = init_declarator(specifier, declarator(specifier));
-    if (!specifier->definition && symbol->value_type->incomplete) {
+    if (!specifier->definition && symbol->type->incomplete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->type = TYPENAME;
+      symbol->sy_type = TYPENAME;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
   }
   while (read_token(tCOMMA)) {
     Symbol *symbol = init_declarator(specifier, declarator(specifier));
-    if (!specifier->definition && symbol->value_type->incomplete) {
+    if (!specifier->definition && symbol->type->incomplete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->type = TYPENAME;
+      symbol->sy_type = TYPENAME;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->value_type->type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
@@ -887,7 +887,7 @@ Node *return_statement() {
 }
 
 Node *statement() {
-  TokenType type = peek_token()->type;
+  TokenType type = peek_token()->tk_type;
   if (type == tLBRACE) {
     begin_scope();
     Node *node = compound_statement();
@@ -946,7 +946,7 @@ Node *parse(Vector *input_tokens) {
 
   for (int i = 0; i < input_tokens->length; i++) {
     Token *token = input_tokens->buffer[i];
-    if (token->type == tSPACE || token->type == tNEWLINE) continue;
+    if (token->tk_type == tSPACE || token->tk_type == tNEWLINE) continue;
     vector_push(tokens, token);
   }
 
