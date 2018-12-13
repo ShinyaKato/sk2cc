@@ -70,8 +70,8 @@ Node *node_func_call(Node *expr, Vector *args, Token *token) {
     }
 
     for (int i = 0; i < params->length; i++) {
-      Node *arg = args->array[i];
-      Symbol *param = params->array[i];
+      Node *arg = args->buffer[i];
+      Symbol *param = params->buffer[i];
       if (!type_same(arg->value_type, param->value_type)) {
         error(token, "parameter types and argument types should be the same.");
       }

@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
 
   if (only_cpp) {
     for (int i = 0; i < tokens->length; i++) {
-      Token *token = tokens->array[i];
+      Token *token = tokens->buffer[i];
       if (token->type == tEND) break;
       for (SourceChar **p = token->schar; p != token->schar_end; p++) {
         SourceChar *schar = *p;

@@ -6,8 +6,8 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 
 typedef struct vector {
-  int size, length;
-  void **array;
+  int capacity, length;
+  void **buffer;
 } Vector;
 
 extern Vector *vector_new();

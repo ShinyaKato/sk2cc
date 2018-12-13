@@ -26,11 +26,11 @@ Scanner *scanner_new(Vector *tokens) {
 }
 
 Token *scanner_peek(Scanner *sc) {
-  return sc->tokens->array[sc->pos];
+  return sc->tokens->buffer[sc->pos];
 }
 
 Token *scanner_get(Scanner *sc) {
-  return sc->tokens->array[sc->pos++];
+  return sc->tokens->buffer[sc->pos++];
 }
 
 Token *scanner_expect(Scanner *sc, TokenType type) {
@@ -45,7 +45,7 @@ Token *scanner_expect(Scanner *sc, TokenType type) {
 
 bool scanner_check(Scanner *sc, TokenType type) {
   for (int i = sc->pos; i < sc->tokens->length; i++) {
-    Token *token = sc->tokens->array[i];
+    Token *token = sc->tokens->buffer[i];
     if (token->type == type) return true;
     if (token->type != tSPACE) break;
   }
@@ -102,7 +102,7 @@ Vector *expand_function_macro(Token *token, Scanner *sc) {
         if (end) break;
       }
 
-      Token *param = macro->params->array[args_count++];
+      Token *param = macro->params->buffer[args_count++];
       map_put(args, param->identifier, arg);
     } while (scanner_read(sc, tCOMMA));
   }
@@ -241,7 +241,7 @@ Vector *preprocess(Vector *pp_tokens) {
   Scanner *sc = scanner_new(pp_tokens);
 
   Vector *tokens = preprocessing_unit(sc);
-  vector_push(tokens, pp_tokens->array[pp_tokens->length - 1]);
+  vector_push(tokens, pp_tokens->buffer[pp_tokens->length - 1]);
 
   return tokens;
 }

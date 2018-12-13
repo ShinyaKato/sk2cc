@@ -153,7 +153,7 @@ Type *type_struct(Vector *identifiers, Map *members) {
   int align = 0, size = 0;
 
   for (int i = 0; i < identifiers->length; i++) {
-    char *identifier = identifiers->array[i];
+    char *identifier = identifiers->buffer[i];
     Type *type = map_lookup(members, identifier);
 
     if (size % type->align != 0) {

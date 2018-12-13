@@ -121,7 +121,7 @@ void gen_identifier(Node *node) {
 
 void gen_func_call(Node *node) {
   if (strcmp(node->expr->identifier, "__builtin_va_start") == 0) {
-    Node *list = node->args->array[0];
+    Node *list = node->args->buffer[0];
     gen_lvalue(list);
     gen_pop("rdx");
     printf("  movl $%d, (%%rdx)\n", function_symbol->value_type->params->length * 8);
@@ -141,7 +141,7 @@ void gen_func_call(Node *node) {
   }
 
   for (int i = node->args->length - 1; i >= 0; i--) {
-    Node *arg = node->args->array[i];
+    Node *arg = node->args->buffer[i];
     gen_expr(arg);
     if (arg->value_type->type == BOOL) {
       gen_pop("rax");
@@ -154,7 +154,7 @@ void gen_func_call(Node *node) {
 
   int int_reg = 0, float_reg = 0;
   for (int i = 0; i < node->args->length; i++) {
-    Node *arg = node->args->array[i];
+    Node *arg = node->args->buffer[i];
     if (arg->value_type->type == DOUBLE) {
       gen_pop("rax");
       printf("  movq %%rax, %%xmm%d\n", float_reg++);
@@ -487,7 +487,7 @@ void gen_var_decl_init(Node *node, int offset) {
   if (node->type == ARRAY_INIT) {
     int size = node->value_type->array_of->size;
     for (int i = 0; i < node->array_init->length; i++) {
-      Node *init = node->array_init->array[i];
+      Node *init = node->array_init->buffer[i];
       gen_var_decl_init(init, offset + size * i);
     }
   } else if (node->type == INIT) {
@@ -502,7 +502,7 @@ void gen_var_decl_init(Node *node, int offset) {
 
 void gen_var_decl(Node *node) {
   for (int i = 0; i < node->declarations->length; i++) {
-    Symbol *symbol = node->declarations->array[i];
+    Symbol *symbol = node->declarations->buffer[i];
     if (symbol->initializer) {
       gen_var_decl_init(symbol->initializer, -symbol->offset);
     }
@@ -511,7 +511,7 @@ void gen_var_decl(Node *node) {
 
 void gen_comp_stmt(Node *node) {
   for (int i = 0; i < node->statements->length; i++) {
-    Node *stmt = node->statements->array[i];
+    Node *stmt = node->statements->buffer[i];
     gen_stmt(stmt);
   }
 }
@@ -604,12 +604,12 @@ void gen_for_stmt(Node *node) {
 }
 
 void gen_continue_stmt(Node *node) {
-  int *label = continue_labels->array[continue_labels->length - 1];
+  int *label = continue_labels->buffer[continue_labels->length - 1];
   gen_jump("jmp", *label);
 }
 
 void gen_break_stmt(Node *node) {
-  int *label = break_labels->array[break_labels->length - 1];
+  int *label = break_labels->buffer[break_labels->length - 1];
   gen_jump("jmp", *label);
 }
 
@@ -650,7 +650,7 @@ void gen_func_def(Node *node) {
   Type *type = node->symbol->value_type;
   int int_param = 0, double_param = 0;
   for (int i = 0; i < type->params->length; i++) {
-    Symbol *symbol = (Symbol *) type->params->array[i];
+    Symbol *symbol = (Symbol *) type->params->buffer[i];
     if (symbol->value_type->type == BOOL) {
       printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
       printf("  cmpb $0, %%al\n");
@@ -699,7 +699,7 @@ void gen_gvar_init(Node *node) {
     int length = node->array_init->length;
     int padding = type->size - type->array_of->size * length;
     for (int i = 0; i < length; i++) {
-      gen_gvar_init(node->array_init->array[i]);
+      gen_gvar_init(node->array_init->buffer[i]);
     }
     if (padding > 0) {
       printf("  .zero %d\n", padding);
@@ -716,7 +716,7 @@ void gen_gvar_init(Node *node) {
 void gen_gvar_decl(Vector *declarations) {
   printf("  .data\n");
   for (int i = 0; i < declarations->length; i++) {
-    Symbol *symbol = declarations->array[i];
+    Symbol *symbol = declarations->buffer[i];
     printf("  .global %s\n", symbol->identifier);
     printf("%s:\n", symbol->identifier);
     if (symbol->initializer) {
@@ -731,7 +731,7 @@ void gen_trans_unit(Node *node) {
   if (node->string_literals->length > 0) {
     printf("  .text\n");
     for (int i = 0; i < node->string_literals->length; i++) {
-      String *string_value = node->string_literals->array[i];
+      String *string_value = node->string_literals->buffer[i];
       printf(".S%d:\n", i);
       printf("  .ascii \"");
       for (int j = 0; j < string_value->length; j++) {
@@ -760,7 +760,7 @@ void gen_trans_unit(Node *node) {
   if (node->definitions->length > 0) {
     printf("  .text\n");
     for (int i = 0; i < node->definitions->length; i++) {
-      Node *func_def = node->definitions->array[i];
+      Node *func_def = node->definitions->buffer[i];
       gen_func_def(func_def);
     }
   }

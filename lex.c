@@ -79,12 +79,12 @@ int src_pos;
 
 Token *token_new() {
   Token *token = (Token *) calloc(1, sizeof(Token));
-  token->schar = (SourceChar **) &(src->array[src_pos]);
+  token->schar = (SourceChar **) &(src->buffer[src_pos]);
   return token;
 }
 
 char peek_char() {
-  SourceChar *schar = src->array[src_pos];
+  SourceChar *schar = src->buffer[src_pos];
   return *(schar->char_ptr);
 }
 
@@ -356,7 +356,7 @@ Token *lex() {
   }
 
   token->type_name = token_type_name[token->type];
-  token->schar_end = (SourceChar **) &(src->array[src_pos]);
+  token->schar_end = (SourceChar **) &(src->buffer[src_pos]);
 
   return token;
 }

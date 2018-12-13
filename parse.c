@@ -17,7 +17,7 @@ Symbol *symbol_new() {
 
 Symbol *symbol_lookup(char *identifier) {
   for (int i = scopes->length - 1; i >= 0; i--) {
-    Map *map = scopes->array[i];
+    Map *map = scopes->buffer[i];
     Symbol *symbol = map_lookup(map, identifier);
     if (symbol) return symbol;
   }
@@ -25,7 +25,7 @@ Symbol *symbol_lookup(char *identifier) {
 }
 
 void symbol_put(char *identifier, Symbol *symbol) {
-  Map *map = scopes->array[scopes->length - 1];
+  Map *map = scopes->buffer[scopes->length - 1];
 
   if (symbol->type != TYPENAME && symbol->type != ENUM_CONST) {
     if (identifier) {
@@ -66,7 +66,7 @@ void begin_function_scope(Symbol *symbol) {
 
   Vector *params = symbol->value_type->params;
   for (int i = 0; i < params->length; i++) {
-    Symbol *param = params->array[i];
+    Symbol *param = params->buffer[i];
     symbol_put(param->identifier, param);
   }
 }
@@ -77,11 +77,11 @@ void begin_global_scope() {
 }
 
 Token *peek_token() {
-  return tokens->array[tokens_pos];
+  return tokens->buffer[tokens_pos];
 }
 
 Token *get_token() {
-  return tokens->array[tokens_pos++];
+  return tokens->buffer[tokens_pos++];
 }
 
 Token *expect_token(TokenType type) {
@@ -928,7 +928,7 @@ Node *translate_unit() {
       if (!check_token(tLBRACE)) {
         Vector *symbols = declaration(specifier, first_symbol);
         for (int i = 0; i < symbols->length; i++) {
-          Symbol *symbol = symbols->array[i];
+          Symbol *symbol = symbols->buffer[i];
           vector_push(declarations, symbol);
         }
       } else {
@@ -947,7 +947,7 @@ Node *parse(Vector *input_tokens) {
   tokens_pos = 0;
 
   for (int i = 0; i < input_tokens->length; i++) {
-    Token *token = input_tokens->array[i];
+    Token *token = input_tokens->buffer[i];
     if (token->type == tSPACE || token->type == tNEWLINE) continue;
     vector_push(tokens, token);
   }
