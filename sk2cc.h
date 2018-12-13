@@ -47,7 +47,26 @@ int isalpha(int c);
 int isalnum(int c);
 int isprint(int c);
 
-typedef enum token_type {
+typedef struct source_char SourceChar;
+
+typedef enum token_type TokenType;
+typedef struct token Token;
+
+typedef enum node_type NodeType;
+typedef struct node Node;
+
+typedef enum type_type TypeType;
+typedef struct type Type;
+
+typedef enum symbol_type SymbolType;
+typedef struct symbol Symbol;
+
+struct source_char {
+  char *filename, *char_ptr, *line_ptr;
+  int lineno, column;
+};
+
+enum token_type {
   tVOID,
   tBOOL,
   tCHAR,
@@ -119,25 +138,19 @@ typedef enum token_type {
   tSPACE,
   tNEWLINE,
   tEND
-} TokenType;
+};
 
-typedef enum type_type {
-  VOID,
-  BOOL,
-  CHAR,
-  UCHAR,
-  SHORT,
-  USHORT,
-  INT,
-  UINT,
-  DOUBLE,
-  POINTER,
-  ARRAY,
-  STRUCT,
-  FUNCTION
-} TypeType;
+struct token {
+  TokenType type;
+  char *type_name;
+  int int_value;
+  double double_value;
+  String *string_value;
+  char *identifier;
+  SourceChar **schar, **schar_end;
+};
 
-typedef enum node_type {
+enum node_type {
   INT_CONST,
   FLOAT_CONST,
   STRING_LITERAL,
@@ -186,62 +199,6 @@ typedef enum node_type {
   RETURN_STMT,
   FUNC_DEF,
   TLANS_UNIT
-} NodeType;
-
-typedef enum symbol_type {
-  GLOBAL,
-  LOCAL,
-  TYPENAME,
-  ENUM_CONST
-} SymbolType;
-
-typedef struct source_char SourceChar;
-typedef struct token Token;
-typedef struct type Type;
-typedef struct symbol Symbol;
-typedef struct node Node;
-
-struct source_char {
-  char *filename, *char_ptr, *line_ptr;
-  int lineno, column;
-};
-
-struct token {
-  TokenType type;
-  char *type_name;
-  int int_value;
-  double double_value;
-  String *string_value;
-  char *identifier;
-  SourceChar **schar, **schar_end;
-};
-
-struct type {
-  TypeType type;
-  int size, align;
-  Type *pointer_to;
-  Type *array_of;
-  int array_size;
-  Map *members, *offsets;
-  Type *function_returning;
-  Vector *params;
-  bool ellipsis;
-  int original_size;
-  bool array_pointer;
-  bool definition;
-  bool external;
-  bool incomplete;
-};
-
-struct symbol {
-  SymbolType type;
-  Token *token;
-  char *identifier;
-  Type *value_type;
-  Node *initializer;
-  int enum_value;
-  int offset;
-  bool defined;
 };
 
 struct node {
@@ -265,6 +222,57 @@ struct node {
   Node *function_body;
   int local_vars_size;
   Vector *string_literals, *declarations, *definitions;
+};
+
+enum type_type {
+  VOID,
+  BOOL,
+  CHAR,
+  UCHAR,
+  SHORT,
+  USHORT,
+  INT,
+  UINT,
+  DOUBLE,
+  POINTER,
+  ARRAY,
+  STRUCT,
+  FUNCTION
+};
+
+struct type {
+  TypeType type;
+  int size, align;
+  Type *pointer_to;
+  Type *array_of;
+  int array_size;
+  Map *members, *offsets;
+  Type *function_returning;
+  Vector *params;
+  bool ellipsis;
+  int original_size;
+  bool array_pointer;
+  bool definition;
+  bool external;
+  bool incomplete;
+};
+
+enum symbol_type {
+  GLOBAL,
+  LOCAL,
+  TYPENAME,
+  ENUM_CONST
+};
+
+struct symbol {
+  SymbolType type;
+  Token *token;
+  char *identifier;
+  Type *value_type;
+  Node *initializer;
+  int enum_value;
+  int offset;
+  bool defined;
 };
 
 extern noreturn void error(Token *token, char *format, ...);

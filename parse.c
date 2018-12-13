@@ -564,14 +564,15 @@ Type *enum_specifier() {
   expect_token(tENUM);
 
   Token *token = optional_token(tIDENTIFIER);
+  if (token && !map_lookup(tags, token->identifier)) {
+    Type *incomplete_type = type_new();
+    incomplete_type->incomplete = true;
+    map_put(tags, token->identifier, incomplete_type);
+  }
 
   if (!read_token(tLBRACE)) {
     if (!token) error(peek_token(), "invalid enum type spcifier.");
-
-    Type *type = map_lookup(tags, token->identifier);
-    if (!type) error(token, "undefined enum tag.");
-
-    return type;
+    return map_lookup(tags, token->identifier);
   }
 
   int enum_value = 0;
@@ -590,8 +591,9 @@ Type *enum_specifier() {
   Type *type = type_int();
   if (!token) return type;
 
-  map_put(tags, token->identifier, type);
-  return type;
+  Type *dest = map_lookup(tags, token->identifier);
+  type_copy(dest, type);
+  return dest;
 }
 
 Type *type_specifier() {
