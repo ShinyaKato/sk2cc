@@ -38,7 +38,6 @@ FILE *fopen(char *filename, char *modes);
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status);
-double strtod(char *s, char *endpoint);
 
 int strcmp(char *s1, char *s2);
 
@@ -73,7 +72,6 @@ enum token_type {
   tCHAR,
   tSHORT,
   tINT,
-  tDOUBLE,
   tUNSIGNED,
   tSTRUCT,
   tENUM,
@@ -145,7 +143,6 @@ struct token {
   TokenType tk_type;
   char *tk_name;
   int int_value;
-  double double_value;
   String *string_value;
   char *identifier;
   SourceChar **schar, **schar_end;
@@ -153,7 +150,6 @@ struct token {
 
 enum node_type {
   INT_CONST,
-  FLOAT_CONST,
   STRING_LITERAL,
   IDENTIFIER,
   FUNC_CALL,
@@ -207,9 +203,8 @@ struct node {
   Token *token;
   Type *type;
   int int_value;
-  double double_value;
   String *string_value;
-  int string_label, float_label;
+  int string_label;
   char *identifier, *member;
   Symbol *symbol;
   Vector *args;
@@ -234,7 +229,6 @@ enum type_type {
   USHORT,
   INT,
   UINT,
-  DOUBLE,
   POINTER,
   ARRAY,
   STRUCT,
@@ -298,7 +292,6 @@ extern Type *type_short();
 extern Type *type_ushort();
 extern Type *type_int();
 extern Type *type_uint();
-extern Type *type_double();
 extern Type *type_pointer_to(Type *type);
 extern Type *type_array_of(Type *type, int array_size);
 extern Type *type_incomplete_array_of(Type *type);
@@ -313,7 +306,6 @@ extern bool type_same(Type *type1, Type *type2);
 
 extern Node *node_new();
 extern Node *node_int_const(int int_value, Token *token);
-extern Node *node_float_const(double double_value, Token *token);
 extern Node *node_string_literal(String *string_value, int string_label, Token *token);
 extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Node *node_func_call(Node *expr, Vector *args, Token *token);

@@ -18,15 +18,6 @@ Node *node_int_const(int int_value, Token *token) {
   return node;
 }
 
-Node *node_float_const(double double_value, Token *token) {
-  Node *node = node_new();
-  node->nd_type = FLOAT_CONST;
-  node->type = type_double();
-  node->double_value = double_value;
-  node->token = token;
-  return node;
-}
-
 Node *node_string_literal(String *string_value, int string_label, Token *token) {
   Node *node = node_new();
   node->nd_type = STRING_LITERAL;

@@ -105,18 +105,6 @@ Type *type_uint() {
   return uint_type;
 }
 
-Type *type_double() {
-  Type *double_type = type_new();
-  double_type->ty_type = DOUBLE;
-  double_type->size = 8;
-  double_type->align = 8;
-  double_type->original_size = 8;
-  double_type->array_pointer = false;
-  double_type->definition = false;
-  double_type->incomplete = false;
-  return double_type;
-}
-
 Type *type_pointer_to(Type *type) {
   Type *pointer = type_new();
   pointer->ty_type = POINTER;
@@ -250,6 +238,5 @@ bool type_scalar(Type *type) {
 bool type_same(Type *type1, Type *type2) {
   if (type_integer(type1) && type_integer(type2)) return true;
   if (type_pointer(type1) && type_pointer(type2)) return true;
-  if (type1->ty_type == DOUBLE && type2->ty_type == DOUBLE) return true;
   return false;
 }

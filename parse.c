@@ -117,7 +117,6 @@ bool check_type_specifier() {
   if (check_token(tCHAR)) return true;
   if (check_token(tSHORT)) return true;
   if (check_token(tINT)) return true;
-  if (check_token(tDOUBLE)) return true;
   if (check_token(tUNSIGNED)) return true;
   if (check_token(tSTRUCT)) return true;
   if (check_token(tENUM)) return true;
@@ -160,9 +159,6 @@ Node *primary_expression() {
 
   if (token->tk_type == tINT_CONST) {
     return node_int_const(token->int_value, token);
-  }
-  if (token->tk_type == tFLOAT_CONST) {
-    return node_float_const(token->double_value, token);
   }
   if (token->tk_type == tSTRING_LITERAL) {
     int string_label = string_literals->length;
@@ -605,8 +601,6 @@ Type *type_specifier() {
     return type_char();
   } else if (read_token(tINT)) {
     return type_int();
-  } else if (read_token(tDOUBLE)) {
-    return type_double();
   } else if (read_token(tUNSIGNED)) {
     if (read_token(tCHAR)) {
       return type_uchar();

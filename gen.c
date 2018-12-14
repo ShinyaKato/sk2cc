@@ -57,8 +57,6 @@ void gen_load(Type *type) {
     printf("  movswl (%%rax), %%eax\n");
   } else if (type->ty_type == INT || type->ty_type == UINT) {
     printf("  movl (%%rax), %%eax\n");
-  } else if (type->ty_type == DOUBLE) {
-    printf("  movq (%%rax), %%rax\n");
   } else if (type->ty_type == POINTER && !type->array_pointer) {
     printf("  movq (%%rax), %%rax\n");
   }
@@ -78,8 +76,6 @@ void gen_store(Type *type) {
     printf("  movw %%ax, (%%rcx)\n");
   } else if (type->ty_type == INT || type->ty_type == UINT) {
     printf("  movl %%eax, (%%rcx)\n");
-  } else if (type->ty_type == DOUBLE) {
-    printf("  movq %%rax, (%%rcx)\n");
   } else if (type->ty_type == POINTER) {
     printf("  movq %%rax, (%%rcx)\n");
   }
@@ -100,12 +96,6 @@ void gen_operands(Node *left, Node *right, char *reg_left, char *reg_right) {
 
 void gen_int_const(Node *node) {
   printf("  movl $%d, %%eax\n", node->int_value);
-  gen_push("rax");
-}
-
-void gen_float_const(Node *node) {
-  int *d = (int *) &node->double_value;
-  printf("  movq $0x%08x%08x, %%rax\n", d[1], d[0]);
   gen_push("rax");
 }
 
@@ -152,30 +142,20 @@ void gen_func_call(Node *node) {
     }
   }
 
-  int int_reg = 0, float_reg = 0;
   for (int i = 0; i < node->args->length; i++) {
-    Node *arg = node->args->buffer[i];
-    if (arg->type->ty_type == DOUBLE) {
-      gen_pop("rax");
-      printf("  movq %%rax, %%xmm%d\n", float_reg++);
-    } else {
-      gen_pop(arg_reg[int_reg++]);
-    }
+    gen_pop(arg_reg[i]);
   }
 
   int top = stack_depth % 16;
   if (top > 0) {
     printf("  subq $%d, %%rsp\n", 16 - top);
   }
-  printf("  movl $%d, %%eax\n", float_reg);
+  printf("  movl $0, %%eax\n");
   printf("  call %s@PLT\n", node->expr->identifier);
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
 
-  if (node->type->ty_type == DOUBLE) {
-    printf("  movq %%xmm0, %%rax\n");
-  }
   if (node->type->ty_type == BOOL) {
     printf("  movzbl %%al, %%eax\n");
   }
@@ -446,7 +426,6 @@ void gen_comma(Node *node) {
 
 void gen_expr(Node *node) {
   if (node->nd_type == INT_CONST) gen_int_const(node);
-  else if (node->nd_type == FLOAT_CONST) gen_float_const(node);
   else if (node->nd_type == STRING_LITERAL) gen_string_literal(node);
   else if (node->nd_type == IDENTIFIER) gen_identifier(node);
   else if (node->nd_type == FUNC_CALL) gen_func_call(node);
@@ -648,27 +627,24 @@ void gen_func_def(Node *node) {
   stack_depth += node->local_vars_size;
 
   Type *type = node->symbol->type;
-  int int_param = 0, double_param = 0;
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->buffer[i];
     if (symbol->type->ty_type == BOOL) {
-      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  cmpb $0, %%al\n");
       printf("  setne %%al\n");
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->type->ty_type == CHAR || symbol->type->ty_type == UCHAR) {
-      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->type->ty_type == SHORT || symbol->type->ty_type == USHORT) {
-      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movw %%ax, %d(%%rbp)\n", -symbol->offset);
     } else if (symbol->type->ty_type == INT || symbol->type->ty_type == UINT) {
-      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == DOUBLE) {
-      printf("  movsd %%xmm%d, %d(%%rbp)\n", double_param++, -symbol->offset);
     } else if (symbol->type->ty_type == POINTER) {
-      printf("  movq %%%s, %%rax\n", arg_reg[int_param++]);
+      printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
     }
   }
@@ -685,9 +661,6 @@ void gen_func_def(Node *node) {
   if (type->function_returning->ty_type == BOOL) {
     printf("  cmpl $0, %%eax\n");
     printf("  setne %%al\n");
-  }
-  if (type->function_returning->ty_type == DOUBLE) {
-    printf("  movq %%rax, %%xmm0\n");
   }
   printf("  leave\n");
   printf("  ret\n");

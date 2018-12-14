@@ -6,7 +6,6 @@ char *tk_name[] = {
   "char",
   "short",
   "int",
-  "double",
   "unsigned",
   "struct",
   "enum",
@@ -25,7 +24,6 @@ char *tk_name[] = {
   "return",
   "identifier",
   "integer constant",
-  "floating point constant",
   "string literal",
   "[",
   "]",
@@ -132,21 +130,12 @@ Token *lex() {
     while (isdigit(peek_char())) {
       string_push(s, get_char());
     }
-    if (peek_char() == '.') {
-      string_push(s, get_char());
-      while (isdigit(peek_char())) {
-        string_push(s, get_char());
-      }
-      token->tk_type = tFLOAT_CONST;
-      token->double_value = strtod(s->buffer, NULL);
-    } else {
-      int int_value = 0;
-      for (int i = 0; i < s->length; i++) {
-        int_value = int_value * 10 + (s->buffer[i] - '0');
-      }
-      token->tk_type = tINT_CONST;
-      token->int_value = int_value;
+    int int_value = 0;
+    for (int i = 0; i < s->length; i++) {
+      int_value = int_value * 10 + (s->buffer[i] - '0');
     }
+    token->tk_type = tINT_CONST;
+    token->int_value = int_value;
   } else if (read_char('\'')) {
     int int_value;
     if (read_char('\\')) {
@@ -184,8 +173,6 @@ Token *lex() {
       token->tk_type = tSHORT;
     } else if (strcmp(identifier->buffer, "int") == 0) {
       token->tk_type = tINT;
-    } else if (strcmp(identifier->buffer, "double") == 0) {
-      token->tk_type = tDOUBLE;
     } else if (strcmp(identifier->buffer, "unsigned") == 0) {
       token->tk_type = tUNSIGNED;
     } else if (strcmp(identifier->buffer, "struct") == 0) {
