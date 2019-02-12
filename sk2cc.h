@@ -45,10 +45,10 @@ int isdigit(int c);
 int isalpha(int c);
 int isalnum(int c);
 int isprint(int c);
+int isascii(int c);
 
 typedef struct source_char SourceChar;
 
-typedef enum token_type TokenType;
 typedef struct token Token;
 
 typedef enum node_type NodeType;
@@ -66,82 +66,70 @@ struct source_char {
   int lineno, column;
 };
 
-enum token_type {
-  tVOID,
-  tBOOL,
-  tCHAR,
-  tSHORT,
-  tINT,
-  tUNSIGNED,
-  tSTRUCT,
-  tENUM,
-  tTYPEDEF,
-  tEXTERN,
-  tNORETURN,
-  tSIZEOF,
-  tALIGNOF,
-  tIF,
-  tELSE,
-  tWHILE,
-  tDO,
-  tFOR,
-  tCONTINUE,
-  tBREAK,
-  tRETURN,
-  tIDENTIFIER,
-  tINT_CONST,
-  tFLOAT_CONST,
-  tSTRING_LITERAL,
-  tLBRACKET,
-  tRBRACKET,
-  tLPAREN,
-  tRPAREN,
-  tRBRACE,
-  tLBRACE,
-  tDOT,
-  tARROW,
-  tINC,
-  tDEC,
-  tNOT,
-  tLNOT,
-  tMUL,
-  tDIV,
-  tMOD,
-  tADD,
-  tSUB,
-  tLSHIFT,
-  tRSHIFT,
-  tLT,
-  tGT,
-  tLTE,
-  tGTE,
-  tEQ,
-  tNEQ,
-  tAND,
-  tXOR,
-  tOR,
-  tLAND,
-  tLOR,
-  tQUESTION,
-  tCOLON,
-  tSEMICOLON,
-  tELLIPSIS,
-  tASSIGN,
-  tADD_ASSIGN,
-  tSUB_ASSIGN,
-  tMUL_ASSIGN,
-  tDIV_ASSIGN,
-  tMOD_ASSIGN,
-  tCOMMA,
-  tHASH,
-  tSPACE,
-  tNEWLINE,
-  tEND
+// token type
+// A one-character token is represented by it's ascii code.
+enum {
+  // white spaces (removed before syntax analysis)
+  TK_SPACE = 128,
+  TK_NEWLINE,
+
+  // keywords for expressions
+  TK_SIZEOF,
+  TK_ALIGNOF,
+
+  // keywords for declarations
+  TK_VOID,
+  TK_CHAR,
+  TK_SHORT,
+  TK_INT,
+  TK_UNSIGNED,
+  TK_BOOL,
+  TK_STRUCT,
+  TK_ENUM,
+  TK_TYPEDEF,
+  TK_EXTERN,
+  TK_NORETURN,
+
+  // keywords for statements
+  TK_IF,
+  TK_ELSE,
+  TK_WHILE,
+  TK_DO,
+  TK_FOR,
+  TK_CONTINUE,
+  TK_BREAK,
+  TK_RETURN,
+
+  // identifiers, constants, string literals
+  TK_IDENTIFIER,
+  TK_INTEGER_CONST,
+  TK_STRING_LITERAL,
+
+  // punctuators
+  TK_ARROW,      // ->
+  TK_INC,        // ++
+  TK_DEC,        // --
+  TK_LSHIFT,     // <<
+  TK_RSHIFT,     // >>
+  TK_LTE,        // <=
+  TK_GTE,        // >=
+  TK_EQ,         // ==
+  TK_NEQ,        // !=
+  TK_AND,        // &&
+  TK_OR,         // ||
+  TK_MUL_ASSIGN, // *=
+  TK_DIV_ASSIGN, // /=
+  TK_MOD_ASSIGN, // %=
+  TK_ADD_ASSIGN, // +=
+  TK_SUB_ASSIGN, // -=
+  TK_ELLIPSIS,   // ...
+
+  // EOF (the end of the input source file)
+  TK_EOF
 };
 
 struct token {
-  TokenType tk_type;
-  char *tk_name;
+  int tk_type;
   int int_value;
   String *string_value;
   char *identifier;
@@ -278,6 +266,8 @@ struct symbol {
 extern noreturn void error(Token *token, char *format, ...);
 
 extern Vector *scan(char *filename);
+
+extern char *token_name(int tk_type);
 
 extern Vector *tokenize(Vector *input_src);
 
