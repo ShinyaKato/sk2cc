@@ -59,9 +59,14 @@ typedef struct struct_member StructMember;
 typedef enum symbol_type SymbolType;
 typedef struct symbol Symbol;
 
+// SourceChar holds original location of the source code character.
+// This information is used for error report.
 struct source_char {
-  char *filename, *char_ptr, *line_ptr;
-  int lineno, column;
+  char *filename; // source file name
+  char *char_ptr; // pointer to the character
+  char *line_ptr; // pointer to the line head
+  int lineno;
+  int column;
 };
 
 // token type
@@ -126,12 +131,14 @@ enum {
   TK_EOF
 };
 
+// Token
 struct token {
   int tk_type;
+  char *identifier;
   int int_value;
   String *string_literal;
-  char *identifier;
-  SourceChar **schar, **schar_end;
+  SourceChar **schar;
+  SourceChar **schar_end;
 };
 
 enum {
