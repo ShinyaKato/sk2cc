@@ -131,81 +131,175 @@ enum {
 struct token {
   int tk_type;
   int int_value;
-  String *string_value;
+  String *string_literal;
   char *identifier;
   SourceChar **schar, **schar_end;
 };
 
-enum node_type {
-  INT_CONST,
-  STRING_LITERAL,
-  IDENTIFIER,
-  FUNC_CALL,
-  DOT,
-  ADDRESS,
-  INDIRECT,
-  UPLUS,
-  UMINUS,
-  NOT,
-  LNOT,
-  CAST,
-  MUL,
-  DIV,
-  MOD,
-  ADD,
-  SUB,
-  LSHIFT,
-  RSHIFT,
-  LT,
-  GT,
-  LTE,
-  GTE,
-  EQ,
-  NEQ,
-  AND,
-  OR,
-  XOR,
-  LAND,
-  LOR,
-  CONDITION,
-  ASSIGN,
-  COMMA,
-  INIT,
-  ARRAY_INIT,
-  VAR_DECL,
-  COMP_STMT,
-  EXPR_STMT,
-  IF_STMT,
-  WHILE_STMT,
-  DO_WHILE_STMT,
-  FOR_STMT,
-  CONTINUE_STMT,
-  BREAK_STMT,
-  RETURN_STMT,
-  FUNC_DEF,
-  TLANS_UNIT
+enum {
+  // expression
+  ND_IDENTIFIER,
+  ND_INTEGER,
+  ND_STRING,
+  ND_CALL,
+  ND_DOT,
+  ND_ADDRESS,
+  ND_INDIRECT,
+  ND_UPLUS,
+  ND_UMINUS,
+  ND_NOT,
+  ND_LNOT,
+  ND_CAST,
+  ND_MUL,
+  ND_DIV,
+  ND_MOD,
+  ND_ADD,
+  ND_SUB,
+  ND_LSHIFT,
+  ND_RSHIFT,
+  ND_LT,
+  ND_LTE,
+  ND_EQ,
+  ND_NEQ,
+  ND_AND,
+  ND_XOR,
+  ND_OR,
+  ND_LAND,
+  ND_LOR,
+  ND_CONDITION,
+  ND_ASSIGN,
+  ND_COMMA,
+
+  // declaration
+  ND_DECL,
+
+  // statement
+  ND_COMP,
+  ND_EXPR,
+  ND_IF,
+  ND_WHILE,
+  ND_DO,
+  ND_FOR,
+  ND_CONTINUE,
+  ND_BREAK,
+  ND_RETURN,
+
+  // function definition
+  ND_FUNC
 };
 
+typedef struct node Node;
+typedef struct expr Expr;
+typedef struct decl Decl;
+typedef struct init Init;
+typedef struct stmt Stmt;
+typedef struct func Func;
+typedef struct trans_unit TransUnit;
+
+// AST node
+// This struct is used for checking the node type.
+// After checking, the pointer is casted to the pointer of each node type.
+// There are 4 kinds of node: Expr, Decl, Stmt, Func.
 struct node {
-  NodeType nd_type;
+  int nd_type;
   Token *token;
+};
+
+// AST node for expression
+struct expr {
+  int nd_type;
+  Token *token;
+
+  // type of the expression
   Type *type;
-  int int_value;
-  String *string_value;
-  int string_label;
-  char *identifier, *member;
+
+  // child expression node
+  Expr *expr;      // for unary expr, postfix expr, cast expr
+  Expr *lhs, *rhs; // for binary expr, conditional expr
+  Expr *cond;      // for conditional expr
+
+  // identifier
+  char *identifier;
   Symbol *symbol;
-  Vector *args;
-  int member_offset;
-  Node *expr, *left, *right, *control;
-  Node *init;
-  Vector *array_init;
-  Vector *statements;
-  Node *if_control, *if_body, *else_body;
-  Node *loop_init, *loop_control, *loop_afterthrough, *loop_body;
-  Node *function_body;
-  int local_vars_size;
-  Vector *string_literals, *declarations, *definitions;
+
+  // integer constant
+  int int_value;
+
+  // string literal
+  String *string_literal;
+  int string_label;
+
+  // call
+  Vector *args; // vector of Expr*
+
+  // member access
+  char *member;
+  int offset;
+};
+
+// AST node for declaration
+struct decl {
+  int nd_type;
+  Token *token;
+
+  Vector *declarations; // vector of Symbol*
+};
+
+// initializer
+struct init {
+  Type *type;
+  Expr *expr;
+  Vector *list; // vector of Init*
+};
+
+// AST node for statement
+struct stmt {
+  int nd_type;
+  Token *token;
+
+  // compound statement (block)
+  Vector *block_items; // vector of Node* (Decl* or Stmt*)
+
+  // expression statement
+  Expr *expr; // optional
+
+  // if-else statement
+  Expr *if_cond;
+  Stmt *then_body;
+  Stmt *else_body; // optional
+
+  // while statement
+  Expr *while_cond;
+  Stmt *while_body;
+
+  // do-while statement
+  Expr *do_cond;
+  Stmt *do_body;
+
+  // for statement
+  Node *for_init;  // optional, Decl* or Expr*
+  Expr *for_cond;  // optional
+  Expr *for_after; // optional
+  Stmt *for_body;
+
+  // return statement
+  Expr *ret_expr; // optional
+};
+
+// AST node for function definition
+struct func {
+  int nd_type;
+  Token *token;
+
+  Symbol *symbol;
+  Stmt *body;
+  int stack_size; // stack size for local variables
+};
+
+// translation unit
+struct trans_unit {
+  Vector *string_literals; // vector of String*
+  Vector *external_decls;  // vector of Node* (Decl* or Func*)
 };
 
 enum type_type {
@@ -257,7 +351,7 @@ struct symbol {
   Token *token;
   char *identifier;
   Type *type;
-  Node *initializer;
+  Init *init;
   int enum_value;
   int offset;
   bool defined;
@@ -294,55 +388,67 @@ extern bool type_pointer(Type *type);
 extern bool type_scalar(Type *type);
 extern bool type_same(Type *type1, Type *type2);
 
-extern Node *node_new();
-extern Node *node_int_const(int int_value, Token *token);
-extern Node *node_string_literal(String *string_value, int string_label, Token *token);
-extern Node *node_identifier(char *identifier, Symbol *symbol, Token *token);
-extern Node *node_func_call(Node *expr, Vector *args, Token *token);
-extern Node *node_dot(Node *expr, char *identifier, Token *token);
-extern Node *node_post_inc(Node *expr, Token *token);
-extern Node *node_post_dec(Node *expr, Token *token);
-extern Node *node_pre_inc(Node *expr, Token *token);
-extern Node *node_pre_dec(Node *expr, Token *token);
-extern Node *node_address(Node *expr, Token *token);
-extern Node *node_indirect(Node *expr, Token *token);
-extern Node *node_unary_arithmetic(NodeType nd_type, Node *expr, Token *token);
-extern Node *node_cast(Type *type, Node *expr, Token *token);
-extern Node *node_mul(Node *left, Node *right, Token *token);
-extern Node *node_div(Node *left, Node *right, Token *token);
-extern Node *node_mod(Node *left, Node *right, Token *token);
-extern Node *node_add(Node *left, Node *right, Token *token);
-extern Node *node_sub(Node *left, Node *right, Token *token);
-extern Node *node_shift(NodeType nd_type, Node *left, Node *right, Token *token);
-extern Node *node_relational(NodeType nd_type, Node *left, Node *right, Token *token);
-extern Node *node_equality(NodeType nd_type, Node *left, Node *right, Token *token);
-extern Node *node_bitwise(NodeType nd_type, Node *left, Node *right, Token *token);
-extern Node *node_logical(NodeType nd_type, Node *left, Node *right, Token *token);
-extern Node *node_conditional(Node *control, Node *left, Node *right, Token *token);
-extern Node *node_assign(Node *left, Node *right, Token *token);
-extern Node *node_add_assign(Node *left, Node *right, Token *token);
-extern Node *node_sub_assign(Node *left, Node *right, Token *token);
-extern Node *node_mul_assign(Node *left, Node *right, Token *token);
-extern Node *node_div_assign(Node *left, Node *right, Token *token);
-extern Node *node_mod_assign(Node *left, Node *right, Token *token);
-extern Node *node_comma(Node *left, Node *right, Token *token);
-extern Node *node_init(Node *init, Type *type);
-extern Node *node_array_init(Vector *array_init, Type *type);
-extern Node *node_decl(Vector *declarations);
-extern Node *node_comp_stmt(Vector *statements);
-extern Node *node_expr_stmt(Node *expr);
-extern Node *node_if_stmt(Node *control, Node *if_body, Node *else_body);
-extern Node *node_while_stmt(Node *control, Node *loop_body);
-extern Node *node_do_while_stmt(Node *control, Node *loop_body);
-extern Node *node_for_stmt(Node *init, Node *control, Node *afterthrough, Node *loop_body);
-extern Node *node_continue_stmt(int continue_level, Token *token);
-extern Node *node_break_stmt(int break_level, Token *token);
-extern Node *node_return_stmt(Node *node);
-extern Node *node_func_def(Symbol *symbol, Node *function_body, int local_vars_size, Token *token);
-extern Node *node_trans_unit(Vector *string_literals, Vector *declarations, Vector *definitions);
+extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
+extern Expr *expr_integer(int int_value, Token *token);
+extern Expr *expr_string(String *string_literal, int string_label, Token *token);
+extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);
+extern Expr *expr_call(Expr *expr, Vector *args, Token *token);
+extern Expr *expr_dot(Expr *expr, char *member, Token *token);
+extern Expr *expr_arrow(Expr *expr, char *member, Token *token);
+extern Expr *expr_post_inc(Expr *expr, Token *token);
+extern Expr *expr_post_dec(Expr *expr, Token *token);
+extern Expr *expr_pre_inc(Expr *expr, Token *token);
+extern Expr *expr_pre_dec(Expr *expr, Token *token);
+extern Expr *expr_address(Expr *expr, Token *token);
+extern Expr *expr_indirect(Expr *expr, Token *token);
+extern Expr *expr_uplus(Expr *expr, Token *token);
+extern Expr *expr_uminus(Expr *expr, Token *token);
+extern Expr *expr_not(Expr *expr, Token *token);
+extern Expr *expr_lnot(Expr *expr, Token *token);
+extern Expr *expr_cast(Type *type, Expr *expr, Token *token);
+extern Expr *expr_mul(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_div(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_mod(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_add(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_sub(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_lshift(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_rshift(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_lt(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_gt(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_lte(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_gte(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_eq(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_neq(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_and(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_xor(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_or(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_land(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_lor(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_conditional(Expr *cond, Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_mul_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_div_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_mod_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_add_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_sub_assign(Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_comma(Expr *lhs, Expr *rhs, Token *token);
+extern Decl *decl_new(Vector *declarations);
+extern Init *init_expr(Expr *expr, Type *type);
+extern Init *init_list(Vector *list, Type *type);
+extern Stmt *stmt_comp(Vector *block_items, Token *token);
+extern Stmt *stmt_expr(Expr *expr, Token *token);
+extern Stmt *stmt_if(Expr *if_cond, Stmt *then_body, Stmt *else_body, Token *token);
+extern Stmt *stmt_while(Expr *while_cond, Stmt *while_body, Token *token);
+extern Stmt *stmt_do(Expr *do_cond, Stmt *do_body, Token *token);
+extern Stmt *stmt_for(Node *for_init, Expr *for_cond, Expr *for_after, Stmt *for_body, Token *token);
+extern Stmt *stmt_continue(int continue_level, Token *token);
+extern Stmt *stmt_break(int break_level, Token *token);
+extern Stmt *stmt_return(Expr *ret_expr, Token *token);
+extern Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token);
+extern TransUnit *trans_unit_new(Vector *string_literals, Vector *external_decls);
 
 extern Symbol *symbol_new();
 extern void symbol_put(char *identifier, Symbol *symbol);
-extern Node *parse(Vector *tokens);
+extern TransUnit *parse(Vector *tokens);
 
-extern void gen(Node *node);
+extern void gen(TransUnit *node);

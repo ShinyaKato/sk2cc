@@ -75,16 +75,16 @@ Token *lex() {
     token->tk_type = TK_INTEGER_CONST;
     token->int_value = int_value;
   } else if (read_char('"')) {
-    String *string_value = string_new();
+    String *string_literal = string_new();
     while (peek_char() != '"') {
       char c = get_char();
       if (c == '\\') c = get_escape_sequence();
-      string_push(string_value, c);
+      string_push(string_literal, c);
     }
     get_char();
-    string_push(string_value, '\0');
+    string_push(string_literal, '\0');
     token->tk_type = TK_STRING_LITERAL;
-    token->string_value = string_value;
+    token->string_literal = string_literal;
   } else if (isalpha(peek_char()) || peek_char() == '_') {
     String *identifier = string_new();
     string_push(identifier, get_char());

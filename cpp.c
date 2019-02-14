@@ -184,7 +184,7 @@ void define_directive(Scanner *sc) {
 }
 
 Vector *include_directive(Scanner *sc) {
-  char *filename = scanner_expect(sc, TK_STRING_LITERAL)->string_value->buffer;
+  char *filename = scanner_expect(sc, TK_STRING_LITERAL)->string_literal->buffer;
   Vector *src = scan(filename);
   Vector *pp_tokens = tokenize(src);
   Scanner *next_sc = scanner_new(pp_tokens);

@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-  Node *node = parse(tokens);
+  TransUnit *node = parse(tokens);
   gen(node);
 
   return 0;
