@@ -21,7 +21,11 @@ noreturn void error(Token *token, char *format, ...) {
   fprintf(stderr, "\n");
 
   fprintf(stderr, " ");
-  fprintf(stderr, "%s\n", line_ptr);
+  if (line_ptr[0] != EOF) {
+    fprintf(stderr, "%s\n", line_ptr);
+  } else {
+    fprintf(stderr, "(EOF)\n");
+  }
 
   fprintf(stderr, " ");
   for (int i = 0; i < column; i++) fprintf(stderr, " ");

@@ -45,6 +45,7 @@ int isdigit(int c);
 int isalpha(int c);
 int isalnum(int c);
 int isprint(int c);
+int isspace(int c);
 int isascii(int c);
 
 typedef struct source_char SourceChar;
@@ -73,8 +74,8 @@ struct source_char {
 // A one-character token is represented by it's ascii code.
 enum {
   // white spaces (removed before syntax analysis)
-  TK_SPACE = 128,
-  TK_NEWLINE,
+  TK_NEWLINE = 128,
+  TK_SPACE,
 
   // keywords for expressions
   TK_SIZEOF,
