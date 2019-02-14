@@ -20,17 +20,15 @@ int main(int argc, char **argv) {
     print_usage();
   }
 
-  Vector *src = scan(filename);
-  Vector *pp_tokens = tokenize(src);
+  Vector *pp_tokens = tokenize(filename);
   Vector *tokens = preprocess(pp_tokens);
 
   if (only_cpp) {
     for (int i = 0; i < tokens->length; i++) {
       Token *token = tokens->buffer[i];
       if (token->tk_type == TK_EOF) break;
-      for (SourceChar **p = token->schar; p != token->schar_end; p++) {
-        SourceChar *schar = *p;
-        printf("%c", *(schar->char_ptr));
+      for (char *p = token->start_ptr; p != token->end_ptr; p++) {
+        printf("%c", *p);
       }
     }
     exit(0);

@@ -28,12 +28,15 @@ extern struct _IO_FILE *stdin;
 extern struct _IO_FILE *stdout;
 extern struct _IO_FILE *stderr;
 
-int fgetc(FILE *stream);
-int ungetc(int c, FILE *stream);
-int printf (char *format, ...);
+void perror(char *s);
+
+FILE *fopen(char *filename, char *modes);
+size_t fread(void *ptr, size_t size, size_t n, FILE *stream);
+int fclose(FILE *stream);
+
+int printf(char *format, ...);
 int fprintf(FILE *stream, char *format, ...);
 int vfprintf(FILE *s, char *format, va_list arg);
-FILE *fopen(char *filename, char *modes);
 
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
@@ -48,8 +51,6 @@ int isprint(int c);
 int isspace(int c);
 int isascii(int c);
 
-typedef struct source_char SourceChar;
-
 typedef struct token Token;
 typedef struct node Node;
 
@@ -59,16 +60,6 @@ typedef struct struct_member StructMember;
 
 typedef enum symbol_type SymbolType;
 typedef struct symbol Symbol;
-
-// SourceChar holds original location of the source code character.
-// This information is used for error report.
-struct source_char {
-  char *filename; // source file name
-  char *char_ptr; // pointer to the character
-  char *line_ptr; // pointer to the line head
-  int lineno;
-  int column;
-};
 
 // token type
 // A one-character token is represented by it's ascii code.
@@ -133,13 +124,21 @@ enum {
 };
 
 // Token
+// Token holds original location in the input source code.
+// This information is used for error report.
 struct token {
   int tk_type;
   char *identifier;
   int int_value;
   String *string_literal;
-  SourceChar **schar;
-  SourceChar **schar_end;
+
+  // location information
+  char *filename; // source file name
+  char *start_ptr; // pointer to the start location of the token
+  char *end_ptr;  // pointer to the end location of the token
+  char *line_ptr; // pointer to the line head
+  int lineno;     // 1-indexed
+  int column;     // 1-indexed
 };
 
 enum {
@@ -364,11 +363,9 @@ struct symbol {
 
 extern noreturn void error(Token *token, char *format, ...);
 
-extern Vector *scan(char *filename);
-
 extern char *token_name(int tk_type);
 
-extern Vector *tokenize(Vector *input_src);
+extern Vector *tokenize(char *input_filename);
 
 extern Vector *preprocess(Vector *pp_tokens);
 

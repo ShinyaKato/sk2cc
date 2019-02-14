@@ -1,33 +1,25 @@
 #include "sk2cc.h"
 
 noreturn void error(Token *token, char *format, ...) {
-  va_list ap;
-
-  SourceChar *schar = *(token->schar);
-  char *filename = schar->filename;
-  char *line_ptr = schar->line_ptr;
-  int lineno = schar->lineno;
-  int column = schar->column;
+  char *filename = token->filename;
+  char *line_ptr = token->line_ptr;
+  int lineno = token->lineno;
+  int column = token->column;
 
   int len = 0;
-  while (line_ptr[len] != '\n') len++;
+  while (line_ptr[len] != '\n' && line_ptr[len] != '\0') len++;
   line_ptr[len] = '\0';
 
-  fprintf(stderr, "%s:%d:%d: ", filename, lineno + 1, column + 1);
-  fprintf(stderr, "error: ");
+  va_list ap;
+  fprintf(stderr, "%s:%d:%d: error: ", filename, lineno, column);
   va_start(ap, format);
   vfprintf(stderr, format, ap);
   va_end(ap);
   fprintf(stderr, "\n");
 
   fprintf(stderr, " ");
-  if (line_ptr[0] != EOF) {
-    fprintf(stderr, "%s\n", line_ptr);
-  } else {
-    fprintf(stderr, "(EOF)\n");
-  }
+  fprintf(stderr, "%s\n", line_ptr);
 
-  fprintf(stderr, " ");
   for (int i = 0; i < column; i++) fprintf(stderr, " ");
   fprintf(stderr, "^\n");
 

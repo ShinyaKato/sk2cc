@@ -1,32 +1,47 @@
 #include "sk2cc.h"
 
-Vector *src;
-int src_pos;
+char *filename;
 
-SourceChar **schar;
+char *src;
+int pos;
+
+char *start_ptr;
+char *line_ptr;
+int lineno;
+int column;
 
 Token *token_new(int tk_type) {
   Token *token = calloc(1, sizeof(Token));
   token->tk_type = tk_type;
-  token->schar = schar;
-  token->schar_end = (SourceChar **) &src->buffer[src_pos];
+  token->filename = filename;
+  token->start_ptr = start_ptr;
+  token->end_ptr = &src[pos];
+  token->line_ptr = line_ptr;
+  token->lineno = lineno;
+  token->column = column;
   return token;
 }
 
 int peek_char() {
-  SourceChar *schar = src->buffer[src_pos];
-  return *(schar->char_ptr);
+  return src[pos];
 }
 
 int get_char() {
   int c = peek_char();
-  src_pos++;
+  pos++;
+
+  column++;
+  if (c == '\n') {
+    line_ptr = &src[pos];
+    lineno++;
+    column = 1;
+  }
+
   return c;
 }
 
 int expect_char(int c) {
   if (peek_char() != c) {
-    schar = (SourceChar **) &src->buffer[src_pos];
     error(token_new(-1), "%c is expected.", c);
   }
   return get_char();
@@ -54,11 +69,13 @@ int get_escape_sequence() {
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
 
-  schar = (SourceChar **) &src->buffer[src_pos];
   error(token_new(-1), "invalid escape sequence.");
 }
 
 Token *next_token() {
+  // store the start position of the next token.
+  start_ptr = &src[pos];
+
   // white space
   if (read_char('\n')) return token_new(TK_NEWLINE);
   if (read_char(' ')) return token_new(TK_SPACE);
@@ -72,6 +89,12 @@ Token *next_token() {
     char *identifier = string->buffer;
 
     // check keywords
+    if (strcmp(identifier, "sizeof") == 0) {
+      return token_new(TK_SIZEOF);
+    }
+    if (strcmp(identifier, "_Alignof") == 0) {
+      return token_new(TK_ALIGNOF);
+    }
     if (strcmp(identifier, "void") == 0) {
       return token_new(TK_VOID);
     }
@@ -104,12 +127,6 @@ Token *next_token() {
     }
     if (strcmp(identifier, "_Noreturn") == 0) {
       return token_new(TK_NORETURN);
-    }
-    if (strcmp(identifier, "sizeof") == 0) {
-      return token_new(TK_SIZEOF);
-    }
-    if (strcmp(identifier, "_Alignof") == 0) {
-      return token_new(TK_ALIGNOF);
     }
     if (strcmp(identifier, "if") == 0) {
       return token_new(TK_IF);
@@ -170,7 +187,7 @@ Token *next_token() {
   // string literal
   if (read_char('"')) {
     String *string_literal = string_new();
-    while (!(peek_char() == '"' || peek_char() == EOF)) {
+    while (!(peek_char() == '"' || peek_char() == '\0')) {
       int c = get_char();
       if (c == '\\') {
         c = get_escape_sequence();
@@ -269,25 +286,42 @@ Token *next_token() {
   if (read_char(',')) return token_new(',');
   if (read_char('#')) return token_new('#');
 
-  // end of file
-  if (read_char(EOF)) return token_new(TK_EOF);
-
   error(token_new(-1), "invalid token.");
 }
 
-Vector *tokenize(Vector *input_src) {
-  src = input_src;
-  src_pos = 0;
+Vector *tokenize(char *input_filename) {
+  filename = input_filename;
+
+  // read the input file
+  String *file = string_new();
+  char buffer[4096];
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    perror(filename);
+    exit(1);
+  }
+  while (1) {
+    int n = fread(buffer, 1, sizeof(buffer), fp);
+    if (n == 0) break;
+    for (int i = 0; i < n; i++) {
+      string_push(file, buffer[i]);
+    }
+  }
+  fclose(fp);
+
+  src = file->buffer;
+  pos = 0;
+
+  line_ptr = src;
+  lineno = 1;
+  column = 1;
 
   Vector *pp_tokens = vector_new();
-  while (1) {
-    // store the start position of the next token.
-    schar = (SourceChar **) &src->buffer[src_pos];
-
+  while (src[pos]) {
     Token *pp_token = next_token();
     vector_push(pp_tokens, pp_token);
-    if (pp_token->tk_type == TK_EOF) break;
   }
+  vector_push(pp_tokens, token_new(TK_EOF));
 
   return pp_tokens;
 }
