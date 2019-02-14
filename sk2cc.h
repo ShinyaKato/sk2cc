@@ -50,8 +50,6 @@ int isascii(int c);
 typedef struct source_char SourceChar;
 
 typedef struct token Token;
-
-typedef enum node_type NodeType;
 typedef struct node Node;
 
 typedef enum type_type TypeType;
