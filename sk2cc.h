@@ -208,13 +208,11 @@ typedef struct trans_unit TransUnit;
 // There are 4 kinds of node: Expr, Decl, Stmt, Func.
 struct node {
   int nd_type;
-  Token *token;
 };
 
 // AST node for expression
 struct expr {
   int nd_type;
-  Token *token;
 
   // type of the expression
   Type *type;
@@ -241,14 +239,15 @@ struct expr {
   // member access
   char *member;
   int offset;
+
+  Token *token;
 };
 
 // AST node for declaration
 struct decl {
   int nd_type;
-  Token *token;
-
   Vector *declarations; // vector of Symbol*
+  Token *token;
 };
 
 // initializer
@@ -261,7 +260,6 @@ struct init {
 // AST node for statement
 struct stmt {
   int nd_type;
-  Token *token;
 
   // compound statement (block)
   Vector *block_items; // vector of Node* (Decl* or Stmt*)
@@ -290,16 +288,17 @@ struct stmt {
 
   // return statement
   Expr *ret_expr; // optional
+
+  Token *token;
 };
 
 // AST node for function definition
 struct func {
   int nd_type;
-  Token *token;
-
   Symbol *symbol;
   Stmt *body;
   int stack_size; // stack size for local variables
+  Token *token;
 };
 
 // translation unit

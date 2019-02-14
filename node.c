@@ -7,8 +7,8 @@ bool check_lvalue(int nd_type) {
 Expr *expr_new(int nd_type, Type *type, Token *token) {
   Expr *node = calloc(1, sizeof(Expr));
   node->nd_type = nd_type;
-  node->token = token;
   node->type = type;
+  node->token = token;
   return node;
 }
 
@@ -570,10 +570,10 @@ Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token) {
 
   Func *func = calloc(1, sizeof(Func));
   func->nd_type = ND_FUNC;
-  func->token = token;
   func->symbol = symbol;
   func->body = body;
   func->stack_size = stack_size;
+  func->token = token;
   return func;
 }
 
