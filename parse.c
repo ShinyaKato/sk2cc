@@ -87,7 +87,9 @@ Token *get_token() {
 Token *expect_token(int tk_type) {
   Token *token = get_token();
   if (token->tk_type != tk_type) {
-    error(token, "%s is expected.", token_name(tk_type));
+    char *expected = token_name(tk_type);
+    char *actual = token_name(token->tk_type);
+    error(token, "%s is expected, but got %s.", expected, actual);
   }
   return token;
 }

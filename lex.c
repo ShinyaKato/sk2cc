@@ -24,20 +24,22 @@ Token *token_new(int tk_type) {
   return token;
 }
 
-// skip '\' '\n', and concat previous and next lines
+void next_line() {
+  line_ptr = &src[pos];
+  lineno++;
+  column = 1;
+}
+
+// skip '\' '\n' and concat previous and next lines
 void skip_backslash_newline() {
   while (src[pos] == '\\' && src[pos + 1] == '\n') {
     pos += 2;
-
-    line_ptr = &src[pos];
-    lineno++;
-    column = 1;
+    next_line();
   }
 }
 
 char peek_char() {
   skip_backslash_newline();
-
   return src[pos];
 }
 
@@ -49,11 +51,7 @@ char get_char() {
   string_push(token_text, c);
 
   column++;
-  if (c == '\n') {
-    line_ptr = &src[pos];
-    lineno++;
-    column = 1;
-  }
+  if (c == '\n') next_line();
 
   return c;
 }
@@ -346,6 +344,14 @@ Vector *tokenize(char *input_filename) {
     vector_push(pp_tokens, pp_token);
 
     if (pp_token->tk_type == TK_EOF) break;
+  }
+
+  // replace '\n' with '\0' for debugging
+  // we can display the line by printf("%s\n", token->line_ptr);
+  for (int i = 0; src[i]; i++) {
+    if (src[i] == '\n') {
+      src[i] = '\0';
+    }
   }
 
   return pp_tokens;
