@@ -24,8 +24,8 @@ Token *token_new(int tk_type) {
   return token;
 }
 
+// skip '\' '\n', and concat previous and next lines
 void skip_backslash_newline() {
-  // skip '\\' '\n'
   while (src[pos] == '\\' && src[pos + 1] == '\n') {
     pos += 2;
 
@@ -44,6 +44,7 @@ char peek_char() {
 char get_char() {
   skip_backslash_newline();
 
+  // read the character and add it to the token text
   char c = src[pos++];
   string_push(token_text, c);
 
@@ -236,13 +237,13 @@ Token *next_token() {
     return token_new('*');
   }
   if (read_char('/')) {
-    if (read_char('/')) { // read '//' comment
+    if (read_char('/')) { // read "//" comment
       // skip until newline
       while (get_char() != '\n');
       return token_new(TK_SPACE);
     }
-    if (read_char('*')) { // read '/*' comment
-      // skip until '*/'
+    if (read_char('*')) { // read "/*" comment
+      // skip until "*/"
       while (1) {
         char c = get_char();
         if (c == '*' && read_char('/')) break;
