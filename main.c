@@ -27,9 +27,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < tokens->length; i++) {
       Token *token = tokens->buffer[i];
       if (token->tk_type == TK_EOF) break;
-      for (char *p = token->start_ptr; p != token->end_ptr; p++) {
-        printf("%c", *p);
-      }
+      printf("%s", token->text);
     }
     exit(0);
   }

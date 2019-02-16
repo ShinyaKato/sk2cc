@@ -21,7 +21,7 @@ sk2cc_self: tmp sk2cc sk2cc.h string.h string.c vector.h vector.c map.h map.c er
 	./sk2cc parse.c > tmp/parse.s
 	./sk2cc gen.c > tmp/gen.s
 	./sk2cc main.c > tmp/main.s
-	gcc tmp/string.s tmp/vector.s tmp/map.s tmp/error.s tmp/token.s tmp/lex.s tmp/cpp.s tmp/type.s tmp/node.s tmp/parse.s tmp/gen.s tmp/main.s -o sk2cc_self
+	gcc -ggdb tmp/string.s tmp/vector.s tmp/map.s tmp/error.s tmp/token.s tmp/lex.s tmp/cpp.s tmp/type.s tmp/node.s tmp/parse.s tmp/gen.s tmp/main.s -o sk2cc_self
 
 sk2cc_self2: tmp sk2cc_self sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c token.c lex.c cpp.c type.c node.c parse.c gen.c main.c
 	./sk2cc_self string.c > tmp/string2.s
@@ -36,7 +36,7 @@ sk2cc_self2: tmp sk2cc_self sk2cc.h string.h string.c vector.h vector.c map.h ma
 	./sk2cc_self parse.c > tmp/parse2.s
 	./sk2cc_self gen.c > tmp/gen2.s
 	./sk2cc_self main.c > tmp/main2.s
-	gcc tmp/string2.s tmp/vector2.s tmp/map2.s tmp/error2.s tmp/token2.s tmp/lex2.s tmp/cpp2.s tmp/type2.s tmp/node2.s tmp/parse2.s tmp/gen2.s tmp/main2.s -o sk2cc_self2
+	gcc -ggdb tmp/string2.s tmp/vector2.s tmp/map2.s tmp/error2.s tmp/token2.s tmp/lex2.s tmp/cpp2.s tmp/type2.s tmp/node2.s tmp/parse2.s tmp/gen2.s tmp/main2.s -o sk2cc_self2
 
 tmp:
 	mkdir tmp

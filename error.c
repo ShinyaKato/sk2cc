@@ -17,8 +17,7 @@ noreturn void error(Token *token, char *format, ...) {
   va_end(ap);
   fprintf(stderr, "\n");
 
-  fprintf(stderr, " ");
-  fprintf(stderr, "%s\n", line_ptr);
+  fprintf(stderr, " %s\n", line_ptr);
 
   for (int i = 0; i < column; i++) fprintf(stderr, " ");
   fprintf(stderr, "^\n");

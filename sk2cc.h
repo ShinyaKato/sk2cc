@@ -132,10 +132,11 @@ struct token {
   int int_value;
   String *string_literal;
 
+  // for token stringification
+  char *text;
+
   // location information
   char *filename; // source file name
-  char *start_ptr; // pointer to the start location of the token
-  char *end_ptr;  // pointer to the end location of the token
   char *line_ptr; // pointer to the line head
   int lineno;     // 1-indexed
   int column;     // 1-indexed

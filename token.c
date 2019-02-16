@@ -2,8 +2,8 @@
 
 char *tk_name[] = {
   // white spaces
-  "white spaces",
   "new line",
+  "white spaces",
 
   // keywords for expressions
   "sizeof",

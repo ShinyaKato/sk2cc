@@ -254,6 +254,33 @@ test_return "
 int main() { empty1; empty2; empty3; empty4(1, 2); empty5(1, 2); empty6(1, 2); return 0; }
 " 0
 
+test_return "
+#define test(expr, expected) \
+  do { \
+    int actual = (expr); \
+    if (actual != (expected)) { \
+      return 1; \
+    } \
+    return 0; \
+  } while (0)
+
+int main() {
+  test(1 + 2, 3);
+}
+" 0
+
+test_stdout "
+int prin\\
+tf(cha\\
+r *fo\\
+rmat, ...);
+i\\
+nt main() { pr\\
+intf(\"%\\
+d\n\", 4\\
+2); ret\\
+urn 0; }" "42"
+
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"

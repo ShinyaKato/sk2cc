@@ -1,34 +1,51 @@
 #include "sk2cc.h"
 
-char *filename;
-
 char *src;
 int pos;
 
-char *start_ptr;
+char *filename;
 char *line_ptr;
 int lineno;
 int column;
 
+String *token_text;
+char *token_line_ptr;
+int token_lineno;
+int token_column;
+
 Token *token_new(int tk_type) {
   Token *token = calloc(1, sizeof(Token));
   token->tk_type = tk_type;
+  token->text = token_text->buffer;
   token->filename = filename;
-  token->start_ptr = start_ptr;
-  token->end_ptr = &src[pos];
-  token->line_ptr = line_ptr;
-  token->lineno = lineno;
-  token->column = column;
+  token->line_ptr = token_line_ptr;
+  token->lineno = token_lineno;
+  token->column = token_column;
   return token;
 }
 
-int peek_char() {
+void skip_backslash_newline() {
+  // skip '\\' '\n'
+  while (src[pos] == '\\' && src[pos + 1] == '\n') {
+    pos += 2;
+
+    line_ptr = &src[pos];
+    lineno++;
+    column = 1;
+  }
+}
+
+char peek_char() {
+  skip_backslash_newline();
+
   return src[pos];
 }
 
-int get_char() {
-  int c = peek_char();
-  pos++;
+char get_char() {
+  skip_backslash_newline();
+
+  char c = src[pos++];
+  string_push(token_text, c);
 
   column++;
   if (c == '\n') {
@@ -40,14 +57,14 @@ int get_char() {
   return c;
 }
 
-int expect_char(int c) {
+char expect_char(char c) {
   if (peek_char() != c) {
     error(token_new(-1), "%c is expected.", c);
   }
   return get_char();
 }
 
-bool read_char(int c) {
+bool read_char(char c) {
   if (peek_char() == c) {
     get_char();
     return true;
@@ -55,7 +72,7 @@ bool read_char(int c) {
   return false;
 }
 
-int get_escape_sequence() {
+char get_escape_sequence() {
   if (read_char('\'')) return '\'';
   if (read_char('"')) return '"';
   if (read_char('?')) return '?';
@@ -73,8 +90,13 @@ int get_escape_sequence() {
 }
 
 Token *next_token() {
+  skip_backslash_newline();
+
   // store the start position of the next token.
-  start_ptr = &src[pos];
+  token_text = string_new();
+  token_line_ptr = line_ptr;
+  token_lineno = lineno;
+  token_column = column;
 
   // white space
   if (read_char('\n')) return token_new(TK_NEWLINE);
@@ -162,7 +184,7 @@ Token *next_token() {
   if (isdigit(peek_char())) {
     int int_value = 0;
     do {
-      int c = get_char();
+      char c = get_char();
       int_value = int_value * 10 + (c - '0');
     } while (isdigit(peek_char()));
 
@@ -173,7 +195,7 @@ Token *next_token() {
 
   // character constant
   if (read_char('\'')) {
-    int c = get_char();
+    char c = get_char();
     if (c == '\\') {
       c = get_escape_sequence();
     }
@@ -188,7 +210,7 @@ Token *next_token() {
   if (read_char('"')) {
     String *string_literal = string_new();
     while (!(peek_char() == '"' || peek_char() == '\0')) {
-      int c = get_char();
+      char c = get_char();
       if (c == '\\') {
         c = get_escape_sequence();
       }
@@ -222,7 +244,7 @@ Token *next_token() {
     if (read_char('*')) { // read '/*' comment
       // skip until '*/'
       while (1) {
-        int c = get_char();
+        char c = get_char();
         if (c == '*' && read_char('/')) break;
       }
       return token_new(TK_SPACE);
@@ -286,16 +308,16 @@ Token *next_token() {
   if (read_char(',')) return token_new(',');
   if (read_char('#')) return token_new('#');
 
-  error(token_new(-1), "invalid token.");
+  if (peek_char() == '\0') return token_new(TK_EOF);
+
+  error(token_new(-1), "failed to tokenize.");
 }
 
 Vector *tokenize(char *input_filename) {
-  filename = input_filename;
-
   // read the input file
   String *file = string_new();
   char buffer[4096];
-  FILE *fp = fopen(filename, "r");
+  FILE *fp = fopen(input_filename, "r");
   if (!fp) {
     perror(filename);
     exit(1);
@@ -312,16 +334,18 @@ Vector *tokenize(char *input_filename) {
   src = file->buffer;
   pos = 0;
 
+  filename = input_filename;
   line_ptr = src;
   lineno = 1;
   column = 1;
 
   Vector *pp_tokens = vector_new();
-  while (src[pos]) {
+  while (1) {
     Token *pp_token = next_token();
     vector_push(pp_tokens, pp_token);
+
+    if (pp_token->tk_type == TK_EOF) break;
   }
-  vector_push(pp_tokens, token_new(TK_EOF));
 
   return pp_tokens;
 }
