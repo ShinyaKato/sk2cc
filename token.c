@@ -3,7 +3,7 @@
 char *tk_name[] = {
   // white spaces
   "new line",
-  "white spaces",
+  "white space",
 
   // keywords for expressions
   "sizeof",
@@ -60,7 +60,7 @@ char *tk_name[] = {
   "end of file"
 };
 
-char *token_name(int tk_type) {
+char *token_name(TokenType tk_type) {
   if (isascii(tk_type)) {
     String *name = string_new();
     string_push(name, tk_type);

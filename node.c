@@ -1,10 +1,10 @@
 #include "sk2cc.h"
 
-bool check_lvalue(int nd_type) {
+bool check_lvalue(NodeType nd_type) {
   return nd_type == ND_IDENTIFIER || nd_type == ND_INDIRECT || nd_type == ND_DOT;
 }
 
-Expr *expr_new(int nd_type, Type *type, Token *token) {
+Expr *expr_new(NodeType nd_type, Type *type, Token *token) {
   Expr *node = calloc(1, sizeof(Expr));
   node->nd_type = nd_type;
   node->type = type;
@@ -34,7 +34,7 @@ Expr *expr_string(String *string_literal, int string_label, Token *token) {
   return node;
 }
 
-Expr *unary_expr(int nd_type, Type *type, Expr *expr, Token *token) {
+Expr *unary_expr(NodeType nd_type, Type *type, Expr *expr, Token *token) {
   Expr *node = expr_new(nd_type, type, token);
   node->expr = expr;
   return node;
@@ -219,7 +219,7 @@ Expr *expr_cast(Type *type, Expr *expr, Token *token) {
   return unary_expr(ND_CAST, type, expr, token);
 }
 
-Expr *binary_expr(int nd_type, Type *type, Expr *lhs, Expr *rhs, Token *token) {
+Expr *binary_expr(NodeType nd_type, Type *type, Expr *lhs, Expr *rhs, Token *token) {
   Expr *node = expr_new(nd_type, type, token);
   node->lhs = lhs;
   node->rhs = rhs;
@@ -420,7 +420,7 @@ Expr *expr_assign(Expr *lhs, Expr *rhs, Token *token) {
   return binary_expr(ND_ASSIGN, lhs->type, lhs, rhs, token);
 }
 
-Expr *expr_compound_assign(int nd_type, Expr *lhs, Expr *rhs, Token *token) {
+Expr *expr_compound_assign(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   Symbol *symbol = symbol_new();
   symbol->token = token;
   symbol->identifier = NULL;
@@ -487,7 +487,7 @@ Init *init_list(Vector *list, Type *type) {
   return init;
 }
 
-Stmt *stmt_new(int nd_type, Token *token) {
+Stmt *stmt_new(NodeType nd_type, Token *token) {
   Stmt *node = calloc(1, sizeof(Stmt));
   node->nd_type = nd_type;
   node->token = token;

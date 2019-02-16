@@ -84,7 +84,7 @@ Token *get_token() {
   return tokens->buffer[tokens_pos++];
 }
 
-Token *expect_token(int tk_type) {
+Token *expect_token(TokenType tk_type) {
   Token *token = get_token();
   if (token->tk_type != tk_type) {
     char *expected = token_name(tk_type);
@@ -94,14 +94,14 @@ Token *expect_token(int tk_type) {
   return token;
 }
 
-Token *optional_token(int tk_type) {
+Token *optional_token(TokenType tk_type) {
   if (peek_token()->tk_type == tk_type) {
     return get_token();
   }
   return NULL;
 }
 
-bool read_token(int tk_type) {
+bool read_token(TokenType tk_type) {
   if (peek_token()->tk_type == tk_type) {
     get_token();
     return true;
@@ -109,7 +109,7 @@ bool read_token(int tk_type) {
   return false;
 }
 
-bool check_token(int tk_type) {
+bool check_token(TokenType tk_type) {
   return peek_token()->tk_type == tk_type;
 }
 

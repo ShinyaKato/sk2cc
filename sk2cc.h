@@ -44,14 +44,17 @@ void exit(int status);
 
 int strcmp(char *s1, char *s2);
 
-int isdigit(int c);
+int isascii(int c);
+int isprint(int c);
 int isalpha(int c);
 int isalnum(int c);
-int isprint(int c);
+int isdigit(int c);
 int isspace(int c);
-int isascii(int c);
 
+typedef enum token_type TokenType;
 typedef struct token Token;
+
+typedef enum node_type NodeType;
 typedef struct node Node;
 
 typedef enum type_type TypeType;
@@ -63,7 +66,7 @@ typedef struct symbol Symbol;
 
 // token type
 // A one-character token is represented by it's ascii code.
-enum {
+enum token_type {
   // white spaces (removed before syntax analysis)
   TK_NEWLINE = 128,
   TK_SPACE,
@@ -127,7 +130,7 @@ enum {
 // Token holds original location in the input source code.
 // This information is used for error report.
 struct token {
-  int tk_type;
+  TokenType tk_type;
   char *identifier;
   int int_value;
   String *string_literal;
@@ -142,7 +145,7 @@ struct token {
   int column;     // 1-indexed
 };
 
-enum {
+enum node_type {
   // expression
   ND_IDENTIFIER,
   ND_INTEGER,
@@ -207,12 +210,12 @@ typedef struct trans_unit TransUnit;
 // After checking, the pointer is casted to the pointer of each node type.
 // There are 4 kinds of node: Expr, Decl, Stmt, Func.
 struct node {
-  int nd_type;
+  NodeType nd_type;
 };
 
 // AST node for expression
 struct expr {
-  int nd_type;
+  NodeType nd_type;
 
   // type of the expression
   Type *type;
@@ -245,7 +248,7 @@ struct expr {
 
 // AST node for declaration
 struct decl {
-  int nd_type;
+  NodeType nd_type;
   Vector *declarations; // vector of Symbol*
   Token *token;
 };
@@ -259,7 +262,7 @@ struct init {
 
 // AST node for statement
 struct stmt {
-  int nd_type;
+  NodeType nd_type;
 
   // compound statement (block)
   Vector *block_items; // vector of Node* (Decl* or Stmt*)
@@ -294,7 +297,7 @@ struct stmt {
 
 // AST node for function definition
 struct func {
-  int nd_type;
+  NodeType nd_type;
   Symbol *symbol;
   Stmt *body;
   int stack_size; // stack size for local variables
@@ -364,7 +367,7 @@ struct symbol {
 
 extern noreturn void error(Token *token, char *format, ...);
 
-extern char *token_name(int tk_type);
+extern char *token_name(TokenType tk_type);
 
 extern Vector *tokenize(char *input_filename);
 

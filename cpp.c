@@ -33,7 +33,7 @@ Token *scanner_get(Scanner *sc) {
   return sc->tokens->buffer[sc->pos++];
 }
 
-Token *scanner_expect(Scanner *sc, int tk_type) {
+Token *scanner_expect(Scanner *sc, TokenType tk_type) {
   Token *token;
   while (sc->pos < sc->tokens->length) {
     token = scanner_get(sc);
@@ -43,7 +43,7 @@ Token *scanner_expect(Scanner *sc, int tk_type) {
   error(token, "unexpected token.");
 }
 
-bool scanner_check(Scanner *sc, int tk_type) {
+bool scanner_check(Scanner *sc, TokenType tk_type) {
   for (int i = sc->pos; i < sc->tokens->length; i++) {
     Token *token = sc->tokens->buffer[i];
     if (token->tk_type == tk_type) return true;
@@ -52,7 +52,7 @@ bool scanner_check(Scanner *sc, int tk_type) {
   return false;
 }
 
-bool scanner_read(Scanner *sc, int tk_type) {
+bool scanner_read(Scanner *sc, TokenType tk_type) {
   if (scanner_check(sc, tk_type)) {
     scanner_expect(sc, tk_type);
     return true;
