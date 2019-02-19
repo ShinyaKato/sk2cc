@@ -1,8 +1,5 @@
 #include "sk2cc.h"
 
-int tokens_pos;
-Vector *tokens;
-
 Vector *string_literals;
 Map *tags;
 int continue_level, break_level;
@@ -76,42 +73,6 @@ void begin_global_scope() {
   begin_scope();
 }
 
-Token *peek_token() {
-  return tokens->buffer[tokens_pos];
-}
-
-Token *get_token() {
-  return tokens->buffer[tokens_pos++];
-}
-
-Token *expect_token(TokenType tk_type) {
-  Token *token = get_token();
-  if (token->tk_type != tk_type) {
-    char *expected = token_name(tk_type);
-    char *actual = token_name(token->tk_type);
-    error(token, "%s is expected, but got %s.", expected, actual);
-  }
-  return token;
-}
-
-Token *optional_token(TokenType tk_type) {
-  if (peek_token()->tk_type == tk_type) {
-    return get_token();
-  }
-  return NULL;
-}
-
-bool read_token(TokenType tk_type) {
-  if (peek_token()->tk_type == tk_type) {
-    get_token();
-    return true;
-  }
-  return false;
-}
-
-bool check_token(TokenType tk_type) {
-  return peek_token()->tk_type == tk_type;
-}
 
 bool check_type_specifier() {
   if (check_token(TK_VOID)) return true;
@@ -538,7 +499,7 @@ Type *type_name() {
 Type *struct_or_union_specifier() {
   expect_token(TK_STRUCT);
 
-  Token *token = optional_token(TK_IDENTIFIER);
+  Token *token = read_token(TK_IDENTIFIER);
   if (token && !map_lookup(tags, token->identifier)) {
     Type *incomplete_type = type_new();
     incomplete_type->ty_type = STRUCT;
@@ -576,7 +537,7 @@ Type *struct_or_union_specifier() {
 Type *enum_specifier() {
   expect_token(TK_ENUM);
 
-  Token *token = optional_token(TK_IDENTIFIER);
+  Token *token = read_token(TK_IDENTIFIER);
   if (token && !map_lookup(tags, token->identifier)) {
     Type *incomplete_type = type_new();
     incomplete_type->incomplete = true;
@@ -649,8 +610,8 @@ Type *type_specifier() {
 }
 
 Type *declaration_specifiers() {
-  bool definition = read_token(TK_TYPEDEF);
-  bool external = read_token(TK_EXTERN);
+  bool definition = read_token(TK_TYPEDEF) != NULL;
+  bool external = read_token(TK_EXTERN) != NULL;
   read_token(TK_NORETURN);
 
   Type *specifier = type_specifier();
@@ -983,15 +944,14 @@ TransUnit *translate_unit() {
 }
 
 TransUnit *parse(Vector *input_tokens) {
-  tokens = vector_new();
-  tokens_pos = 0;
-
+  Vector *tokens = vector_new();
   for (int i = 0; i < input_tokens->length; i++) {
     Token *token = input_tokens->buffer[i];
     if (token->tk_type == TK_SPACE) continue;
     if (token->tk_type == TK_NEWLINE) continue;
     vector_push(tokens, token);
   }
+  scanner_init(tokens);
 
   string_literals = vector_new();
 

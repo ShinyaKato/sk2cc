@@ -44,12 +44,18 @@ void exit(int status);
 
 int strcmp(char *s1, char *s2);
 
-int isascii(int c);
 int isprint(int c);
 int isalpha(int c);
 int isalnum(int c);
 int isdigit(int c);
 int isspace(int c);
+
+// token scanner
+typedef struct {
+  Vector *tokens;
+  int pos;
+} Scanner;
+
 
 typedef enum token_type TokenType;
 typedef struct token Token;
@@ -368,8 +374,17 @@ struct symbol {
 extern noreturn void error(Token *token, char *format, ...);
 
 extern char *token_name(TokenType tk_type);
-
 extern Vector *tokenize(char *input_filename);
+
+extern void scanner_init(Vector *tokens);
+extern Scanner *scanner_preserve(Vector *tokens);
+extern void scanner_restore(Scanner *prev);
+extern bool has_next_token();
+extern Token *peek_token();
+extern Token *get_token();
+extern bool check_token(TokenType tk_type);
+extern Token *read_token(TokenType tk_type);
+extern Token *expect_token(TokenType tk_type);
 
 extern Vector *preprocess(Vector *pp_tokens);
 

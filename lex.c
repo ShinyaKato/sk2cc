@@ -1,5 +1,37 @@
 #include "sk2cc.h"
 
+char *tk_chars = "[](){}.&*+-~!/%<>^|?:;=,#";
+
+char *tk_names[] = {
+  // newline, white space
+  "newline", "white space",
+
+  // keywords for expressions
+  "sizeof", "_Alignof",
+
+  // keywords for declarations
+  "void", "char", "short", "int",
+  "unsigned", "_Bool", "struct", "enum",
+  "typedef", "extern", "_Noreturn",
+
+  // keywords for statements
+  "if", "else", "while", "do",
+  "for", "continue", "break", "return",
+
+  // identifiers, constants, string literals
+  "identifier", "integer constant", "string literal",
+
+  // punctuators
+  "->", "++", "--", "<<",
+  ">>", "<=", ">=", "==",
+  "!=", "&&", "||", "*=",
+  "/=", "%=", "+=", "-=",
+  "...",
+
+  // EOF
+  "end of file"
+};
+
 char *src;
 int pos;
 
@@ -12,6 +44,22 @@ char *token_filename;
 char *token_line_ptr;
 int token_lineno;
 int token_column;
+
+char *token_name(TokenType tk_type) {
+  for (int i = 0; tk_chars[i]; i++) {
+    if (tk_type == tk_chars[i]) {
+      return &tk_chars[i];
+    }
+  }
+
+  if (128 <= tk_type && tk_type && 128 + sizeof(tk_names)) {
+    return tk_names[tk_type - 128];
+  }
+
+  // assertion
+  fprintf(stderr, "unknown token type: %d\n", tk_type);
+  exit(1);
+}
 
 Token *token_new(TokenType tk_type) {
   Token *token = calloc(1, sizeof(Token));
@@ -249,9 +297,8 @@ Token *next_token() {
     return token_new(TK_ELLIPSIS);
   }
 
-  char *chars = "[](){}.&*+-~!/%<>^|?:;=,#";
-  for (int i = 0; chars[i]; i++) {
-    if (c == chars[i]) {
+  for (int i = 0; tk_chars[i]; i++) {
+    if (c == tk_chars[i]) {
       return token_new(c);
     }
   }
