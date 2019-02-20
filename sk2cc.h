@@ -2,17 +2,22 @@
 #include "vector.h"
 #include "map.h"
 
-// header
-#define EOF (-1)
+// We define size_t as int
+// because we do not support unsigned long long.
+typedef int size_t;
 
-#define NULL ((void *) 0)
+// The preprocessor is not sufficiently supported
+// enough to read the header file of the system.
 
+// stdbool.h
 #define bool _Bool
 #define false 0
 #define true 1
 
+// stdnoreturn.h
 #define noreturn _Noreturn
 
+// stdarg.h
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
 typedef struct {
@@ -22,29 +27,34 @@ typedef struct {
   void *reg_save_area;
 } va_list[1];
 
-typedef int size_t;
+// stdio.h
+#define EOF (-1)
+#define NULL ((void *) 0)
+
 typedef struct _IO_FILE FILE;
-
-extern struct _IO_FILE *stdin;
-extern struct _IO_FILE *stdout;
-extern struct _IO_FILE *stderr;
-
-void perror(char *s);
-
-FILE *fopen(char *filename, char *modes);
-size_t fread(void *ptr, size_t size, size_t n, FILE *stream);
-int fclose(FILE *stream);
+extern FILE *stdin;
+extern FILE *stdout;
+extern FILE *stderr;
 
 int printf(char *format, ...);
 int fprintf(FILE *stream, char *format, ...);
 int vfprintf(FILE *s, char *format, va_list arg);
 
+FILE *fopen(char *filename, char *modes);
+size_t fread(void *ptr, size_t size, size_t n, FILE *stream);
+int fclose(FILE *stream);
+
+void perror(char *s);
+
+// stdlib.h
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status);
 
+// strcmp.h
 int strcmp(char *s1, char *s2);
 
+// ctype.h
 int isprint(int c);
 int isalpha(int c);
 int isalnum(int c);
