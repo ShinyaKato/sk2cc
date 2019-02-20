@@ -154,16 +154,21 @@ Token *next_token() {
   char c = get_char();
 
   // nwe line and white space
-  if (c == '\n' || (c == '\r' && read_char('\n'))) {
+  if (c == '\n') {
     return token_new(TK_NEWLINE);
   }
   if (isspace(c)) {
+    while (isspace(peek_char()) && peek_char() != '\n') {
+      get_char();
+    }
     return token_new(TK_SPACE);
   }
 
   // comment
   if (c == '/' && read_char('/')) { // line comment
-    while (get_char() != '\n');
+    while (peek_char() != '\n') {
+      get_char();
+    }
     return token_new(TK_SPACE);
   }
   if (c == '/' && read_char('*')) { // block comment
@@ -325,6 +330,17 @@ Vector *tokenize(char *filename) {
   }
 
   fclose(fp);
+
+  // replace '\r\n' with '\n'
+  for (int i = 0, j = 0; i < file->length; i++, j++) {
+    char c = file->buffer[i];
+    if (c == '\r' && i + 1 < file->length && file->buffer[i] == '\n') {
+      c = '\n';
+      i++;
+    } else {
+    }
+    file->buffer[j] = c;
+  }
 
   // initialization
   src = file->buffer;

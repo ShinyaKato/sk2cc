@@ -2,6 +2,7 @@
 #include "vector.h"
 #include "map.h"
 
+// header
 #define EOF (-1)
 
 #define NULL ((void *) 0)
