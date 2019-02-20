@@ -2,10 +2,12 @@
 
 char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
-int label_no, return_label;
 Vector *continue_labels, *break_labels;
-Symbol *function_symbol;
 
+int label_no;
+int return_label;
+
+int gp_offset;
 int stack_depth;
 
 void begin_loop_gen(int *label_continue, int *label_break) {
@@ -128,7 +130,7 @@ void gen_call(Expr *node) {
     Expr *list = node->args->buffer[0];
     gen_lvalue(list);
     gen_pop("rdx");
-    printf("  movl $%d, (%%rdx)\n", function_symbol->type->params->length * 8);
+    printf("  movl $%d, (%%rdx)\n", gp_offset);
     printf("  movl $48, 4(%%rdx)\n");
     printf("  leaq 16(%%rbp), %%rcx\n");
     printf("  movq %%rcx, 8(%%rdx)\n");
@@ -695,46 +697,51 @@ void gen_decl_global(Decl *decl) {
 }
 
 void gen_func(Func *node) {
-  function_symbol = node->symbol;
+  Symbol *symbol = node->symbol;
+  Type *type = symbol->type;
 
   return_label = label_no++;
+
+  gp_offset = type->params->length * 8;
   stack_depth = 8;
 
   printf("  .text\n");
-  printf("  .global %s\n", node->symbol->identifier);
-  printf("%s:\n", node->symbol->identifier);
+  printf("  .global %s\n", symbol->identifier);
+  printf("%s:\n", symbol->identifier);
 
   gen_push("rbp");
   printf("  movq %%rsp, %%rbp\n");
-  printf("  subq $%d, %%rsp\n", node->stack_size);
-  stack_depth += node->stack_size;
 
-  Type *type = node->symbol->type;
+  if (node->stack_size > 0) {
+    printf("  subq $%d, %%rsp\n", node->stack_size);
+    stack_depth += node->stack_size;
+  }
+
+  if (type->ellipsis) {
+    for (int i = type->params->length; i < 6; i++) {
+      printf("  movq %%%s, %d(%%rbp)\n", arg_reg[i], -176 + i * 8);
+    }
+  }
+
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->buffer[i];
-    if (symbol->type->ty_type == TY_BOOL) {
+    if (type->ty_type == TY_BOOL) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  cmpb $0, %%al\n");
       printf("  setne %%al\n");
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == TY_CHAR || symbol->type->ty_type == TY_UCHAR) {
+    } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == TY_SHORT || symbol->type->ty_type == TY_USHORT) {
+    } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movw %%ax, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == TY_INT || symbol->type->ty_type == TY_UINT) {
+    } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == TY_POINTER) {
+    } else if (type->ty_type == TY_POINTER) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
-    }
-  }
-
-  if (node->symbol->type->ellipsis) {
-    for (int i = type->params->length; i < 6; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", arg_reg[i], -176 + i * 8);
     }
   }
 
