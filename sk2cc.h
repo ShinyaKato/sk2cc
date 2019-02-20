@@ -81,6 +81,7 @@ typedef struct type Type;
 typedef struct member Member;
 
 typedef enum symbol_type SymbolType;
+typedef enum symbol_link SymbolLink;
 typedef struct symbol Symbol;
 
 // TokenType
@@ -382,10 +383,15 @@ struct member {
 
 // SymbolType
 enum symbol_type {
-  SY_GLOBAL, // global variable
-  SY_LOCAL,  // local variable
-  SY_TYPE,   // typedef name
-  SY_CONST   // enum const
+  SY_VARIABLE, // variable
+  SY_TYPE,     // typedef name
+  SY_CONST     // enum const
+};
+
+// SymbolLink
+enum symbol_link {
+  LN_EXTERNAL, // global variable
+  LN_NONE      // local variable
 };
 
 // Symbol
@@ -393,11 +399,12 @@ struct symbol {
   SymbolType sy_type;
   Type *type;
   char *identifier;
-  Init *init;
   bool definition;
 
-  // local variable
-  int offset;
+  // variable
+  SymbolLink link;
+  Init *init;
+  int offset; // for local variable
 
   // enum const
   int const_value;
@@ -508,7 +515,7 @@ extern Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token);
 extern TransUnit *trans_unit_new(Vector *string_literals, Vector *external_decls);
 
 // parse.c
-extern Symbol *symbol_new();
+extern Symbol *symbol_variable(Type *type, char *identifier, Token *token);
 extern void symbol_put(char *identifier, Symbol *symbol);
 extern TransUnit *parse(Vector *tokens);
 

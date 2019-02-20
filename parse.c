@@ -7,8 +7,24 @@ int continue_level, break_level;
 Vector *scopes;
 int stack_size;
 
-Symbol *symbol_new() {
+Symbol *symbol_new(SymbolType sy_type, Type *type, char *identifier, Token *token) {
   Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = sy_type;
+  symbol->type = type;
+  symbol->identifier = identifier;
+  symbol->token = token;
+  return symbol;
+}
+
+Symbol *symbol_variable(Type *type, char *identifier, Token *token) {
+  Symbol *symbol = symbol_new(SY_VARIABLE, type, identifier, token);
+  symbol->definition = type->ty_type != TY_FUNCTION;
+  return symbol;
+}
+
+Symbol *symbol_const(char *identifier, int value, Token *token) {
+  Symbol *symbol = symbol_new(SY_CONST, type_int(), identifier, token);
+  symbol->const_value = value;
   return symbol;
 }
 
@@ -26,24 +42,28 @@ Symbol *symbol_lookup(char *identifier) {
 void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->buffer[scopes->length - 1];
 
-  if (symbol->sy_type != SY_TYPE && symbol->sy_type != SY_CONST) {
-    if (identifier) {
-      Symbol *prev = map_lookup(map, identifier);
-      if (prev && prev->definition) {
-        error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
-      }
+  // check the identifier in the current scope.
+  if (identifier) {
+    Symbol *prev = map_lookup(map, identifier);
+    if (prev && prev->definition) {
+      error(symbol->token, "duplicated definition of '%s'.", identifier);
     }
+  }
 
+  // if the symbol is a variable, add linkage.
+  if (symbol->sy_type == SY_VARIABLE) {
     if (scopes->length == 1) {
-      symbol->sy_type = SY_GLOBAL;
+      // global variable
+      symbol->link = LN_EXTERNAL;
     } else {
+      // local variable
       int size = symbol->type->size;
       if (size % 8 != 0) {
         size = size / 8 * 8 + 8;
       }
-
       stack_size += size;
-      symbol->sy_type = SY_LOCAL;
+
+      symbol->link = LN_NONE;
       symbol->offset = stack_size;
     }
   }
@@ -560,12 +580,7 @@ Type *enum_specifier() {
       const_value = expect_token(TK_INTEGER_CONST)->int_value;
     }
 
-    Symbol *symbol = symbol_new();
-    symbol->sy_type = SY_CONST;
-    symbol->identifier = token->identifier;
-    symbol->token = token;
-    symbol->type = type_int();
-    symbol->const_value = const_value++;
+    Symbol *symbol = symbol_const(token->identifier, const_value++, token);
     symbol_put(token->identifier, symbol);
   } while (read_token(','));
   expect_token('}');
@@ -607,6 +622,7 @@ Type *type_specifier() {
   if (symbol && symbol->sy_type == SY_TYPE) {
     return symbol->type;
   }
+
   error(token, "type specifier is expected.");
 }
 
@@ -664,13 +680,7 @@ Symbol *declarator(Type *specifier) {
   Token *token = expect_token(TK_IDENTIFIER);
   type = direct_declarator(type);
 
-  Symbol *symbol = symbol_new();
-  symbol->token = token;
-  symbol->identifier = token->identifier;
-  symbol->type = type;
-  symbol->definition = type->ty_type != TY_FUNCTION;
-
-  return symbol;
+  return symbol_variable(type, token->identifier, token);
 }
 
 Init *initializer(Type *type) {
@@ -716,6 +726,7 @@ Decl *declaration(Type *specifier, Symbol *first_symbol) {
     }
     if (specifier->definition) {
       symbol->sy_type = SY_TYPE;
+      symbol->definition = false;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
@@ -730,6 +741,7 @@ Decl *declaration(Type *specifier, Symbol *first_symbol) {
     }
     if (specifier->definition) {
       symbol->sy_type = SY_TYPE;
+      symbol->definition = false;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
@@ -745,6 +757,7 @@ Decl *declaration(Type *specifier, Symbol *first_symbol) {
     }
     if (specifier->definition) {
       symbol->sy_type = SY_TYPE;
+      symbol->definition = false;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);

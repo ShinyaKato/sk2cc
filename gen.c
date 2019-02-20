@@ -45,9 +45,9 @@ void gen_expr(Expr *node);
 void gen_lvalue(Expr *node) {
   if (node->nd_type == ND_IDENTIFIER) {
     Symbol *symbol = node->symbol;
-    if (symbol->sy_type == SY_GLOBAL) {
+    if (symbol->link == LN_EXTERNAL) {
       printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
-    } else if (symbol->sy_type == SY_LOCAL) {
+    } else if (symbol->link == LN_NONE) {
       printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
     }
     gen_push("rax");

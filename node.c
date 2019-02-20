@@ -112,16 +112,10 @@ Expr *expr_arrow(Expr *expr, char *member, Token *token) {
 }
 
 Expr *expr_post_inc(Expr *expr, Token *token) {
-  Symbol *sym_addr = symbol_new();
-  sym_addr->type = type_pointer(expr->type);
-  sym_addr->identifier = NULL;
-  sym_addr->token = token;
+  Symbol *sym_addr = symbol_variable(type_pointer(expr->type), NULL, token);
   symbol_put(NULL, sym_addr);
 
-  Symbol *sym_val = symbol_new();
-  sym_val->type = expr->type;
-  sym_val->identifier = NULL;
-  sym_val->token = token;
+  Symbol *sym_val = symbol_variable(expr->type, NULL, token);
   symbol_put(NULL, sym_val);
 
   Expr *addr_id = expr_identifier(NULL, sym_addr, token);
@@ -136,16 +130,10 @@ Expr *expr_post_inc(Expr *expr, Token *token) {
 }
 
 Expr *expr_post_dec(Expr *expr, Token *token) {
-  Symbol *sym_addr = symbol_new();
-  sym_addr->type = type_pointer(expr->type);
-  sym_addr->identifier = NULL;
-  sym_addr->token = token;
+  Symbol *sym_addr = symbol_variable(type_pointer(expr->type), NULL, token);
   symbol_put(NULL, sym_addr);
 
-  Symbol *sym_val = symbol_new();
-  sym_val->type = expr->type;
-  sym_val->identifier = NULL;
-  sym_val->token = token;
+  Symbol *sym_val = symbol_variable(expr->type, NULL, token);
   symbol_put(NULL, sym_val);
 
   Expr *addr_id = expr_identifier(NULL, sym_addr, token);
@@ -421,10 +409,7 @@ Expr *expr_assign(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_compound_assign(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
-  Symbol *symbol = symbol_new();
-  symbol->type = type_pointer(lhs->type);
-  symbol->identifier = NULL;
-  symbol->token = token;
+  Symbol *symbol = symbol_variable(type_pointer(lhs->type), NULL, token);
   symbol_put(NULL, symbol);
 
   Expr *id = expr_identifier(NULL, symbol, token);
