@@ -2,41 +2,13 @@
 
 target=$1
 
+# exit with error message.
 failed() {
   echo "$1"
   exit 1
 }
 
-compile() {
-  prog=$1
-  echo "$prog" > tmp/out.c
-  $target tmp/out.c > tmp/out.s || failed "failed to compile \"$prog\"."
-  gcc -no-pie tmp/out.s tmp/func_call_stub.o -o tmp/out || failed "failed to link \"$prog\" and stubs."
-}
-
-test_return() {
-  prog=$1
-  expect=$2
-  compile "$prog"
-  ./tmp/out
-  retval=$?
-  [ $retval -ne $expect ] && failed "\"$prog\" should return $expect, but got $retval."
-}
-
-test_stdout() {
-  prog=$1
-  expect="`echo -e "$2"`"
-  compile "$prog"
-  stdout=`"./tmp/out"`
-  [ "$stdout" != "$expect" ] && failed "stdout of \"$prog\" should be \"$expect\", but got \"$stdout\"."
-}
-
-test_error() {
-  prog=$1
-  echo "$prog" > tmp/out.c
-  $target tmp/out.c > /dev/null 2> /dev/null && failed "compilation of \"$prog\" was unexpectedly succeeded."
-}
-
+# unit test for string, vector and map.
 gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch string.c tests/string_driver.c -o tmp/string_test
 ./tmp/string_test || failed "assertion of string.c was failed."
 
@@ -46,105 +18,618 @@ gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch vector.c tests/vector_drive
 gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch map.c tests/map_driver.c -o tmp/map_test
 ./tmp/map_test || failed "assertion of map.c was failed."
 
+# failed to compile
+error() {
+  echo "[failed]"
+  echo "exit with error."
+  echo "[input]"
+  head  tmp/cc_test.c
+  echo "[log]"
+  cat tmp/cc_test.log
+  exit 1
+}
+
+# failed to link with gcc
+invalid() {
+  echo "[failed]"
+  echo "failed to link with gcc."
+  echo "[input]"
+  head -n 10 tmp/cc_test.c
+  echo "[output]"
+  head -n 10 tmp/cc_test.s
+  exit 1
+}
+
+# execution result is not expected
+miscompile() {
+  expect=$1
+  actual=$2
+  echo "[failed]"
+  echo "$expect is expected, but got $actual."
+  echo "[input]"
+  head -n 10 tmp/cc_test.c
+  echo "[output]"
+  head -n 10 tmp/cc_test.s
+  exit 1
+}
+
+expect_return() {
+  expect=$1
+  cat - > tmp/cc_test.c
+  $target tmp/cc_test.c > tmp/cc_test.s 2> tmp/cc_test.log || error
+  gcc -no-pie tmp/cc_test.s tmp/func_call_stub.o -o tmp/cc_test || invalid
+  ./tmp/cc_test > /dev/null
+  actual=$?
+  [ $actual -ne $expect ] && miscompile $expect $actual
+}
+
+expect_stdout() {
+  expect=$1
+  cat - > tmp/cc_test.c
+  $target tmp/cc_test.c > tmp/cc_test.s 2> tmp/cc_test.log || error
+  gcc -no-pie tmp/cc_test.s tmp/func_call_stub.o -o tmp/cc_test || invalid
+  actual=`./tmp/cc_test | sed -z 's/\\n/\\\\n/g'`
+  [ "$actual" != "$expect" ] && miscompile $expect $actual
+}
+
+test_error() {
+  prog=$1
+  echo "$prog" > tmp/cc_test.c
+  if $target tmp/cc_test.c > /dev/null 2> /dev/null; then
+    echo "[failed]"
+    echo "compilation is unexpectedly succeeded."
+    echo "[input]"
+    head  tmp/cc_test.c
+    exit 1
+  fi
+}
+
 gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -c tests/func_call_stub.c -o tmp/func_call_stub.o
 
-compile "$(gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c)"
-./tmp/out || failed "test.c failed."
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c | expect_return 0
 
-test_return "int main() { int x; x = 0; return x; x = 1; return x; }" 0
-test_return "int main() { for (int i = 0; i < 100; i++) if (i == 42) return i; return 123; }" 42
+expect_return 0 <<-EOS
+int main() {
+  int x;
+  x = 0;
+  return x;
+  x = 1;
+  return x;
+}
+EOS
 
-test_return "int f() { return 2; } int g() { return 3; } int main() { return f() * g(); }" 6
-test_return "int f() { int x; int y; x = 2; y = 3; return x + 2 * y; } int main() { int t; t = f(); return t * 3; }" 24
-test_return "int f() { int x; x = 2; return x * x; } int main() { int t; t = f(); return t * f(); }" 16
-test_return "int f(int x) { return x * x; } int main() { return f(1) + f(2) + f(3); }" 14
-test_return "int f(int x, int y, int z) { x = x * y; y = x + z; return x + y + z; } int main() { return f(1, 2, 3); }" 10
-test_return "int *f(int *p) { return p; } int main() { int x; x = 123; int *y; y = f(&x); return *y; }" 123
-test_return "int *f(int *p) { *p = 231; return p; } int main() { int x; x = 123; int *y; y = f(&x); return *y; }" 231
+expect_return 42 <<-EOS
+int main() {
+  for (int i = 0; i < 100; i++)
+    if (i == 42)
+      return i;
+  return 123;
+}
+EOS
 
-test_return "int x; int main() { return 0; }" 0
-test_return "int x, y[20]; int main() { return 0; }" 0
-test_return "int x; int func() { x = 8; } int main() { func(); return x; }" 8
-test_return "int y[20]; int func() { y[5] = 3; } int main() { func(); return y[5]; }" 3
-test_return "int x; int func(int *p) { *p = 123; } int main() { func(&x); return x; }" 123
-test_return "int x, *y; int func() { *y = 123; } int main() { y = &x; func(); return x; }" 123
-test_return "int x; int func() { int x; x = 123; } int main() { x = 0; func(); return x; }" 0
-test_return "int x; int func() { return x; } int y[4], z; int main() { x = 21; return func(); }" 21
+expect_return 6 <<-EOS
+int f() {
+  return 2;
+}
+int g() {
+  return 3;
+}
+int main() {
+  return f() * g();
+}
+EOS
 
-test_return "char c, s[20]; int main() { return 0; }" 0
-test_return "int main() { char c, s[20]; return 0; }" 0
-test_return "int main() { char c1, c2, c3; c1 = 13; c2 = 65; c3 = c1 + c2; return c3; }" 78
-test_return "char f(char c) { return c; } int main() { return f('A'); }" 65
-test_stdout "int main() { char s[4]; s[0] = 65; s[1] = 66; s[2] = 67; s[3] = 0; puts(s); return 0; }" "ABC"
-test_stdout "char s[8]; int main() { int i; for (i = 0; i < 7; i++) s[i] = i + 65; s[7] = 0; puts(s); return 0; }" "ABCDEFG"
-test_stdout "int main() { puts(\"hello world\"); return 0; }" "hello world"
-test_stdout "int main() { char *s; s = \"hello world\"; puts(s); return 0; }" "hello world"
-test_stdout "int main() { char *s; s = \"hello world\"; printf(\"%c\n\", s[6]); return 0; }" "w"
+expect_return 24 <<-EOS
+int f() {
+  int x = 2;
+  int y = 3;
+  return x + 2 * y;
+}
+int main() {
+  int t = f();
+  return t * 3;
+}
+EOS
 
-test_return "int main() { int x = 12; if (1) { int x = 34; } return x; }" 12
-test_return "int main() { int x = 12, y = 14; if (1) { int *x = &y; } return x; }" 12
-test_stdout "int x = 0; int main() { int x = 1; { int x = 2; { x = 3; } { int x = 4; } printf(\"%d\n\", x); } printf(\"%d\n\", x); }" "3\n1\n"
-test_stdout "int main() { int i = 123; for (int i = 0; i < 5; i++) { printf(\"%d\n\", i); int i = 42; } printf(\"%d\n\", i); return 0; }" "0\n1\n2\n3\n4\n123\n"
+expect_return 16 <<-EOS
+int f() {
+  int x = 2;
+  return x * x;
+}
+int main() {
+  int t = f();
+  return t * f();
+}
+EOS
 
-test_return "struct object { int x, y; }; int main() { struct object p; p.x = 56; return p.x; }" 56
-test_return "int main() { struct object { int x, y; }; struct object p; p.x = 56; return p.x; }" 56
-test_return "struct object { int x, y; } q; int main() { struct object p; p.x = 56; q.y = 97; return p.x; }" 56
-test_return "int main() { struct object { int x, y; } q; struct object p; p.x = 56; q.y = 97; return p.x; }" 56
-test_return "typedef int MyInt; int main() { MyInt x = 55; return x; }" 55
-test_return "int main() { typedef int MyInt; MyInt x = 55; return x; }" 55
-test_return "typedef struct { int x, y; } Vector2; int main() { Vector2 p; p.x = 5; p.y = 3; return p.x * p.y; }" 15
-test_return "struct abc { struct abc *p; int v; }; int main() { struct abc x, y; x.p = &y; y.v = 18; return x.p->v; }" 18
+expect_return 14 <<-EOS
+int f(int x) {
+  return x * x;
+}
+int main() {
+  return f(1) + f(2) + f(3);
+}
+EOS
 
-test_return "char f(char c, int a); int main() { return f('A', 3); } char f(char c, int a)  { return c + a; }" 68
-test_return "int f(), g(int x); int main() { return g(f()); } int f() { return 2; } int g(int x) { return x * x; }" 4
-test_stdout "int puts(char *s); int main() { puts(\"123abc\"); }" "123abc"
+expect_return 10 <<-EOS
+int f(int x, int y, int z) {
+  x = x * y;
+  y = x + z;
+  return x + y + z;
+}
+int main() {
+  return f(1, 2, 3);
+}
+EOS
 
-test_return "enum { U, L, D, R }; int main() { return U; }" 0
-test_return "enum { U, L, D, R }; int main() { return L; }" 1
-test_return "enum { U, L, D, R }; int main() { return D; }" 2
-test_return "enum { U, L, D, R }; int main() { return R; }" 3
-test_return "enum { U, L, D, R } d; int main() { d = U; return d; }" 0
-test_return "enum { U, L, D, R } d; int main() { d = L; return d; }" 1
-test_return "enum { U, L, D, R } d; int main() { d = D; return d; }" 2
-test_return "enum { U, L, D, R } d; int main() { d = R; return d; }" 3
-test_return "typedef enum { U, L, D, R } Dir; Dir d; int main() { d = D; return d; }" 2
-test_return "typedef enum node_type { CONST, MUL, DIV, ADD, SUB } NodeType; int main() { NodeType type = ADD; return ADD; }" 3
+expect_return 32 <<-EOS
+int *f(int *p) {
+  return p;
+}
+int main() {
+  int x = 32;
+  int *y = f(&x);
+  return *y;
+}
+EOS
 
-test_return "extern int external_obj; int main() { return external_obj; }" 35
+expect_return 54 <<-EOS
+int *f(int *p) {
+  *p = 54;
+  return p;
+}
+int main() {
+  int x = 87;
+  int *y = f(&x);
+  return *y;
+}
+EOS
 
-test_stdout "int printf(char *format, ...); int main() { printf(\"%s %d\n\", \"abcd\", 1234); }" "abcd 1234"
+expect_return 0 <<-EOS
+int x;
+int main() {
+  return 0;
+}
+EOS
 
-test_return "extern _Noreturn void error(char *format, ...); int main() { return 0; }" 0
+expect_return 0 <<-EOS
+int x, y[20];
+int main() {
+  return 0;
+}
+EOS
 
-test_stdout "
+expect_return 8 <<-EOS
+int x;
+int func() {
+  x = 8;
+}
+int main() {
+  func();
+  return x;
+}
+EOS
+
+expect_return 3 <<-EOS
+int y[20];
+int func() {
+  y[5] = 3;
+}
+int main() {
+  func();
+  return y[5];
+}
+EOS
+
+expect_return 29 <<-EOS
+int x;
+int func(int *p) {
+  *p = 29;
+}
+int main() {
+  func(&x);
+  return x;
+}
+EOS
+
+expect_return 6 <<-EOS
+int x, *y;
+int func() {
+  *y = 6;
+}
+int main() {
+  y = &x;
+  func();
+  return x;
+}
+EOS
+
+expect_return 0 <<-EOS
+int x;
+int func() {
+  int x = 123;
+}
+int main() {
+  func();
+  return x;
+}
+EOS
+
+expect_return 0 <<-EOS
+char c, s[20];
+int main() {
+  return 0;
+}
+EOS
+
+expect_return 0 <<-EOS
+int main() {
+  char c, s[20];
+  return 0;
+}
+EOS
+
+expect_return 78 <<-EOS
+int main() {
+  char c1 = 13, c2 = 65;
+  char c3 = c1 + c2;
+  return c3;
+}
+EOS
+
+expect_return 65 <<-EOS
+char f(char c) {
+  return c;
+}
+int main() {
+  return f('A');
+}
+EOS
+
+expect_stdout "ABC\n" <<-EOS
+int main() {
+  char s[4];
+  s[0] = 65;
+  s[1] = 66;
+  s[2] = 67;
+  s[3] = 0;
+  puts(s);
+  return 0;
+}
+EOS
+
+expect_stdout "ABCDEFG\n" <<-EOS
+char s[8];
+int main() {
+  for (int i = 0; i < 7; i++) s[i] = i + 65;
+  s[7] = 0;
+  puts(s);
+  return 0;
+}
+EOS
+
+expect_stdout "hello world\n" <<-EOS
+int main() {
+  puts("hello world");
+  return 0;
+}
+EOS
+
+expect_stdout "hello world\n" <<-EOS
+int main() {
+  char *s = "hello world";
+  puts(s);
+  return 0;
+}
+EOS
+
+expect_stdout "w\n" <<-EOS
+int main() {
+  char *s = "hello world";
+  printf("%c\n", s[6]);
+  return 0;
+}
+EOS
+
+expect_return 12 <<-EOS
+int main() {
+  int x = 12;
+  if (1) {
+    int x = 34;
+  }
+  return x;
+}
+EOS
+
+expect_return 12 <<-EOS
+int main() {
+  int x = 12, y = 14;
+  if (1) {
+    int *x = &y;
+  }
+  return x;
+}
+EOS
+
+expect_stdout "3\n1\n" <<-EOS
+int x = 0;
+int main() {
+  int x = 1;
+  {
+    int x = 2;
+    { x = 3; }
+    { int x = 4; }
+    printf("%d\n", x);
+  }
+  printf("%d\n", x);
+}
+EOS
+
+expect_stdout "0\n1\n2\n3\n4\n123\n" <<-EOS
+int main() {
+  int i = 123;
+  for (int i = 0; i < 5; i++) {
+    printf("%d\n", i);
+    int i = 42;
+  }
+  printf("%d\n", i);
+  return 0;
+}
+EOS
+
+expect_return 56 <<-EOS
+struct object {
+  int x, y;
+};
+int main() {
+  struct object p;
+  p.x = 56;
+  return p.x;
+}
+EOS
+
+expect_return 56 <<-EOS
+int main() {
+  struct object {
+    int x, y;
+  };
+  struct object p;
+  p.x = 56;
+  return p.x;
+}
+EOS
+
+expect_return 56 <<-EOS
+struct object {
+  int x, y;
+} q;
+int main() {
+  struct object p;
+  p.x = 56;
+  q.y = 97;
+  return p.x;
+}
+EOS
+
+expect_return 56 <<-EOS
+int main() {
+  struct object {
+    int x, y;
+  } q;
+  struct object p;
+  p.x = 56;
+  q.y = 97;
+  return p.x;
+}
+EOS
+
+expect_return 55 <<-EOS
+typedef int MyInt;
+int main() {
+  MyInt x = 55;
+  return x;
+}
+EOS
+
+expect_return 55 <<-EOS
+int main() {
+  typedef int MyInt;
+  MyInt x = 55;
+  return x;
+}
+EOS
+
+expect_return 15 <<-EOS
+typedef struct {
+  int x, y;
+} Vector2;
+int main() {
+  Vector2 p;
+  p.x = 5;
+  p.y = 3;
+  return p.x * p.y;
+}
+EOS
+
+expect_return 18 <<-EOS
+struct abc {
+  struct abc *p;
+  int v;
+};
+int main() {
+  struct abc x, y;
+  x.p = &y;
+  y.v = 18;
+  return x.p->v;
+}
+EOS
+
+expect_return 68 <<-EOS
+char f(char c, int a);
+int main() {
+  return f('A', 3);
+}
+char f(char c, int a) {
+  return c + a;
+}
+EOS
+
+expect_return 4 <<-EOS
+int f(), g(int x);
+int main() {
+  return g(f());
+}
+int f() {
+  return 2;
+}
+int g(int x) {
+  return x * x;
+}
+EOS
+
+expect_stdout "123abc\n" <<-EOS
+int puts(char *s);
+int main() {
+  puts("123abc");
+}
+EOS
+
+expect_return 0 <<-EOS
+enum { U, L, D, R };
+int main() {
+  return U;
+}
+EOS
+
+expect_return 1 <<-EOS
+enum { U, L, D, R };
+int main() {
+  return L;
+}
+EOS
+
+expect_return 2 <<-EOS
+enum { U, L, D, R };
+int main() {
+  return D;
+}
+EOS
+
+expect_return 3 <<-EOS
+enum { U, L, D, R };
+int main() {
+  return R;
+}
+EOS
+
+expect_return 0 <<-EOS
+enum { U, L, D, R } d;
+int main() {
+  d = U;
+  return d;
+}
+EOS
+
+expect_return 1 <<-EOS
+enum { U, L, D, R } d;
+int main() {
+  d = L;
+  return d;
+}
+EOS
+
+expect_return 2 <<-EOS
+enum { U, L, D, R } d;
+int main() {
+  d = D;
+  return d;
+}
+EOS
+
+expect_return 3 <<-EOS
+enum { U, L, D, R } d;
+int main() {
+  d = R;
+  return d;
+}
+EOS
+
+expect_return 2 <<-EOS
+typedef enum {
+  U, L, D, R
+} Dir;
+Dir d;
+int main() {
+  d = D;
+  return d;
+}
+EOS
+
+expect_return 3 <<-EOS
+typedef enum node_type {
+  CONST, MUL, DIV, ADD, SUB
+} NodeType;
+int main() {
+  NodeType type = ADD;
+  return type;
+}
+EOS
+
+expect_return 35 <<-EOS
+extern int external_obj;
+int main() {
+  return external_obj;
+}
+EOS
+
+expect_stdout "abcd 1234\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  printf("%s %d\n", "abcd", 1234);
+}
+EOS
+
+expect_return 0 <<-EOS
+extern _Noreturn void error(char *format, ...);
+int main() {
+  return 0;
+}
+EOS
+
+expect_stdout "16\n" <<-EOS
 typedef struct string {
-  int size, length;
+  int capacity;
+  int length;
   char *buffer;
 } String;
+int main() {
+  return printf("%d\n", sizeof(String));
+}
+EOS
 
-int main() { return printf(\"%d\n\", sizeof(String)); }
-" "16"
-
-test_stdout "
+expect_stdout "16\n" <<-EOS
 typedef struct vector {
-  int size, length;
-  void **array;
+  int capacity;
+  int length;
+  void **buffer;
 } Vector;
+int main() {
+  return printf("%d\n", sizeof(Vector));
+}
+EOS
 
-int main() { return printf(\"%d\n\", sizeof(Vector)); }
-" "16"
-
-test_stdout "
+expect_stdout "16392\n" <<-EOS
 typedef struct map {
   int count;
   char *keys[1024];
   void *values[1024];
 } Map;
+int main() {
+  return printf("%d\n", sizeof(Map));
+}
+EOS
 
-int main() { return printf(\"%d\n\", sizeof(Map)); }
-" "16392"
-
-test_stdout "
+expect_stdout "abc 123\n" <<-EOS
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
 
@@ -166,23 +651,97 @@ void print(char *format, ...) {
 }
 
 int main() {
-  print(\"%s %d\n\", \"abc\", 123);
+  print("%s %d\n", "abc", 123);
 }
-" "abc 123"
+EOS
 
-test_return "int x = 211; int main() { return x; }" 211
-test_stdout "char *s = \"abcde\"; int main() { printf(\"%s\n\", s); }" "abcde"
-test_return "int a[] = { 1, 2, 55, 91 }; int main() { return a[0]; }" 1
-test_return "int a[] = { 1, 2, 55, 91 }; int main() { return a[1]; }" 2
-test_return "int a[] = { 1, 2, 55, 91 }; int main() { return a[2]; }" 55
-test_return "int a[] = { 1, 2, 55, 91 }; int main() { return a[3]; }" 91
-test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[0]; }" 1
-test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[1]; }" 2
-test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[2]; }" 55
-test_return "int main() { int a[] = { 1, 2, 55, 91 }; return a[3]; }" 91
-test_stdout "char *reg[] = { \"rdi\", \"rsi\", \"rdx\", \"rcx\", \"r8\", \"r9\" }; int main() { for (int i = 0; i < 6; i++) printf(\"%s\n\", reg[i]); return 0; }" "rdi\nrsi\nrdx\nrcx\nr8\nr9\n"
+expect_return 40 <<-EOS
+int x = 40;
+int main() {
+  return x;
+}
+EOS
 
-test_return "
+expect_stdout "abcde\n" <<-EOS
+char *s = "abcde";
+int main() {
+  printf("%s\n", s);
+}
+EOS
+
+expect_return 1 <<-EOS
+int a[] = { 1, 2, 55, 91 };
+int main() {
+  return a[0];
+}
+EOS
+
+expect_return 2 <<-EOS
+int a[] = { 1, 2, 55, 91 };
+int main() {
+  return a[1];
+}
+EOS
+
+expect_return 55 <<-EOS
+int a[] = { 1, 2, 55, 91 };
+int main() {
+  return a[2];
+}
+EOS
+
+expect_return 91 <<-EOS
+int a[] = { 1, 2, 55, 91 };
+int main() {
+  return a[3];
+}
+EOS
+
+expect_return 1 <<-EOS
+int main() {
+  int a[] = { 1, 2, 55, 91 };
+  return a[0];
+}
+EOS
+
+expect_return 2 <<-EOS
+int main() {
+  int a[] = { 1, 2, 55, 91 };
+  return a[1];
+}
+EOS
+
+expect_return 55 <<-EOS
+int main() {
+  int a[] = { 1, 2, 55, 91 };
+  return a[2];
+}
+EOS
+
+expect_return 91 <<-EOS
+int main() {
+  int a[] = { 1, 2, 55, 91 };
+  return a[3];
+}
+EOS
+
+expect_stdout "rdi\nrsi\nrdx\nrcx\nr8\nr9\n" <<-EOS
+char *reg[] = {
+  "rdi",
+  "rsi",
+  "rdx",
+  "rcx",
+  "r8",
+  "r9"
+};
+int main() {
+  for (int i = 0; i < 6; i++)
+    printf("%s\n", reg[i]);
+  return 0;
+}
+EOS
+
+expect_return 1 <<-EOS
 #define bool _Bool
 #define true 1
 #define false 0
@@ -190,60 +749,78 @@ int main() {
   bool b = true;
   return b;
 }
-" 1
-test_return "
+EOS
+
+expect_return 1 <<-EOS
 #define NULL ((void *) 0)
 int main() {
   int *p = NULL;
   return !p;
 }
-" 1
-test_return "
+EOS
+
+expect_return 5 <<-EOS
 #define xxx 5
 int main() {
   return xxx;
 }
-" 5
-test_return "
+EOS
+
+expect_return 60 <<-EOS
 #define xxx 5
 int yyy = 2;
 #define zzz 6
 int main() {
   return xxx * yyy * zzz;
 }
-" 60
+EOS
 
-test_return "int main() { /* this is comment */ return 0; }" 0
-test_return "int main() { return /* this is comment */ 0; }" 0
-test_return "
+expect_return 0 <<-EOS
+int main() {
+  /* this is comment */
+  return 0;
+}
+EOS
+
+expect_return 0 <<-EOS
+int main() {
+  return /* this is comment */ 0;
+}
+EOS
+
+expect_return 0 <<-EOS
 int main() {
   // this is comment.
   return 0;
 }
-" 0
+EOS
 
-test_return "
+expect_return 5 <<-EOS
 #define func() (a + b)
 int main() {
   int a = 2, b = 3;
   return func();
 }
-" 5
+EOS
 
-test_return "
+expect_return 13 <<-EOS
 #define func(a, b) ((a) * (b) + 1)
 int main() {
   return func(3, 4);
 }
-" 13
+EOS
 
-test_return "
+expect_return 10 <<-EOS
 #define func(a, b) ((a) + (b))
-int f(int x, int y) { return x * y; }
-int main() { return func(f(2, 3), 4); }
-" 10
+int f(int x, int y) {
+  return x * y;
+}
+int main() {
+  return func(f(2, 3), 4);
+}
+EOS
 
-test_return "
+expect_return 0 <<-EOS
 #define empty1
 #define empty2 
 #define empty3  
@@ -251,35 +828,37 @@ test_return "
 #define empty5(a, b) 
 #define empty6(a, b)  
 int main() { empty1; empty2; empty3; empty4(1, 2); empty5(1, 2); empty6(1, 2); return 0; }
-" 0
+EOS
 
-test_return "
-#define test(expr, expected) \
-  do { \
-    int actual = (expr); \
-    if (actual != (expected)) { \
-      return 1; \
-    } \
-    return 0; \
+expect_return 0 <<-EOS
+#define test(expr, expected) \\
+  do { \\
+    int actual = (expr); \\
+    if (actual != (expected)) { \\
+      return 1; \\
+    } \\
+    return 0; \\
   } while (0)
 
 int main() {
   test(1 + 2, 3);
 }
-" 0
+EOS
 
-test_stdout "
+expect_stdout "42\n" <<-EOS
 int prin\\
 tf(cha\\
 r *fo\\
 rmat, ...);
 i\\
 nt main() { pr\\
-intf(\"%\\
-d\n\", 4\\
+intf("%\\
+d\n", 4\\
 2); ret\\
-urn 0; }" "42"
+urn 0; }
+EOS
 
+# testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
 test_error "int main() { 5 }"
