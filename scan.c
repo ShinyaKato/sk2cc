@@ -1,10 +1,5 @@
 #include "sk2cc.h"
 
-struct token_scanner {
-  Vector *tokens;
-  int pos;
-};
-
 Scanner *cur_sc;
 
 void scanner_init(Vector *tokens) {

@@ -45,9 +45,9 @@ void gen_expr(Expr *node);
 void gen_lvalue(Expr *node) {
   if (node->nd_type == ND_IDENTIFIER) {
     Symbol *symbol = node->symbol;
-    if (symbol->sy_type == GLOBAL) {
+    if (symbol->sy_type == SY_GLOBAL) {
       printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
-    } else if (symbol->sy_type == LOCAL) {
+    } else if (symbol->sy_type == SY_LOCAL) {
       printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
     }
     gen_push("rax");
@@ -63,15 +63,15 @@ void gen_lvalue(Expr *node) {
 
 void gen_load(Type *type) {
   gen_pop("rax");
-  if (type->ty_type == BOOL) {
+  if (type->ty_type == TY_BOOL) {
     printf("  movzbl (%%rax), %%eax\n");
-  } else if (type->ty_type == CHAR || type->ty_type == UCHAR) {
+  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
     printf("  movsbl (%%rax), %%eax\n");
-  } else if (type->ty_type == SHORT || type->ty_type == USHORT) {
+  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
     printf("  movswl (%%rax), %%eax\n");
-  } else if (type->ty_type == INT || type->ty_type == UINT) {
+  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
     printf("  movl (%%rax), %%eax\n");
-  } else if (type->ty_type == POINTER && !type->array_pointer) {
+  } else if (type->ty_type == TY_POINTER && type == type->original) {
     printf("  movq (%%rax), %%rax\n");
   }
   gen_push("rax");
@@ -80,17 +80,17 @@ void gen_load(Type *type) {
 void gen_store(Type *type) {
   gen_pop("rax");
   gen_pop("rcx");
-  if (type->ty_type == BOOL) {
+  if (type->ty_type == TY_BOOL) {
     printf("  cmpl $0, %%eax\n");
     printf("  setne %%al\n");
     printf("  movb %%al, (%%rcx)\n");
-  } else if (type->ty_type == CHAR || type->ty_type == UCHAR) {
+  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
     printf("  movb %%al, (%%rcx)\n");
-  } else if (type->ty_type == SHORT || type->ty_type == USHORT) {
+  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
     printf("  movw %%ax, (%%rcx)\n");
-  } else if (type->ty_type == INT || type->ty_type == UINT) {
+  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
     printf("  movl %%eax, (%%rcx)\n");
-  } else if (type->ty_type == POINTER) {
+  } else if (type->ty_type == TY_POINTER) {
     printf("  movq %%rax, (%%rcx)\n");
   }
   gen_push("rax");
@@ -147,7 +147,7 @@ void gen_call(Expr *node) {
   for (int i = node->args->length - 1; i >= 0; i--) {
     Expr *arg = node->args->buffer[i];
     gen_expr(arg);
-    if (arg->type->ty_type == BOOL) {
+    if (arg->type->ty_type == TY_BOOL) {
       gen_pop("rax");
       printf("  cmpl $0, %%eax\n");
       printf("  setne %%al\n");
@@ -170,7 +170,7 @@ void gen_call(Expr *node) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
 
-  if (node->type->ty_type == BOOL) {
+  if (node->type->ty_type == TY_BOOL) {
     printf("  movzbl %%al, %%eax\n");
   }
   gen_push("rax");
@@ -240,11 +240,11 @@ void gen_mod(Expr *node) {
 }
 
 void gen_add(Expr *node) {
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     gen_operands(node->lhs, node->rhs, "rax", "rcx");
     printf("  addl %%ecx, %%eax\n");
     gen_push("rax");
-  } else if (type_pointer(node->lhs->type) && type_integer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_integer(node->rhs->type)) {
     int size = node->lhs->type->pointer_to->size;
     gen_expr(node->lhs);
     gen_operand(node->rhs, "rax");
@@ -257,11 +257,11 @@ void gen_add(Expr *node) {
 }
 
 void gen_sub(Expr *node) {
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     gen_operands(node->lhs, node->rhs, "rax", "rcx");
     printf("  subl %%ecx, %%eax\n");
     gen_push("rax");
-  } else if (type_pointer(node->lhs->type) && type_integer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_integer(node->rhs->type)) {
     int size = node->lhs->type->pointer_to->size;
     gen_expr(node->lhs);
     gen_operand(node->rhs, "rax");
@@ -287,9 +287,9 @@ void gen_rshift(Expr *node) {
 
 void gen_lt(Expr *node) {
   gen_operands(node->lhs, node->rhs, "rax", "rcx");
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     printf("  cmpl %%ecx, %%eax\n");
-  } else if (type_pointer(node->lhs->type) && type_pointer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_pointer(node->rhs->type)) {
     printf("  cmpq %%rcx, %%rax\n");
   }
   printf("  setl %%al\n");
@@ -299,9 +299,9 @@ void gen_lt(Expr *node) {
 
 void gen_lte(Expr *node) {
   gen_operands(node->lhs, node->rhs, "rax", "rcx");
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     printf("  cmpl %%ecx, %%eax\n");
-  } else if (type_pointer(node->lhs->type) && type_pointer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_pointer(node->rhs->type)) {
     printf("  cmpq %%rcx, %%rax\n");
   }
   printf("  setle %%al\n");
@@ -311,9 +311,9 @@ void gen_lte(Expr *node) {
 
 void gen_eq(Expr *node) {
   gen_operands(node->lhs, node->rhs, "rax", "rcx");
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     printf("  cmpl %%ecx, %%eax\n");
-  } else if (type_pointer(node->lhs->type) && type_pointer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_pointer(node->rhs->type)) {
     printf("  cmpq %%rcx, %%rax\n");
   }
   printf("  sete %%al\n");
@@ -323,9 +323,9 @@ void gen_eq(Expr *node) {
 
 void gen_neq(Expr *node) {
   gen_operands(node->lhs, node->rhs, "rax", "rcx");
-  if (type_integer(node->lhs->type) && type_integer(node->rhs->type)) {
+  if (check_integer(node->lhs->type) && check_integer(node->rhs->type)) {
     printf("  cmpl %%ecx, %%eax\n");
-  } else if (type_pointer(node->lhs->type) && type_pointer(node->rhs->type)) {
+  } else if (check_pointer(node->lhs->type) && check_pointer(node->rhs->type)) {
     printf("  cmpq %%rcx, %%rax\n");
   }
   printf("  setne %%al\n");
@@ -681,9 +681,9 @@ void gen_init_global(Init *init) {
 }
 
 void gen_decl_global(Decl *decl) {
-  printf("  .data\n");
   for (int i = 0; i < decl->declarations->length; i++) {
     Symbol *symbol = decl->declarations->buffer[i];
+    printf("  .data\n");
     printf("  .global %s\n", symbol->identifier);
     printf("%s:\n", symbol->identifier);
     if (symbol->init) {
@@ -712,21 +712,21 @@ void gen_func(Func *node) {
   Type *type = node->symbol->type;
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->buffer[i];
-    if (symbol->type->ty_type == BOOL) {
+    if (symbol->type->ty_type == TY_BOOL) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  cmpb $0, %%al\n");
       printf("  setne %%al\n");
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == CHAR || symbol->type->ty_type == UCHAR) {
+    } else if (symbol->type->ty_type == TY_CHAR || symbol->type->ty_type == TY_UCHAR) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == SHORT || symbol->type->ty_type == USHORT) {
+    } else if (symbol->type->ty_type == TY_SHORT || symbol->type->ty_type == TY_USHORT) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movw %%ax, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == INT || symbol->type->ty_type == UINT) {
+    } else if (symbol->type->ty_type == TY_INT || symbol->type->ty_type == TY_UINT) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-    } else if (symbol->type->ty_type == POINTER) {
+    } else if (symbol->type->ty_type == TY_POINTER) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
     }
@@ -741,7 +741,7 @@ void gen_func(Func *node) {
   gen_stmt(node->body);
 
   gen_label(return_label);
-  if (type->function_returning->ty_type == BOOL) {
+  if (type->returning->ty_type == TY_BOOL) {
     printf("  cmpl $0, %%eax\n");
     printf("  setne %%al\n");
   }

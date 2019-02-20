@@ -50,27 +50,29 @@ int isalnum(int c);
 int isdigit(int c);
 int isspace(int c);
 
-// token scanner
-typedef struct {
-  Vector *tokens;
-  int pos;
-} Scanner;
-
-
+// enum and struct declaration
 typedef enum token_type TokenType;
 typedef struct token Token;
 
+typedef struct scanner Scanner;
+
 typedef enum node_type NodeType;
 typedef struct node Node;
+typedef struct expr Expr;
+typedef struct decl Decl;
+typedef struct init Init;
+typedef struct stmt Stmt;
+typedef struct func Func;
+typedef struct trans_unit TransUnit;
 
 typedef enum type_type TypeType;
 typedef struct type Type;
-typedef struct struct_member StructMember;
+typedef struct member Member;
 
 typedef enum symbol_type SymbolType;
 typedef struct symbol Symbol;
 
-// token type
+// TokenType
 // A one-character token is represented by it's ascii code.
 enum token_type {
   // white spaces (removed before syntax analysis)
@@ -151,6 +153,13 @@ struct token {
   int column;     // 1-indexed
 };
 
+// Scanner (token scanner)
+struct scanner {
+  Vector *tokens;
+  int pos;
+};
+
+// NodeType
 enum node_type {
   // expression
   ND_IDENTIFIER,
@@ -203,15 +212,7 @@ enum node_type {
   ND_FUNC
 };
 
-typedef struct node Node;
-typedef struct expr Expr;
-typedef struct decl Decl;
-typedef struct init Init;
-typedef struct stmt Stmt;
-typedef struct func Func;
-typedef struct trans_unit TransUnit;
-
-// AST node
+// Node (AST node)
 // This struct is used for checking the node type.
 // After checking, the pointer is casted to the pointer of each node type.
 // There are 4 kinds of node: Expr, Decl, Stmt, Func.
@@ -219,7 +220,7 @@ struct node {
   NodeType nd_type;
 };
 
-// AST node for expression
+// Expr (AST node for expression)
 struct expr {
   NodeType nd_type;
 
@@ -252,21 +253,21 @@ struct expr {
   Token *token;
 };
 
-// AST node for declaration
+// Decl (AST node for declaration)
 struct decl {
   NodeType nd_type;
   Vector *declarations; // vector of Symbol*
   Token *token;
 };
 
-// initializer
+// Init (declaration initializer)
 struct init {
   Type *type;
   Expr *expr;
   Vector *list; // vector of Init*
 };
 
-// AST node for statement
+// Stmt (AST node for statement)
 struct stmt {
   NodeType nd_type;
 
@@ -301,7 +302,7 @@ struct stmt {
   Token *token;
 };
 
-// AST node for function definition
+// Func (AST node for function definition)
 struct func {
   NodeType nd_type;
   Symbol *symbol;
@@ -310,72 +311,97 @@ struct func {
   Token *token;
 };
 
-// translation unit
+// TransUnit (AST node for translation unit)
 struct trans_unit {
   Vector *string_literals; // vector of String*
   Vector *external_decls;  // vector of Node* (Decl* or Func*)
 };
 
+// TypeType
 enum type_type {
-  VOID,
-  BOOL,
-  CHAR,
-  UCHAR,
-  SHORT,
-  USHORT,
-  INT,
-  UINT,
-  POINTER,
-  ARRAY,
-  STRUCT,
-  FUNCTION
+  TY_VOID,
+  TY_BOOL,
+  TY_CHAR,
+  TY_UCHAR,
+  TY_SHORT,
+  TY_USHORT,
+  TY_INT,
+  TY_UINT,
+  TY_POINTER,
+  TY_ARRAY,
+  TY_FUNCTION,
+  TY_STRUCT
 };
 
+// Type
 struct type {
   TypeType ty_type;
-  int size, align;
+  int size;
+  int align;
+  bool complete;
+
+  bool definition; // typedef
+  bool external;   // external linkage
+
+  // holds original type when converting array to pointer.
+  // the original type is used for sizeof and alignof.
+  Type *original;
+
+  // pointer
   Type *pointer_to;
+
+  // array
   Type *array_of;
-  int array_size;
-  Type *function_returning;
-  Vector *params;
+  int length;
+
+  // function
+  Type *returning;
+  Vector *params; // vector of Type*
   bool ellipsis;
-  Map *members;
-  int original_size;
-  bool array_pointer;
-  bool definition;
-  bool external;
-  bool incomplete;
+
+  // struct
+  Map *members; // map of Member*
 };
 
-struct struct_member {
+// Member (struct member)
+struct member {
   Type *type;
   int offset;
 };
 
+// SymbolType
 enum symbol_type {
-  GLOBAL,
-  LOCAL,
-  TYPENAME,
-  ENUM_CONST
+  SY_GLOBAL, // global variable
+  SY_LOCAL,  // local variable
+  SY_TYPE,   // typedef name
+  SY_CONST   // enum const
 };
 
+// Symbol
 struct symbol {
   SymbolType sy_type;
-  Token *token;
-  char *identifier;
   Type *type;
+  char *identifier;
   Init *init;
-  int enum_value;
+  bool definition;
+
+  // local variable
   int offset;
-  bool defined;
+
+  // enum const
+  int const_value;
+
+  Token *token;
 };
 
+// error.c
 extern noreturn void error(Token *token, char *format, ...);
 
+// lex.c
 extern char *token_name(TokenType tk_type);
 extern Vector *tokenize(char *input_filename);
 
+// scan.c
 extern void scanner_init(Vector *tokens);
 extern Scanner *scanner_preserve(Vector *tokens);
 extern void scanner_restore(Scanner *prev);
@@ -386,29 +412,31 @@ extern bool check_token(TokenType tk_type);
 extern Token *read_token(TokenType tk_type);
 extern Token *expect_token(TokenType tk_type);
 
+// cpp.c
 extern Vector *preprocess(Vector *pp_tokens);
 
-extern Type *type_new();
+// type.c
 extern Type *type_void();
-extern Type *type_bool();
 extern Type *type_char();
 extern Type *type_uchar();
 extern Type *type_short();
 extern Type *type_ushort();
 extern Type *type_int();
 extern Type *type_uint();
-extern Type *type_pointer_to(Type *type);
-extern Type *type_array_of(Type *type, int array_size);
-extern Type *type_incomplete_array_of(Type *type);
-extern Type *type_function_returning(Type *returning, Vector *params, bool ellipsis);
+extern Type *type_bool();
+extern Type *type_pointer(Type *pointer_to);
+extern Type *type_incomplete_array(Type *array_of);
+extern Type *type_array(Type *array_of, int length);
+extern Type *type_function(Type *returning, Vector *params, bool ellipsis);
+extern Type *type_incomplete_struct();
 extern Type *type_struct(Vector *symbols);
 extern Type *type_convert(Type *type);
-extern void type_copy(Type *dest, Type *src);
-extern bool type_integer(Type *type);
-extern bool type_pointer(Type *type);
-extern bool type_scalar(Type *type);
-extern bool type_same(Type *type1, Type *type2);
+extern bool check_integer(Type *type);
+extern bool check_pointer(Type *type);
+extern bool check_scalar(Type *type);
+extern bool check_same(Type *type1, Type *type2);
 
+// node.c
 extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Expr *expr_integer(int int_value, Token *token);
 extern Expr *expr_string(String *string_literal, int string_label, Token *token);
@@ -468,8 +496,10 @@ extern Stmt *stmt_return(Expr *ret_expr, Token *token);
 extern Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token);
 extern TransUnit *trans_unit_new(Vector *string_literals, Vector *external_decls);
 
+// parse.c
 extern Symbol *symbol_new();
 extern void symbol_put(char *identifier, Symbol *symbol);
 extern TransUnit *parse(Vector *tokens);
 
+// gen.c
 extern void gen(TransUnit *node);

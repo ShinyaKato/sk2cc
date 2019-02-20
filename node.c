@@ -27,7 +27,7 @@ Expr *expr_integer(int int_value, Token *token) {
 }
 
 Expr *expr_string(String *string_literal, int string_label, Token *token) {
-  Type *type = type_convert(type_array_of(type_char(), string_literal->length));
+  Type *type = type_convert(type_array(type_char(), string_literal->length));
   Expr *node = expr_new(ND_STRING, type, token);
   node->string_literal = string_literal;
   node->string_label = string_label;
@@ -69,7 +69,7 @@ Expr *expr_call(Expr *expr, Vector *args, Token *token) {
     for (int i = 0; i < params->length; i++) {
       Expr *arg = args->buffer[i];
       Symbol *param = params->buffer[i];
-      if (!type_same(arg->type, param->type)) {
+      if (!check_same(arg->type, param->type)) {
         error(token, "parameter types and argument types should be the same.");
       }
     }
@@ -77,10 +77,10 @@ Expr *expr_call(Expr *expr, Vector *args, Token *token) {
 
   Type *type;
   if (expr->symbol) {
-    if (expr->type->ty_type != FUNCTION) {
+    if (expr->type->ty_type != TY_FUNCTION) {
       error(token, "operand of function call should have function type.");
     }
-    type = expr->type->function_returning;
+    type = expr->type->returning;
   } else {
     type = type_int();
   }
@@ -91,19 +91,19 @@ Expr *expr_call(Expr *expr, Vector *args, Token *token) {
 }
 
 Expr *expr_dot(Expr *expr, char *member, Token *token) {
-  if (expr->type->ty_type != STRUCT) {
+  if (expr->type->ty_type != TY_STRUCT) {
     error(token, "operand of . operator should have struct type.");
   }
 
-  StructMember *s_member = map_lookup(expr->type->members, member);
-  if (!s_member) {
+  Member *struct_member = map_lookup(expr->type->members, member);
+  if (!struct_member) {
     error(token, "undefined struct member: %s.", member);
   }
 
-  Type *type = type_convert(s_member->type);
+  Type *type = type_convert(struct_member->type);
   Expr *node = unary_expr(ND_DOT, type, expr, token);
   node->member = member;
-  node->offset = s_member->offset;
+  node->offset = struct_member->offset;
   return node;
 }
 
@@ -113,15 +113,15 @@ Expr *expr_arrow(Expr *expr, char *member, Token *token) {
 
 Expr *expr_post_inc(Expr *expr, Token *token) {
   Symbol *sym_addr = symbol_new();
-  sym_addr->token = token;
+  sym_addr->type = type_pointer(expr->type);
   sym_addr->identifier = NULL;
-  sym_addr->type = type_pointer_to(expr->type);
+  sym_addr->token = token;
   symbol_put(NULL, sym_addr);
 
   Symbol *sym_val = symbol_new();
-  sym_val->token = token;
-  sym_val->identifier = NULL;
   sym_val->type = expr->type;
+  sym_val->identifier = NULL;
+  sym_val->token = token;
   symbol_put(NULL, sym_val);
 
   Expr *addr_id = expr_identifier(NULL, sym_addr, token);
@@ -137,15 +137,15 @@ Expr *expr_post_inc(Expr *expr, Token *token) {
 
 Expr *expr_post_dec(Expr *expr, Token *token) {
   Symbol *sym_addr = symbol_new();
-  sym_addr->token = token;
+  sym_addr->type = type_pointer(expr->type);
   sym_addr->identifier = NULL;
-  sym_addr->type = type_pointer_to(expr->type);
+  sym_addr->token = token;
   symbol_put(NULL, sym_addr);
 
   Symbol *sym_val = symbol_new();
-  sym_val->token = token;
-  sym_val->identifier = NULL;
   sym_val->type = expr->type;
+  sym_val->identifier = NULL;
+  sym_val->token = token;
   symbol_put(NULL, sym_val);
 
   Expr *addr_id = expr_identifier(NULL, sym_addr, token);
@@ -172,11 +172,11 @@ Expr *expr_address(Expr *expr, Token *token) {
     error(token, "operand of %s operator should be lvalue.", token_name(token->tk_type));
   }
 
-  return unary_expr(ND_ADDRESS, type_pointer_to(expr->type), expr, token);
+  return unary_expr(ND_ADDRESS, type_pointer(expr->type), expr, token);
 }
 
 Expr *expr_indirect(Expr *expr, Token *token) {
-  if (!type_pointer(expr->type)) {
+  if (!check_pointer(expr->type)) {
     error(token, "operand of %s operator should have pointer type.", token_name(token->tk_type));
   }
 
@@ -184,7 +184,7 @@ Expr *expr_indirect(Expr *expr, Token *token) {
 }
 
 Expr *expr_uplus(Expr *expr, Token *token) {
-  if (!type_integer(expr->type)) {
+  if (!check_integer(expr->type)) {
     error(token, "operand of unary + operator should have integer type.");
   }
 
@@ -192,7 +192,7 @@ Expr *expr_uplus(Expr *expr, Token *token) {
 }
 
 Expr *expr_uminus(Expr *expr, Token *token) {
-  if (!type_integer(expr->type)) {
+  if (!check_integer(expr->type)) {
     error(token, "operand of unary - operator should have integer type.");
   }
 
@@ -200,7 +200,7 @@ Expr *expr_uminus(Expr *expr, Token *token) {
 }
 
 Expr *expr_not(Expr *expr, Token *token) {
-  if (!type_integer(expr->type)) {
+  if (!check_integer(expr->type)) {
     error(token, "operand of ~ operator should have integer type.");
   }
 
@@ -208,7 +208,7 @@ Expr *expr_not(Expr *expr, Token *token) {
 }
 
 Expr *expr_lnot(Expr *expr, Token *token) {
-  if (!type_scalar(expr->type)) {
+  if (!check_scalar(expr->type)) {
     error(token, "operand of ! operator should have scalar type.");
   }
 
@@ -227,7 +227,7 @@ Expr *binary_expr(NodeType nd_type, Type *type, Expr *lhs, Expr *rhs, Token *tok
 }
 
 Expr *expr_mul(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of %s operator should have integer type.", token_name(token->tk_type));
   }
 
@@ -235,7 +235,7 @@ Expr *expr_mul(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_div(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of %s operator should have integer type.", token_name(token->tk_type));
   }
 
@@ -243,7 +243,7 @@ Expr *expr_div(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_mod(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of %s operator should have integer type.", token_name(token->tk_type));
   }
 
@@ -252,11 +252,11 @@ Expr *expr_mod(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_add(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_integer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_integer(rhs->type)) {
     type = lhs->type;
-  } else if (type_integer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_integer(lhs->type) && check_pointer(rhs->type)) {
     Expr *tmp = lhs;
     lhs = rhs;
     rhs = tmp;
@@ -270,9 +270,9 @@ Expr *expr_add(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_sub(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_integer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_integer(rhs->type)) {
     type = lhs->type;
   } else {
     error(token, "invalid operand types for %s operator.", token_name(token->tk_type));
@@ -282,7 +282,7 @@ Expr *expr_sub(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_lshift(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of << operator should be integer type.");
   }
 
@@ -290,7 +290,7 @@ Expr *expr_lshift(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_rshift(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of >> operator should be integer type.");
   }
 
@@ -299,9 +299,9 @@ Expr *expr_rshift(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_lt(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_pointer(rhs->type)) {
     type = type_int();
   } else {
     error(token, "operands of %s operator should be integer type.", token_name(token->tk_type));
@@ -316,9 +316,9 @@ Expr *expr_gt(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_lte(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_pointer(rhs->type)) {
     type = type_int();
   } else {
     error(token, "operands of %s operator should be integer type.", token_name(token->tk_type));
@@ -333,9 +333,9 @@ Expr *expr_gte(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_eq(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_pointer(rhs->type)) {
     type = type_int();
   } else {
     error(token, "operands of == operator should be integer type.");
@@ -346,9 +346,9 @@ Expr *expr_eq(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_neq(Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_pointer(rhs->type)) {
     type = type_int();
   } else {
     error(token, "operands of != operator should be integer type.");
@@ -358,7 +358,7 @@ Expr *expr_neq(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_and(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of & operator should be integer type.");
   }
 
@@ -366,7 +366,7 @@ Expr *expr_and(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_xor(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of ^ operator should be integer type.");
   }
 
@@ -374,7 +374,7 @@ Expr *expr_xor(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_or(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_integer(lhs->type) && type_integer(rhs->type))) {
+  if (!(check_integer(lhs->type) && check_integer(rhs->type))) {
     error(token, "operands of | operator should be integer type.");
   }
 
@@ -382,7 +382,7 @@ Expr *expr_or(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_land(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_scalar(lhs->type) && type_scalar(rhs->type))) {
+  if (!(check_scalar(lhs->type) && check_scalar(rhs->type))) {
     error(token, "operands of && operator should be integer type.");
   }
 
@@ -390,7 +390,7 @@ Expr *expr_land(Expr *lhs, Expr *rhs, Token *token) {
 }
 
 Expr *expr_lor(Expr *lhs, Expr *rhs, Token *token) {
-  if (!(type_scalar(lhs->type) && type_scalar(rhs->type))) {
+  if (!(check_scalar(lhs->type) && check_scalar(rhs->type))) {
     error(token, "operands of || operator should be integer type.");
   }
 
@@ -399,9 +399,9 @@ Expr *expr_lor(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_conditional(Expr *cond, Expr *lhs, Expr *rhs, Token *token) {
   Type *type;
-  if (type_integer(lhs->type) && type_integer(rhs->type)) {
+  if (check_integer(lhs->type) && check_integer(rhs->type)) {
     type = type_int();
-  } else if (type_pointer(lhs->type) && type_pointer(rhs->type)) {
+  } else if (check_pointer(lhs->type) && check_pointer(rhs->type)) {
     type = lhs->type;
   } else {
     error(token, "second and third operands of ?: operator should have the same type.");
@@ -422,9 +422,9 @@ Expr *expr_assign(Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *expr_compound_assign(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   Symbol *symbol = symbol_new();
-  symbol->token = token;
+  symbol->type = type_pointer(lhs->type);
   symbol->identifier = NULL;
-  symbol->type = type_pointer_to(lhs->type);
+  symbol->token = token;
   symbol_put(NULL, symbol);
 
   Expr *id = expr_identifier(NULL, symbol, token);
@@ -560,7 +560,7 @@ Stmt *stmt_return(Expr *ret_expr, Token *token) {
 }
 
 Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token) {
-  if (symbol->type->function_returning->ty_type == ARRAY) {
+  if (symbol->type->returning->ty_type == TY_ARRAY) {
     error(symbol->token, "returning type of function should not be array type.");
   }
 

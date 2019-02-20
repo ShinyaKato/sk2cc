@@ -8,43 +8,49 @@ Vector *scopes;
 int stack_size;
 
 Symbol *symbol_new() {
-  Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
+  Symbol *symbol = calloc(1, sizeof(Symbol));
   return symbol;
 }
 
 Symbol *symbol_lookup(char *identifier) {
   for (int i = scopes->length - 1; i >= 0; i--) {
     Map *map = scopes->buffer[i];
+
     Symbol *symbol = map_lookup(map, identifier);
     if (symbol) return symbol;
   }
+
   return NULL;
 }
 
 void symbol_put(char *identifier, Symbol *symbol) {
   Map *map = scopes->buffer[scopes->length - 1];
 
-  if (symbol->sy_type != TYPENAME && symbol->sy_type != ENUM_CONST) {
+  if (symbol->sy_type != SY_TYPE && symbol->sy_type != SY_CONST) {
     if (identifier) {
-      Symbol *previous = map_lookup(map, identifier);
-      if (previous && previous->defined) {
+      Symbol *prev = map_lookup(map, identifier);
+      if (prev && prev->definition) {
         error(symbol->token, "duplicated function or variable definition of '%s'.", identifier);
       }
     }
 
     if (scopes->length == 1) {
-      symbol->sy_type = GLOBAL;
+      symbol->sy_type = SY_GLOBAL;
     } else {
       int size = symbol->type->size;
-      if (size % 8 != 0) size = size / 8 * 8 + 8;
-      stack_size += size;
+      if (size % 8 != 0) {
+        size = size / 8 * 8 + 8;
+      }
 
-      symbol->sy_type = LOCAL;
+      stack_size += size;
+      symbol->sy_type = SY_LOCAL;
       symbol->offset = stack_size;
     }
   }
 
-  if (identifier) map_put(map, identifier, symbol);
+  if (identifier) {
+    map_put(map, identifier, symbol);
+  }
 }
 
 void begin_scope() {
@@ -73,7 +79,6 @@ void begin_global_scope() {
   begin_scope();
 }
 
-
 bool check_type_specifier() {
   if (check_token(TK_VOID)) return true;
   if (check_token(TK_BOOL)) return true;
@@ -86,7 +91,7 @@ bool check_type_specifier() {
 
   if (check_token(TK_IDENTIFIER)) {
     Symbol *symbol = symbol_lookup(peek_token()->identifier);
-    return symbol && symbol->sy_type == TYPENAME;
+    return symbol && symbol->sy_type == SY_TYPE;
   }
 
   return false;
@@ -123,8 +128,8 @@ Expr *primary_expression() {
 
   if (token->tk_type == TK_IDENTIFIER) {
     Symbol *symbol = symbol_lookup(token->identifier);
-    if (symbol && symbol->sy_type == ENUM_CONST) {
-      return expr_integer(symbol->enum_value, token);
+    if (symbol && symbol->sy_type == SY_CONST) {
+      return expr_integer(symbol->const_value, token);
     }
     if (!check_token('(') && !symbol) {
       error(token, "undefined identifier.");
@@ -222,7 +227,7 @@ Expr *unary_expression() {
     } else {
       type = unary_expression()->type;
     }
-    return expr_integer(type->original_size, token);
+    return expr_integer(type->original->size, token);
   }
   if (read_token(TK_ALIGNOF)) {
     expect_token('(');
@@ -486,7 +491,7 @@ Symbol *declarator(Type *type);
 Type *abstract_declarator(Type *specifier) {
   Type *type = specifier;
   while (read_token('*')) {
-    type = type_pointer_to(type);
+    type = type_pointer(type);
   }
   return type;
 }
@@ -501,10 +506,8 @@ Type *struct_or_union_specifier() {
 
   Token *token = read_token(TK_IDENTIFIER);
   if (token && !map_lookup(tags, token->identifier)) {
-    Type *incomplete_type = type_new();
-    incomplete_type->ty_type = STRUCT;
-    incomplete_type->incomplete = true;
-    map_put(tags, token->identifier, incomplete_type);
+    Type *type = type_incomplete_struct();
+    map_put(tags, token->identifier, type);
   }
 
   if (!read_token('{')) {
@@ -517,7 +520,7 @@ Type *struct_or_union_specifier() {
     Type *specifier = type_specifier();
     do {
       Symbol *symbol = declarator(specifier);
-      if (symbol->type->incomplete) {
+      if (!symbol->type->complete) {
         error(symbol->token, "declaration with incomplete type.");
       }
       vector_push(symbols, symbol);
@@ -530,7 +533,10 @@ Type *struct_or_union_specifier() {
   if (!token) return type;
 
   Type *dest = map_lookup(tags, token->identifier);
-  type_copy(dest, type);
+  dest->size = type->size;
+  dest->align = type->align;
+  dest->complete = true;
+  dest->members = type->members;
   return dest;
 }
 
@@ -539,9 +545,7 @@ Type *enum_specifier() {
 
   Token *token = read_token(TK_IDENTIFIER);
   if (token && !map_lookup(tags, token->identifier)) {
-    Type *incomplete_type = type_new();
-    incomplete_type->incomplete = true;
-    map_put(tags, token->identifier, incomplete_type);
+    map_put(tags, token->identifier, type_int());
   }
 
   if (!read_token('{')) {
@@ -549,29 +553,26 @@ Type *enum_specifier() {
     return map_lookup(tags, token->identifier);
   }
 
-  int enum_value = 0;
+  int const_value = 0;
   do {
     Token *token = expect_token(TK_IDENTIFIER);
     if (read_token('=')) {
-      enum_value = expect_token(TK_INTEGER_CONST)->int_value;
+      const_value = expect_token(TK_INTEGER_CONST)->int_value;
     }
 
     Symbol *symbol = symbol_new();
-    symbol->sy_type = ENUM_CONST;
+    symbol->sy_type = SY_CONST;
     symbol->identifier = token->identifier;
     symbol->token = token;
     symbol->type = type_int();
-    symbol->enum_value = enum_value++;
+    symbol->const_value = const_value++;
     symbol_put(token->identifier, symbol);
   } while (read_token(','));
   expect_token('}');
 
-  Type *type = type_int();
-  if (!token) return type;
+  if (!token) return type_int();
 
-  Type *dest = map_lookup(tags, token->identifier);
-  type_copy(dest, type);
-  return dest;
+  return map_lookup(tags, token->identifier);
 }
 
 Type *type_specifier() {
@@ -603,7 +604,7 @@ Type *type_specifier() {
 
   Token *token = expect_token(TK_IDENTIFIER);
   Symbol *symbol = symbol_lookup(token->identifier);
-  if (symbol && symbol->sy_type == TYPENAME) {
+  if (symbol && symbol->sy_type == SY_TYPE) {
     return symbol->type;
   }
   error(token, "type specifier is expected.");
@@ -624,11 +625,11 @@ Type *declaration_specifiers() {
 Type *direct_declarator(Type *type) {
   if (read_token('[')) {
     if (read_token(']')) {
-      return type_incomplete_array_of(direct_declarator(type));
+      return type_incomplete_array(direct_declarator(type));
     }
     int size = expect_token(TK_INTEGER_CONST)->int_value;
     expect_token(']');
-    return type_array_of(direct_declarator(type), size);
+    return type_array(direct_declarator(type), size);
   }
 
   if (read_token('(')) {
@@ -642,14 +643,14 @@ Type *direct_declarator(Type *type) {
         }
         Type *specifier = declaration_specifiers();
         Symbol *param = declarator(specifier);
-        if (param->type->ty_type == ARRAY) {
-          param->type = type_pointer_to(param->type->array_of);
+        if (param->type->ty_type == TY_ARRAY) {
+          param->type = type_pointer(param->type->array_of);
         }
         vector_push(params, param);
       } while (read_token(','));
     }
     expect_token(')');
-    return type_function_returning(direct_declarator(type), params, ellipsis);
+    return type_function(direct_declarator(type), params, ellipsis);
   }
 
   return type;
@@ -658,7 +659,7 @@ Type *direct_declarator(Type *type) {
 Symbol *declarator(Type *specifier) {
   Type *type = specifier;
   while (read_token('*')) {
-    type = type_pointer_to(type);
+    type = type_pointer(type);
   }
   Token *token = expect_token(TK_IDENTIFIER);
   type = direct_declarator(type);
@@ -667,13 +668,13 @@ Symbol *declarator(Type *specifier) {
   symbol->token = token;
   symbol->identifier = token->identifier;
   symbol->type = type;
-  symbol->defined = type->ty_type != FUNCTION;
+  symbol->definition = type->ty_type != TY_FUNCTION;
 
   return symbol;
 }
 
 Init *initializer(Type *type) {
-  if (type->ty_type == ARRAY) {
+  if (type->ty_type == TY_ARRAY) {
     Vector *list = vector_new();
     expect_token('{');
     do {
@@ -689,13 +690,14 @@ Init *initializer(Type *type) {
 Symbol *init_declarator(Type *specifier, Symbol *symbol) {
   if (read_token('=')) {
     symbol->init = initializer(symbol->type);
-    if (symbol->type->ty_type == ARRAY) {
+    if (symbol->type->ty_type == TY_ARRAY) {
       int length = symbol->init->list->length;
-      if (symbol->type->incomplete) {
-        Type *type = type_array_of(symbol->type->array_of, length);
-        type_copy(symbol->type, type);
+      if (!symbol->type->complete) {
+        symbol->type->size = symbol->type->array_of->size * length;
+        symbol->type->complete = true;
+        symbol->type->length = length;
       } else {
-        if (symbol->type->array_size < length) {
+        if (symbol->type->length < length) {
           error(symbol->token, "too many array elements.");
         }
       }
@@ -709,44 +711,44 @@ Decl *declaration(Type *specifier, Symbol *first_symbol) {
   Vector *symbols = vector_new();
   if (first_symbol) {
     Symbol *symbol = init_declarator(specifier, first_symbol);
-    if (!specifier->definition && symbol->type->incomplete) {
+    if (!specifier->definition && !symbol->type->complete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->sy_type = TYPENAME;
+      symbol->sy_type = SY_TYPE;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != TY_FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
   } else if (!check_token(';')) {
     Symbol *symbol = init_declarator(specifier, declarator(specifier));
-    if (!specifier->definition && symbol->type->incomplete) {
+    if (!specifier->definition && !symbol->type->complete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->sy_type = TYPENAME;
+      symbol->sy_type = SY_TYPE;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != TY_FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
   }
   while (read_token(',')) {
     Symbol *symbol = init_declarator(specifier, declarator(specifier));
-    if (!specifier->definition && symbol->type->incomplete) {
+    if (!specifier->definition && !symbol->type->complete) {
       error(symbol->token, "declaration with incomplete type.");
     }
     if (specifier->definition) {
-      symbol->sy_type = TYPENAME;
+      symbol->sy_type = SY_TYPE;
       symbol_put(symbol->identifier, symbol);
     } else {
       symbol_put(symbol->identifier, symbol);
-      if (!specifier->external && symbol->type->ty_type != FUNCTION) {
+      if (!specifier->external && symbol->type->ty_type != TY_FUNCTION) {
         vector_push(symbols, symbol);
       }
     }
@@ -916,7 +918,7 @@ Func *function_definition(Symbol *symbol) {
   Stmt *body = compound_statement();
   end_scope();
 
-  symbol->defined = true;
+  symbol->definition = true;
 
   return func_new(symbol, body, stack_size, symbol->token);
 }
