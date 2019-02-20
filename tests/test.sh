@@ -33,7 +33,6 @@ test_stdout() {
 
 test_error() {
   prog=$1
-  expect="error: $2"
   echo "$prog" > tmp/out.c
   $target tmp/out.c > /dev/null 2> /dev/null && failed "compilation of \"$prog\" was unexpectedly succeeded."
 }

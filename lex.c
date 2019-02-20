@@ -1,6 +1,11 @@
 #include "sk2cc.h"
 
-char *tk_chars = "[](){}.&*+-~!/%<>^|?:;=,#";
+char *tk_chars[] = {
+  "[", "]", "(", ")", "{", "}", ".", "&",
+  "*", "+", "-", "~", "!", "/", "%", "<",
+  ">", "^", "|", "?", ":", ";", "=", ",",
+  "#"
+};
 
 char *tk_names[] = {
   // newline, white space
@@ -46,13 +51,13 @@ int token_lineno;
 int token_column;
 
 char *token_name(TokenType tk_type) {
-  for (int i = 0; tk_chars[i]; i++) {
-    if (tk_type == tk_chars[i]) {
-      return &tk_chars[i];
+  for (int i = 0; i < sizeof(tk_chars) / sizeof(char*); i++) {
+    if (tk_type == tk_chars[i][0]) {
+      return tk_chars[i];
     }
   }
 
-  if (128 <= tk_type && tk_type && 128 + sizeof(tk_names)) {
+  if (128 <= tk_type && tk_type && 128 + sizeof(tk_names) / sizeof(char*)) {
     return tk_names[tk_type - 128];
   }
 
@@ -302,8 +307,8 @@ Token *next_token() {
     return token_new(TK_ELLIPSIS);
   }
 
-  for (int i = 0; tk_chars[i]; i++) {
-    if (c == tk_chars[i]) {
+  for (int i = 0; i < sizeof(tk_chars) / sizeof(char*); i++) {
+    if (c == tk_chars[i][0]) {
       return token_new(c);
     }
   }
