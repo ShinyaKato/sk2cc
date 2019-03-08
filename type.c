@@ -48,18 +48,16 @@ Type *type_pointer(Type *pointer_to) {
   return type;
 }
 
-Type *type_incomplete_array(Type *array_of) {
+Type *type_array_incomplete(Type *array_of) {
   Type *type = type_new(TY_ARRAY, 0, array_of->align, false);
   type->array_of = array_of;
   return type;
 }
 
-Type *type_array(Type *array_of, int length) {
-  int size = array_of->size * length;
-  int align = array_of->align;
-
-  Type *type = type_new(TY_ARRAY, size, align, true);
-  type->array_of = array_of;
+Type *type_array(Type *type, int length) {
+  type->size = type->array_of->size * length;
+  type->align = type->array_of->align;
+  type->complete = true;
   type->length = length;
   return type;
 }
@@ -72,11 +70,11 @@ Type *type_function(Type *returning, Vector *params, bool ellipsis) {
   return type;
 }
 
-Type *type_incomplete_struct() {
+Type *type_struct_incomplete() {
   return type_new(TY_STRUCT, 0, 1, false);
 }
 
-Type *type_struct(Vector *symbols) {
+Type *type_struct(Type *type, Vector *symbols) {
   Map *members = map_new();
   int size = 0;
   int align = 0;
@@ -109,7 +107,9 @@ Type *type_struct(Vector *symbols) {
     size = size / align * align + align;
   }
 
-  Type *type = type_new(TY_STRUCT, size, align, true);
+  type->size = size;
+  type->align = align;
+  type->complete = true;
   type->members = members;
   return type;
 }

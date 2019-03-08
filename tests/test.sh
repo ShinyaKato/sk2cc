@@ -58,9 +58,10 @@ expect_return() {
   cat - > tmp/cc_test.c
   $target tmp/cc_test.c > tmp/cc_test.s 2> tmp/cc_test.log || error
   gcc -no-pie tmp/cc_test.s tmp/func_call_stub.o -o tmp/cc_test || invalid
-  ./tmp/cc_test > /dev/null
+  ./tmp/cc_test
   actual=$?
   [ $actual -ne $expect ] && miscompile $expect $actual
+  return 0
 }
 
 expect_stdout() {
@@ -69,7 +70,8 @@ expect_stdout() {
   $target tmp/cc_test.c > tmp/cc_test.s 2> tmp/cc_test.log || error
   gcc -no-pie tmp/cc_test.s tmp/func_call_stub.o -o tmp/cc_test || invalid
   actual=`./tmp/cc_test | sed -z 's/\\n/\\\\n/g'`
-  [ "$actual" != "$expect" ] && miscompile $expect $actual
+  [ "$actual" != "$expect" ] && miscompile "$expect" "$actual"
+  return 0
 }
 
 test_error() {
@@ -82,11 +84,13 @@ test_error() {
     head  tmp/cc_test.c
     exit 1
   fi
+  return 0
 }
 
 gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -c tests/func_call_stub.c -o tmp/func_call_stub.o
 
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c | expect_return 0
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c > tmp/test.c
+expect_return 0 < tmp/test.c
 
 expect_return 0 <<-EOS
 int main() {
@@ -886,7 +890,7 @@ test_error "int main() { return 0; }, x;"
 test_error "int func() { return x; } int x; int main() { func(); }"
 test_error "int main() { 1++; }"
 test_error "int f(int x) { int x; }"
-test_error "int f(int x)[4] { int a[4]; return a; }"
+test_error "int f[4](int x) { int a[4]; return a; }"
 test_error "struct abc { struct abc p; }; int main() { return 0; }"
 test_error "int main() { int a[4] = { 4, 5, 6, 7, 8 }; return 0; }"
 

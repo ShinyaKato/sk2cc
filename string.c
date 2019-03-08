@@ -1,4 +1,4 @@
-#include "string.h"
+#include "sk2cc.h"
 
 String *string_new() {
   String *string = (String *) calloc(1, sizeof(String));

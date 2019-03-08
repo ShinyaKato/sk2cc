@@ -1,7 +1,3 @@
-#include "string.h"
-#include "vector.h"
-#include "map.h"
-
 // We define size_t as int
 // because we do not support unsigned long long.
 typedef int size_t;
@@ -61,32 +57,63 @@ int isalnum(int c);
 int isdigit(int c);
 int isspace(int c);
 
-// enum and struct declaration
-typedef enum token_type TokenType;
+// string.c
+typedef struct string {
+  int capacity, length;
+  char *buffer;
+} String;
+
+extern String *string_new();
+extern void string_push(String *string, char c);
+
+// vector.c
+typedef struct vector {
+  int capacity, length;
+  void **buffer;
+} Vector;
+
+extern Vector *vector_new();
+extern void vector_push(Vector *vector, void *value);
+extern void *vector_pop(Vector *vector);
+extern void vector_merge(Vector *dest, Vector *src);
+
+// map.c
+typedef struct map {
+  int count;
+  char *keys[1024];
+  void *values[1024];
+} Map;
+
+extern Map *map_new();
+extern bool map_put(Map *map, char *key, void *value);
+extern void *map_lookup(Map *map, char *key);
+
+// struct declaration
 typedef struct token Token;
 
 typedef struct scanner Scanner;
 
-typedef enum node_type NodeType;
 typedef struct node Node;
 typedef struct expr Expr;
 typedef struct decl Decl;
-typedef struct init Init;
 typedef struct stmt Stmt;
 typedef struct func Func;
+
+typedef struct specifier Specifier;
+typedef struct declarator Declarator;
+typedef struct initializer Initializer;
+typedef struct type_name TypeName;
+
 typedef struct trans_unit TransUnit;
 
-typedef enum type_type TypeType;
 typedef struct type Type;
 typedef struct member Member;
 
-typedef enum symbol_type SymbolType;
-typedef enum symbol_link SymbolLink;
 typedef struct symbol Symbol;
 
 // TokenType
 // A one-character token is represented by it's ascii code.
-enum token_type {
+typedef enum token_type {
   // white spaces (removed before syntax analysis)
   TK_NEWLINE = 128,
   TK_SPACE,
@@ -144,7 +171,7 @@ enum token_type {
 
   // EOF (the end of the input source file)
   TK_EOF
-};
+} TokenType;
 
 // Token
 // Token holds original location in the input source code.
@@ -172,19 +199,28 @@ struct scanner {
 };
 
 // NodeType
-enum node_type {
+typedef enum node_type {
   // expression
   ND_IDENTIFIER,
   ND_INTEGER,
+  ND_ENUM_CONST,
   ND_STRING,
+  ND_SUBSCRIPTION,
   ND_CALL,
   ND_DOT,
+  ND_ARROW,
+  ND_POST_INC,
+  ND_POST_DEC,
+  ND_PRE_INC,
+  ND_PRE_DEC,
   ND_ADDRESS,
   ND_INDIRECT,
   ND_UPLUS,
   ND_UMINUS,
   ND_NOT,
   ND_LNOT,
+  ND_SIZEOF,
+  ND_ALIGNOF,
   ND_CAST,
   ND_MUL,
   ND_DIV,
@@ -194,7 +230,9 @@ enum node_type {
   ND_LSHIFT,
   ND_RSHIFT,
   ND_LT,
+  ND_GT,
   ND_LTE,
+  ND_GTE,
   ND_EQ,
   ND_NEQ,
   ND_AND,
@@ -204,6 +242,11 @@ enum node_type {
   ND_LOR,
   ND_CONDITION,
   ND_ASSIGN,
+  ND_MUL_ASSIGN,
+  ND_DIV_ASSIGN,
+  ND_MOD_ASSIGN,
+  ND_ADD_ASSIGN,
+  ND_SUB_ASSIGN,
   ND_COMMA,
 
   // declaration
@@ -222,7 +265,7 @@ enum node_type {
 
   // function definition
   ND_FUNC
-};
+} NodeType;
 
 // Node (AST node)
 // This struct is used for checking the node type.
@@ -235,8 +278,6 @@ struct node {
 // Expr (AST node for expression)
 struct expr {
   NodeType nd_type;
-
-  // type of the expression
   Type *type;
 
   // child expression node
@@ -255,12 +296,18 @@ struct expr {
   String *string_literal;
   int string_label;
 
-  // call
-  Vector *args; // vector of Expr*
+  // subscription
+  Expr *index;
 
-  // member access
+  // call
+  Vector *args; // Vector<Expr*>
+
+  // dot, arrow
   char *member;
   int offset;
+
+  // sizeof, alignof, cast
+  TypeName *type_name;
 
   Token *token;
 };
@@ -268,15 +315,10 @@ struct expr {
 // Decl (AST node for declaration)
 struct decl {
   NodeType nd_type;
-  Vector *declarations; // vector of Symbol*
+  Vector *specs;   // Vector<Specifier*>
+  Vector *symbols; // Vector<Symbol*>
+  Symbol *symbol;
   Token *token;
-};
-
-// Init (declaration initializer)
-struct init {
-  Type *type;
-  Expr *expr;
-  Vector *list; // vector of Init*
 };
 
 // Stmt (AST node for statement)
@@ -284,7 +326,7 @@ struct stmt {
   NodeType nd_type;
 
   // compound statement (block)
-  Vector *block_items; // vector of Node* (Decl* or Stmt*)
+  Vector *block_items; // Vector<Node*> (Decl* or Stmt*)
 
   // expression statement
   Expr *expr; // optional
@@ -309,7 +351,7 @@ struct stmt {
   Stmt *for_body;
 
   // return statement
-  Expr *ret_expr; // optional
+  Expr *ret; // optional
 
   Token *token;
 };
@@ -317,20 +359,101 @@ struct stmt {
 // Func (AST node for function definition)
 struct func {
   NodeType nd_type;
+  Vector *specs; // Vector<Specifier*>
   Symbol *symbol;
   Stmt *body;
+
   int stack_size; // stack size for local variables
+
   Token *token;
 };
 
-// TransUnit (AST node for translation unit)
+// SpecifierType
+typedef enum specifier_type {
+  // storage-class-specifier
+  SP_TYPEDEF,
+  SP_EXTERN,
+
+  // type-specifier
+  SP_VOID,
+  SP_CHAR,
+  SP_SHORT,
+  SP_INT,
+  SP_UNSIGNED,
+  SP_BOOL,
+  SP_STRUCT,
+  SP_ENUM,
+  SP_TYPEDEF_NAME,
+
+  // function-specifier
+  SP_NORETURN
+} SpecifierType;
+
+// Specifier
+struct specifier {
+  SpecifierType sp_type;
+
+  // struct
+  char *struct_tag;     // optional
+  Vector *struct_decls; // optional, Vector<Decl*>
+
+  // enum
+  char *enum_tag; // optional
+  Vector* enums;  // optional, Vector<Symbol*>
+
+  // typedef-name
+  char *typedef_name;
+  Symbol *typedef_symbol;
+
+  Token *token;
+};
+
+// DeclaratorType
+typedef enum declarator_type {
+  DECL_POINTER,
+  DECL_ARRAY,
+  DECL_FUNCTION
+} DeclaratorType;
+
+// Declarator
+struct declarator {
+  DeclaratorType decl_type;
+  Declarator *decl; // optional
+
+  // array
+  Expr *size; // optional
+
+  // function
+  Vector *params;   // Vector<Decl*>
+  bool ellipsis;    // accepts variable length arguments
+  Map *proto_scope; // function prototype scope
+
+  Token *token;
+};
+
+// TypeName
+struct type_name {
+  Vector *specs;    // Vector<Specifier*>
+  Declarator *decl; // optional
+  Token *token;
+};
+
+// Initializer (declaration initializer)
+struct initializer {
+  Type *type;
+  Expr *expr;
+  Vector *list; // Vector<Initializer*>
+  Token *token;
+};
+
+// TransUnit
 struct trans_unit {
-  Vector *string_literals; // vector of String*
-  Vector *external_decls;  // vector of Node* (Decl* or Func*)
+  Vector *literals; // Vector<String*>
+  Vector *decls;    // Vector<Node*> (Decl* or Func*)
 };
 
 // TypeType
-enum type_type {
+typedef enum type_type {
   TY_VOID,
   TY_BOOL,
   TY_CHAR,
@@ -343,7 +466,7 @@ enum type_type {
   TY_ARRAY,
   TY_FUNCTION,
   TY_STRUCT
-};
+} TypeType;
 
 // Type
 struct type {
@@ -351,9 +474,6 @@ struct type {
   int size;
   int align;
   bool complete;
-
-  bool definition; // typedef
-  bool external;   // external linkage
 
   // holds original type when converting array to pointer.
   // the original type is used for sizeof and alignof.
@@ -368,11 +488,11 @@ struct type {
 
   // function
   Type *returning;
-  Vector *params; // vector of Type*
+  Vector *params; // Vector<Symbol*>
   bool ellipsis;
 
   // struct
-  Map *members; // map of Member*
+  Map *members; // Map<Member*>
 };
 
 // Member (struct member)
@@ -382,31 +502,34 @@ struct member {
 };
 
 // SymbolType
-enum symbol_type {
+typedef enum symbol_type {
   SY_VARIABLE, // variable
-  SY_TYPE,     // typedef name
-  SY_CONST     // enum const
-};
+  SY_TYPE,     // typedef-name
+  SY_CONST     // enumeration-constant
+} SymbolType;
 
 // SymbolLink
-enum symbol_link {
+typedef enum symbol_link {
   LN_EXTERNAL, // global variable
   LN_NONE      // local variable
-};
+} SymbolLink;
 
 // Symbol
 struct symbol {
   SymbolType sy_type;
-  Type *type;
   char *identifier;
-  bool definition;
+  Symbol *prev;
 
-  // variable
+  // variable and typedef-name
+  Initializer *init;
+  Declarator *decl;
+  Type *type;
   SymbolLink link;
-  Init *init;
+  bool definition;
   int offset; // for local variable
 
-  // enum const
+  // enumeration-constant
+  Expr *const_expr;
   int const_value;
 
   Token *token;
@@ -433,6 +556,41 @@ extern Token *expect_token(TokenType tk_type);
 // cpp.c
 extern Vector *preprocess(Vector *pp_tokens);
 
+// symbol.c
+extern Symbol *symbol_variable(char *identifier, Token *token);
+extern Symbol *symbol_type(char *identifier, Token *token);
+extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
+
+// node.c
+extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
+extern Expr *expr_integer(int int_value, Token *token);
+extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);
+extern Expr *expr_string(String *string_literal, int string_label, Token *token);
+extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);
+extern Expr *expr_call(Expr *expr, Vector *args, Token *token);
+extern Expr *expr_dot(Expr *expr, char *member, Token *token);
+extern Expr *expr_arrow(Expr *expr, char *member, Token *token);
+extern Expr *expr_sizeof(Expr *expr, TypeName *type_name, Token *token);
+extern Expr *expr_alignof(TypeName *type_name, Token *token);
+extern Expr *expr_cast(TypeName *type_name, Expr *expr, Token *token);
+extern Expr *expr_unary(NodeType nd_type, Expr *expr, Token *token);
+extern Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token);
+extern Expr *expr_condition(Expr *cond, Expr *lhs, Expr *rhs, Token *token);
+extern Decl *decl_new(Vector *specs, Vector *symbols, Token *token);
+extern Decl *decl_struct(Vector *specs, Vector *symbols, Token *token);
+extern Decl *decl_param(Vector *specs, Symbol *symbol, Token *token);
+extern Specifier *specifier_new(SpecifierType sp_type, Token *token);
+extern Specifier *specifier_enum(char *tag, Vector *enums, Token *token);
+extern Specifier *specifier_struct(char *tag, Vector *decls, Token *token);
+extern Specifier *specifier_typedef_name(char *identifier, Symbol *symbol, Token *token);
+extern Declarator *declarator_new(DeclaratorType decl_type, Declarator *decl, Token *token);
+extern TypeName *type_name_new(Vector *specs, Declarator *decl, Token *token);
+extern Initializer *initializer_expr(Expr *expr, Token *token);
+extern Initializer *initializer_list(Vector *list, Token *token);
+extern Stmt *stmt_new(NodeType nd_type, Token *token);
+extern Func *func_new(Vector *specs, Symbol *symbol, Stmt *body, Token *token);
+extern TransUnit *trans_unit_new(Vector *literals, Vector *decls);
+
 // type.c
 extern Type *type_void();
 extern Type *type_char();
@@ -443,81 +601,22 @@ extern Type *type_int();
 extern Type *type_uint();
 extern Type *type_bool();
 extern Type *type_pointer(Type *pointer_to);
-extern Type *type_incomplete_array(Type *array_of);
-extern Type *type_array(Type *array_of, int length);
+extern Type *type_array_incomplete(Type *array_of);
+extern Type *type_array(Type *type, int length);
 extern Type *type_function(Type *returning, Vector *params, bool ellipsis);
-extern Type *type_incomplete_struct();
-extern Type *type_struct(Vector *symbols);
+extern Type *type_struct_incomplete();
+extern Type *type_struct(Type *type, Vector *symbols);
 extern Type *type_convert(Type *type);
 extern bool check_integer(Type *type);
 extern bool check_pointer(Type *type);
 extern bool check_scalar(Type *type);
 extern bool check_same(Type *type1, Type *type2);
 
-// node.c
-extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
-extern Expr *expr_integer(int int_value, Token *token);
-extern Expr *expr_string(String *string_literal, int string_label, Token *token);
-extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);
-extern Expr *expr_call(Expr *expr, Vector *args, Token *token);
-extern Expr *expr_dot(Expr *expr, char *member, Token *token);
-extern Expr *expr_arrow(Expr *expr, char *member, Token *token);
-extern Expr *expr_post_inc(Expr *expr, Token *token);
-extern Expr *expr_post_dec(Expr *expr, Token *token);
-extern Expr *expr_pre_inc(Expr *expr, Token *token);
-extern Expr *expr_pre_dec(Expr *expr, Token *token);
-extern Expr *expr_address(Expr *expr, Token *token);
-extern Expr *expr_indirect(Expr *expr, Token *token);
-extern Expr *expr_uplus(Expr *expr, Token *token);
-extern Expr *expr_uminus(Expr *expr, Token *token);
-extern Expr *expr_not(Expr *expr, Token *token);
-extern Expr *expr_lnot(Expr *expr, Token *token);
-extern Expr *expr_cast(Type *type, Expr *expr, Token *token);
-extern Expr *expr_mul(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_div(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_mod(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_add(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_sub(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_lshift(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_rshift(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_lt(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_gt(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_lte(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_gte(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_eq(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_neq(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_and(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_xor(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_or(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_land(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_lor(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_conditional(Expr *cond, Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_mul_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_div_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_mod_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_add_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_sub_assign(Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_comma(Expr *lhs, Expr *rhs, Token *token);
-extern Decl *decl_new(Vector *declarations);
-extern Init *init_expr(Expr *expr, Type *type);
-extern Init *init_list(Vector *list, Type *type);
-extern Stmt *stmt_comp(Vector *block_items, Token *token);
-extern Stmt *stmt_expr(Expr *expr, Token *token);
-extern Stmt *stmt_if(Expr *if_cond, Stmt *then_body, Stmt *else_body, Token *token);
-extern Stmt *stmt_while(Expr *while_cond, Stmt *while_body, Token *token);
-extern Stmt *stmt_do(Expr *do_cond, Stmt *do_body, Token *token);
-extern Stmt *stmt_for(Node *for_init, Expr *for_cond, Expr *for_after, Stmt *for_body, Token *token);
-extern Stmt *stmt_continue(int continue_level, Token *token);
-extern Stmt *stmt_break(int break_level, Token *token);
-extern Stmt *stmt_return(Expr *ret_expr, Token *token);
-extern Func *func_new(Symbol *symbol, Stmt *body, int stack_size, Token *token);
-extern TransUnit *trans_unit_new(Vector *string_literals, Vector *external_decls);
-
 // parse.c
-extern Symbol *symbol_variable(Type *type, char *identifier, Token *token);
-extern void symbol_put(char *identifier, Symbol *symbol);
 extern TransUnit *parse(Vector *tokens);
+
+// sema.c
+extern void sema(TransUnit *trans_unit);
 
 // gen.c
 extern void gen(TransUnit *node);

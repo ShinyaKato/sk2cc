@@ -492,11 +492,11 @@ void gen_expr(Expr *node) {
   }
 }
 
-void gen_init_local(Init *init, int offset) {
+void gen_init_local(Initializer *init, int offset) {
   if (init->list) {
     int size = init->type->array_of->size;
     for (int i = 0; i < init->list->length; i++) {
-      Init *item = init->list->buffer[i];
+      Initializer *item = init->list->buffer[i];
       gen_init_local(item, offset + size * i);
     }
   } else if (init->expr) {
@@ -509,8 +509,9 @@ void gen_init_local(Init *init, int offset) {
 }
 
 void gen_decl_local(Decl *node) {
-  for (int i = 0; i < node->declarations->length; i++) {
-    Symbol *symbol = node->declarations->buffer[i];
+  for (int i = 0; i < node->symbols->length; i++) {
+    Symbol *symbol = node->symbols->buffer[i];
+    if (!symbol->definition) continue;
     if (symbol->init) {
       gen_init_local(symbol->init, -symbol->offset);
     }
@@ -624,8 +625,8 @@ void gen_break(Stmt *node) {
 }
 
 void gen_return(Stmt *node) {
-  if (node->ret_expr) {
-    gen_operand(node->ret_expr, "rax");
+  if (node->ret) {
+    gen_operand(node->ret, "rax");
   }
   gen_jump("jmp", return_label);
 }
@@ -661,13 +662,13 @@ void gen_stmt(Stmt *node) {
   }
 }
 
-void gen_init_global(Init *init) {
+void gen_init_global(Initializer *init) {
   if (init->list) {
     Type *type = init->type;
     int length = init->list->length;
     int padding = type->size - type->array_of->size * length;
     for (int i = 0; i < length; i++) {
-      Init *item = init->list->buffer[i];
+      Initializer *item = init->list->buffer[i];
       gen_init_global(item);
     }
     if (padding > 0) {
@@ -682,9 +683,10 @@ void gen_init_global(Init *init) {
   }
 }
 
-void gen_decl_global(Decl *decl) {
-  for (int i = 0; i < decl->declarations->length; i++) {
-    Symbol *symbol = decl->declarations->buffer[i];
+void gen_decl_global(Decl *node) {
+  for (int i = 0; i < node->symbols->length; i++) {
+    Symbol *symbol = node->symbols->buffer[i];
+    if (!symbol->definition) continue;
     printf("  .data\n");
     printf("  .global %s\n", symbol->identifier);
     printf("%s:\n", symbol->identifier);
@@ -725,6 +727,7 @@ void gen_func(Func *node) {
 
   for (int i = 0; i < type->params->length; i++) {
     Symbol *symbol = (Symbol *) type->params->buffer[i];
+    Type *type = symbol->type;
     if (type->ty_type == TY_BOOL) {
       printf("  movq %%%s, %%rax\n", arg_reg[i]);
       printf("  cmpb $0, %%al\n");
@@ -777,15 +780,15 @@ void gen_string_literal(String *string, int label) {
 }
 
 void gen_trans_unit(TransUnit *node) {
-  if (node->string_literals->length > 0) {
+  if (node->literals->length > 0) {
     printf("  .section .rodata\n");
-    for (int i = 0; i < node->string_literals->length; i++) {
-      gen_string_literal(node->string_literals->buffer[i], i);
+    for (int i = 0; i < node->literals->length; i++) {
+      gen_string_literal(node->literals->buffer[i], i);
     }
   }
 
-  for (int i = 0; i < node->external_decls->length; i++) {
-    Node *decl = node->external_decls->buffer[i];
+  for (int i = 0; i < node->decls->length; i++) {
+    Node *decl = node->decls->buffer[i];
     if (decl->nd_type == ND_DECL) {
       gen_decl_global((Decl *) decl);
     } else if (decl->nd_type == ND_FUNC) {

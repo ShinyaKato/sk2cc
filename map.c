@@ -1,4 +1,4 @@
-#include "map.h"
+#include "sk2cc.h"
 
 Map *map_new() {
   Map *map = (Map *) calloc(1, sizeof(Map));

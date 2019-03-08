@@ -32,8 +32,9 @@ int main(int argc, char **argv) {
     exit(0);
   }
 
-  TransUnit *node = parse(tokens);
-  gen(node);
+  TransUnit *trans_unit = parse(tokens);
+  sema(trans_unit);
+  gen(trans_unit);
 
   return 0;
 }
