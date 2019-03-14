@@ -847,7 +847,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   } else if (sp_type == 2 && sp_signed == 1 && sp_int == 1) {
     type = type_int();
   } else if (sp_type == 1 && sp_unsigned == 1) {
-    type = type_int();
+    type = type_uint();
   } else if (sp_type == 2 && sp_unsigned == 1 && sp_int == 1) {
     type = type_uint();
   } else if (sp_type == 1 && sp_bool == 1) {
