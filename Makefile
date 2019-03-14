@@ -68,6 +68,7 @@ test_diff: $(DIR) $(ASMS_SELF) $(ASMS_SELF2)
 
 .PHONY: test_full
 test_full:
+	make test_check
 	make test
 	make test_self
 	make test_self2
