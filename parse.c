@@ -49,6 +49,7 @@ bool check_type_specifier() {
   if (check_token(TK_CHAR)) return true;
   if (check_token(TK_SHORT)) return true;
   if (check_token(TK_INT)) return true;
+  if (check_token(TK_SIGNED)) return true;
   if (check_token(TK_UNSIGNED)) return true;
   if (check_token(TK_BOOL)) return true;
   if (check_token(TK_STRUCT)) return true;
@@ -619,6 +620,8 @@ Specifier *type_specifier() {
     return specifier_new(SP_SHORT, token);
   if (read_token(TK_INT))
     return specifier_new(SP_INT, token);
+  if (read_token(TK_SIGNED))
+    return specifier_new(SP_SIGNED, token);
   if (read_token(TK_UNSIGNED))
     return specifier_new(SP_UNSIGNED, token);
   if (read_token(TK_BOOL))

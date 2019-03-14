@@ -205,6 +205,8 @@ Token *next_token() {
       return token_new(TK_SHORT);
     if (strcmp(string->buffer, "int") == 0)
       return token_new(TK_INT);
+    if (strcmp(string->buffer, "signed") == 0)
+      return token_new(TK_SIGNED);
     if (strcmp(string->buffer, "unsigned") == 0)
       return token_new(TK_UNSIGNED);
     if (strcmp(string->buffer, "_Bool") == 0)

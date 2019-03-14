@@ -764,6 +764,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   int sp_char = 0;
   int sp_short = 0;
   int sp_int = 0;
+  int sp_signed = 0;
   int sp_unsigned = 0;
   int sp_bool = 0;
   Vector *sp_struct = vector_new();
@@ -791,6 +792,9 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     } else if (spec->sp_type == SP_INT) {
       sp_type++;
       sp_int++;
+    } else if (spec->sp_type == SP_SIGNED) {
+      sp_type++;
+      sp_signed++;
     } else if (spec->sp_type == SP_UNSIGNED) {
       sp_type++;
       sp_unsigned++;
@@ -820,13 +824,29 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     type = type_void();
   } else if (sp_type == 1 && sp_char == 1) {
     type = type_char();
+  } else if (sp_type == 2 && sp_signed == 1 && sp_char) {
+    type = type_char();
   } else if (sp_type == 2 && sp_unsigned == 1 && sp_char == 1) {
     type = type_uchar();
   } else if (sp_type == 1 && sp_short == 1) {
     type = type_short();
+  } else if (sp_type == 2 && sp_signed == 1 && sp_short == 1) {
+    type = type_short();
+  } else if (sp_type == 2 && sp_short == 1 && sp_int == 1) {
+    type = type_short();
+  } else if (sp_type == 3 && sp_signed == 1 && sp_short == 1 && sp_int == 1) {
+    type = type_short();
   } else if (sp_type == 2 && sp_unsigned == 1 && sp_short == 1) {
     type = type_ushort();
+  } else if (sp_type == 3 && sp_unsigned == 1 && sp_short == 1 && sp_int == 1) {
+    type = type_ushort();
   } else if (sp_type == 1 && sp_int == 1) {
+    type = type_int();
+  } else if (sp_type == 1 && sp_signed == 1) {
+    type = type_int();
+  } else if (sp_type == 2 && sp_signed == 1 && sp_int == 1) {
+    type = type_int();
+  } else if (sp_type == 1 && sp_unsigned == 1) {
     type = type_int();
   } else if (sp_type == 2 && sp_unsigned == 1 && sp_int == 1) {
     type = type_uint();
