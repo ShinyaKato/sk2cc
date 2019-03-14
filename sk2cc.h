@@ -16,12 +16,8 @@ typedef int size_t;
 // stdarg.h
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
-typedef struct {
-  int gp_offset;
-  int fp_offset;
-  void *overflow_arg_area;
-  void *reg_save_area;
-} va_list[1];
+
+typedef __builtin_va_list va_list;
 
 // stdio.h
 #define EOF (-1)
@@ -607,6 +603,7 @@ extern Type *type_function(Type *returning, Vector *params, bool ellipsis);
 extern Type *type_struct_incomplete();
 extern Type *type_struct(Type *type, Vector *symbols);
 extern Type *type_convert(Type *type);
+extern Type *type_va_list();
 extern bool check_integer(Type *type);
 extern bool check_arithmetic(Type *type);
 extern bool check_pointer(Type *type);

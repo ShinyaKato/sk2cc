@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wno-builtin-declaration-mismatch -g
+CFLAGS = -std=c11 --pedantic-errors -Wall -Wno-builtin-declaration-mismatch -g
 # TODO removing -Wno-builtin-declaration-mismatch
 
 HEADERS = sk2cc.h

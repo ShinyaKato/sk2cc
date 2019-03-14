@@ -1138,6 +1138,10 @@ Node *external_declaration() {
 TransUnit *translation_unit() {
   vector_push(symbol_scopes, map_new()); // begin file scope
 
+  // __builtin_va_list
+  Symbol *symbol_va_list = symbol_type("__builtin_va_list", NULL);
+  put_symbol(symbol_va_list->identifier, symbol_va_list);
+
   Vector *decls = vector_new();
   do {
     vector_push(decls, external_declaration());

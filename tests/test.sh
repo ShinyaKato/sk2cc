@@ -647,12 +647,7 @@ expect_stdout "abc 123\n" <<-EOS
 #define va_start __builtin_va_start
 #define va_end __builtin_va_end
 
-typedef struct {
-  int gp_offset;
-  int fp_offset;
-  void *overflow_arg_area;
-  void *reg_save_area;
-} va_list[1];
+typedef __builtin_va_list va_list;
 
 typedef struct _IO_FILE FILE;
 extern FILE *stdout;

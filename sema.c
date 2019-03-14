@@ -924,7 +924,13 @@ Type *sema_enum(Specifier *spec) {
 }
 
 Type *sema_typedef_name(Specifier *spec) {
-  return spec->typedef_symbol->type;
+  Symbol *symbol = spec->typedef_symbol;
+
+  if (strcmp(symbol->identifier, "__builtin_va_list") == 0) {
+    return type_va_list();
+  }
+
+  return symbol->type;
 }
 
 Type *sema_declarator(Declarator *decl, Type *type) {

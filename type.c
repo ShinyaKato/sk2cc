@@ -114,6 +114,39 @@ Type *type_struct(Type *type, Vector *symbols) {
   return type;
 }
 
+// typedef struct {
+//   int gp_offset;
+//   int fp_offset;
+//   void *overflow_arg_area;
+//   void *reg_save_area;
+// } va_list[1];
+Type *type_va_list() {
+  Vector *symbols = vector_new();
+
+  Symbol *gp_offset = symbol_variable("gp_offset", NULL);
+  gp_offset->type = type_int();
+  vector_push(symbols, gp_offset);
+
+  Symbol *fp_offset = symbol_variable("fp_offset", NULL);
+  fp_offset->type = type_int();
+  vector_push(symbols, fp_offset);
+
+  Symbol *overflow_arg_area = symbol_variable("overflow_arg_area", NULL);
+  overflow_arg_area->type = type_pointer(type_void());
+  vector_push(symbols, overflow_arg_area);
+
+  Symbol *reg_save_area = symbol_variable("reg_save_area", NULL);
+  reg_save_area->type = type_pointer(type_void());
+  vector_push(symbols, reg_save_area);
+
+  Type *type = type_struct_incomplete();
+  type = type_struct(type, symbols);
+  type = type_array_incomplete(type);
+  type = type_array(type, 1);
+
+  return type;
+}
+
 bool check_integer(Type *type) {
   if (type->ty_type == TY_CHAR) return true;
   if (type->ty_type == TY_UCHAR) return true;
