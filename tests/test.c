@@ -1,3 +1,5 @@
+int printf(char *format, ...);
+
 struct test_struct {
   char c;
   int n;

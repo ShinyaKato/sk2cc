@@ -291,6 +291,7 @@ int main() {
 EOS
 
 expect_stdout "ABC\n" <<-EOS
+int puts(char *s);
 int main() {
   char s[4];
   s[0] = 65;
@@ -303,6 +304,7 @@ int main() {
 EOS
 
 expect_stdout "ABCDEFG\n" <<-EOS
+int puts(char *s);
 char s[8];
 int main() {
   for (int i = 0; i < 7; i++) s[i] = i + 65;
@@ -313,6 +315,7 @@ int main() {
 EOS
 
 expect_stdout "hello world\n" <<-EOS
+int puts(char *s);
 int main() {
   puts("hello world");
   return 0;
@@ -320,6 +323,7 @@ int main() {
 EOS
 
 expect_stdout "hello world\n" <<-EOS
+int puts(char *s);
 int main() {
   char *s = "hello world";
   puts(s);
@@ -328,6 +332,7 @@ int main() {
 EOS
 
 expect_stdout "w\n" <<-EOS
+int printf(char *format, ...);
 int main() {
   char *s = "hello world";
   printf("%c\n", s[6]);
@@ -356,6 +361,7 @@ int main() {
 EOS
 
 expect_stdout "3\n1\n" <<-EOS
+int printf(char *format, ...);
 int x = 0;
 int main() {
   int x = 1;
@@ -370,6 +376,7 @@ int main() {
 EOS
 
 expect_stdout "0\n1\n2\n3\n4\n123\n" <<-EOS
+int printf(char *format, ...);
 int main() {
   int i = 123;
   for (int i = 0; i < 5; i++) {
@@ -601,6 +608,7 @@ int main() {
 EOS
 
 expect_stdout "16\n" <<-EOS
+int printf(char *format, ...);
 typedef struct string {
   int capacity;
   int length;
@@ -612,6 +620,7 @@ int main() {
 EOS
 
 expect_stdout "16\n" <<-EOS
+int printf(char *format, ...);
 typedef struct vector {
   int capacity;
   int length;
@@ -623,6 +632,7 @@ int main() {
 EOS
 
 expect_stdout "16392\n" <<-EOS
+int printf(char *format, ...);
 typedef struct map {
   int count;
   char *keys[1024];
@@ -647,6 +657,9 @@ typedef struct {
 typedef struct _IO_FILE FILE;
 extern FILE *stdout;
 
+int fprintf(FILE *stream, char *format, ...);
+int vfprintf(FILE *s, char *format, va_list arg);
+
 void print(char *format, ...) {
   va_list ap;
   va_start(ap, format);
@@ -667,6 +680,7 @@ int main() {
 EOS
 
 expect_stdout "abcde\n" <<-EOS
+int printf(char *format, ...);
 char *s = "abcde";
 int main() {
   printf("%s\n", s);
@@ -730,6 +744,7 @@ int main() {
 EOS
 
 expect_stdout "rdi\nrsi\nrdx\nrcx\nr8\nr9\n" <<-EOS
+int printf(char *format, ...);
 char *reg[] = {
   "rdi",
   "rsi",
