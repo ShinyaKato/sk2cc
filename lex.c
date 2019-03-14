@@ -333,6 +333,7 @@ Vector *tokenize(char *filename) {
       string_push(file, buffer[i]);
     }
   }
+  string_push(file, '\0');
 
   fclose(fp);
 
