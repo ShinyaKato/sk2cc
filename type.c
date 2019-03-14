@@ -114,17 +114,6 @@ Type *type_struct(Type *type, Vector *symbols) {
   return type;
 }
 
-// convert array to pointer
-Type *type_convert(Type *type) {
-  if (type->ty_type == TY_ARRAY) {
-    Type *pointer = type_pointer(type->array_of);
-    pointer->original = type;
-    return pointer;
-  }
-
-  return type;
-}
-
 bool check_integer(Type *type) {
   if (type->ty_type == TY_CHAR) return true;
   if (type->ty_type == TY_UCHAR) return true;
@@ -136,16 +125,28 @@ bool check_integer(Type *type) {
   return false;
 }
 
+// Originally, floating pointe types are also included
+// in arithmetic type, but we do not support them yet.
+bool check_arithmetic(Type *type) {
+  return check_integer(type);
+}
+
 bool check_pointer(Type *type) {
   return type->ty_type == TY_POINTER;
 }
 
 bool check_scalar(Type *type) {
-  return check_integer(type) || check_pointer(type);
+  return check_arithmetic(type) || check_pointer(type);
+}
+
+bool check_function(Type *type) {
+  return type->ty_type == TY_FUNCTION;
+}
+
+bool check_struct(Type *type) {
+  return type->ty_type == TY_STRUCT;
 }
 
 bool check_same(Type *type1, Type *type2) {
-  if (check_integer(type1) && check_integer(type2)) return true;
-  if (check_pointer(type1) && check_pointer(type2)) return true;
-  return false;
+  return type1->ty_type == type2->ty_type;
 }

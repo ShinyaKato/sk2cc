@@ -608,6 +608,7 @@ extern Type *type_struct_incomplete();
 extern Type *type_struct(Type *type, Vector *symbols);
 extern Type *type_convert(Type *type);
 extern bool check_integer(Type *type);
+extern bool check_arithmetic(Type *type);
 extern bool check_pointer(Type *type);
 extern bool check_scalar(Type *type);
 extern bool check_same(Type *type1, Type *type2);

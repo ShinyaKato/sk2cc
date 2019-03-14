@@ -339,7 +339,7 @@ Vector *tokenize(char *filename) {
   // replace '\r\n' with '\n'
   for (int i = 0, j = 0; i < file->length; i++, j++) {
     char c = file->buffer[i];
-    if (c == '\r' && i + 1 < file->length && file->buffer[i] == '\n') {
+    if (c == '\r' && i + 1 < file->length && file->buffer[i + 1] == '\n') {
       c = '\n';
       i++;
     } else {

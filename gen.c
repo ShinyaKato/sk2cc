@@ -66,11 +66,11 @@ void gen_lvalue(Expr *node) {
 void gen_load(Type *type) {
   gen_pop("rax");
   if (type->ty_type == TY_BOOL) {
-    printf("  movzbl (%%rax), %%eax\n");
+    printf("  movb (%%rax), %%al\n");
   } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movsbl (%%rax), %%eax\n");
+    printf("  movb (%%rax), %%al\n");
   } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movswl (%%rax), %%eax\n");
+    printf("  movw (%%rax), %%ax\n");
   } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
     printf("  movl (%%rax), %%eax\n");
   } else if (type->ty_type == TY_POINTER && type == type->original) {
@@ -81,19 +81,17 @@ void gen_load(Type *type) {
 
 void gen_store(Type *type) {
   gen_pop("rax");
-  gen_pop("rcx");
+  gen_pop("rbx");
   if (type->ty_type == TY_BOOL) {
-    printf("  cmpl $0, %%eax\n");
-    printf("  setne %%al\n");
-    printf("  movb %%al, (%%rcx)\n");
+    printf("  movb %%al, (%%rbx)\n");
   } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movb %%al, (%%rcx)\n");
+    printf("  movb %%al, (%%rbx)\n");
   } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movw %%ax, (%%rcx)\n");
+    printf("  movw %%ax, (%%rbx)\n");
   } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-    printf("  movl %%eax, (%%rcx)\n");
+    printf("  movl %%eax, (%%rbx)\n");
   } else if (type->ty_type == TY_POINTER) {
-    printf("  movq %%rax, (%%rcx)\n");
+    printf("  movq %%rax, (%%rbx)\n");
   }
   gen_push("rax");
 }
@@ -146,35 +144,33 @@ void gen_call(Expr *node) {
     return;
   }
 
+  // generate arguments
   for (int i = node->args->length - 1; i >= 0; i--) {
     Expr *arg = node->args->buffer[i];
     gen_expr(arg);
-    if (arg->type->ty_type == TY_BOOL) {
-      gen_pop("rax");
-      printf("  cmpl $0, %%eax\n");
-      printf("  setne %%al\n");
-      printf("  movzbl %%al, %%eax\n");
-      gen_push("rax");
-    }
   }
-
   for (int i = 0; i < node->args->length; i++) {
     gen_pop(arg_reg[i]);
   }
 
+  // 16-byte alignment
   int top = stack_depth % 16;
   if (top > 0) {
     printf("  subq $%d, %%rsp\n", 16 - top);
   }
-  printf("  movl $0, %%eax\n");
+
+  // for function with variable length arguments
+  if (!node->expr->symbol || node->expr->symbol->type->ellipsis) {
+    printf("  movb $0, %%al\n");
+  }
+
   printf("  call %s@PLT\n", node->expr->identifier);
+
+  // restore rsp
   if (top > 0) {
     printf("  addq $%d, %%rsp\n", 16 - top);
   }
 
-  if (node->type->ty_type == TY_BOOL) {
-    printf("  movzbl %%al, %%eax\n");
-  }
   gen_push("rax");
 }
 
@@ -218,7 +214,45 @@ void gen_lnot(Expr *node) {
 }
 
 void gen_cast(Expr *node) {
-  gen_expr(node->expr);
+  gen_operand(node->expr, "rax");
+
+  Type *to = node->type;
+  Type *from = node->expr->type;
+
+  if (to->ty_type == TY_BOOL) {
+    if (from->ty_type == TY_CHAR || from->ty_type == TY_UCHAR) {
+      printf("  cmpb $0, %%al\n");
+      printf("  setne %%al\n");
+    } else if (from->ty_type == TY_SHORT || from->ty_type == TY_USHORT) {
+      printf("  cmpw $0, %%ax\n");
+      printf("  setne %%al\n");
+    } else if (from->ty_type == TY_INT || from->ty_type == TY_UINT) {
+      printf("  cmpl $0, %%eax\n");
+      printf("  setne %%al\n");
+    }
+  } else if (to->ty_type == TY_SHORT || to->ty_type == TY_USHORT) {
+    if (from->ty_type == TY_BOOL) {
+      printf("  movzbw %%al, %%ax\n");
+    } else if (from->ty_type == TY_CHAR) {
+      printf("  movsbw %%al, %%ax\n");
+    } else if (from->ty_type == TY_UCHAR) {
+      printf("  movzbw %%al, %%ax");
+    }
+  } else if (to->ty_type == TY_INT || to->ty_type == TY_UINT) {
+    if (from->ty_type == TY_BOOL) {
+      printf("  movzbl %%al, %%eax\n");
+    } else if (from->ty_type == TY_CHAR) {
+      printf("  movsbl %%al, %%eax\n");
+    } else if (from->ty_type == TY_UCHAR) {
+      printf("  movzbl %%al, %%eax\n");
+    } else if (from->ty_type == TY_SHORT) {
+      printf("  movswl %%ax, %%eax\n");
+    } else if (from->ty_type == TY_USHORT) {
+      printf("  movzwl %%ax, %%eax\n");
+    }
+  }
+
+  gen_push("rax");
 }
 
 void gen_mul(Expr *node) {
@@ -504,7 +538,7 @@ void gen_init_local(Initializer *init, int offset) {
     gen_push("rax");
     gen_expr(init->expr);
     gen_store(init->expr->type);
-    gen_pop("rax");
+    gen_pop(NULL);
   }
 }
 
@@ -667,18 +701,21 @@ void gen_init_global(Initializer *init) {
     Type *type = init->type;
     int length = init->list->length;
     int padding = type->size - type->array_of->size * length;
+
     for (int i = 0; i < length; i++) {
       Initializer *item = init->list->buffer[i];
       gen_init_global(item);
     }
+
     if (padding > 0) {
       printf("  .zero %d\n", padding);
     }
   } else if (init->expr) {
-    if (init->expr->nd_type == ND_INTEGER) {
-      printf("  .long %d\n", init->expr->int_value);
-    } else if (init->expr->nd_type == ND_STRING) {
-      printf("  .quad .S%d\n", init->expr->string_label);
+    Expr *expr = init->expr->expr; // ignore casting
+    if (expr->nd_type == ND_INTEGER) {
+      printf("  .long %d\n", expr->int_value);
+    } else if (expr->nd_type == ND_STRING) {
+      printf("  .quad .S%d\n", expr->string_label);
     }
   }
 }
@@ -687,9 +724,11 @@ void gen_decl_global(Decl *node) {
   for (int i = 0; i < node->symbols->length; i++) {
     Symbol *symbol = node->symbols->buffer[i];
     if (!symbol->definition) continue;
+
     printf("  .data\n");
     printf("  .global %s\n", symbol->identifier);
     printf("%s:\n", symbol->identifier);
+
     if (symbol->init) {
       gen_init_global(symbol->init);
     } else {
@@ -702,10 +741,9 @@ void gen_func(Func *node) {
   Symbol *symbol = node->symbol;
   Type *type = symbol->type;
 
-  return_label = label_no++;
-
   gp_offset = type->params->length * 8;
   stack_depth = 8;
+  return_label = label_no++;
 
   printf("  .text\n");
   printf("  .global %s\n", symbol->identifier);
@@ -726,35 +764,17 @@ void gen_func(Func *node) {
   }
 
   for (int i = 0; i < type->params->length; i++) {
-    Symbol *symbol = (Symbol *) type->params->buffer[i];
-    Type *type = symbol->type;
-    if (type->ty_type == TY_BOOL) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
-      printf("  cmpb $0, %%al\n");
-      printf("  setne %%al\n");
-      printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
-      printf("  movb %%al, %d(%%rbp)\n", -symbol->offset);
-    } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
-      printf("  movw %%ax, %d(%%rbp)\n", -symbol->offset);
-    } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
-      printf("  movl %%eax, %d(%%rbp)\n", -symbol->offset);
-    } else if (type->ty_type == TY_POINTER) {
-      printf("  movq %%%s, %%rax\n", arg_reg[i]);
-      printf("  movq %%rax, %d(%%rbp)\n", -symbol->offset);
-    }
+    Symbol *param = type->params->buffer[i];
+    printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
+    gen_push("rax");
+    gen_push(arg_reg[i]);
+    gen_store(param->type);
+    gen_pop(NULL);
   }
 
   gen_stmt(node->body);
 
   gen_label(return_label);
-  if (type->returning->ty_type == TY_BOOL) {
-    printf("  cmpl $0, %%eax\n");
-    printf("  setne %%al\n");
-  }
   printf("  leave\n");
   printf("  ret\n");
 }

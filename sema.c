@@ -8,6 +8,7 @@ typedef struct decl_attribution {
 
 Vector *tag_scopes; // Vector<Map<Type*>*>
 
+Symbol *func_symbol;
 int stack_size;
 
 int continue_level;
@@ -64,6 +65,57 @@ bool check_lvalue(Expr *expr) {
   return false;
 }
 
+bool check_cast(Type *type, Expr *expr) {
+  if (check_integer(type) && check_integer(expr->type)) {
+    return true;
+  }
+
+  if (check_pointer(type)) {
+    if (check_pointer(expr->type)) {
+      return true;
+    }
+    if (expr->nd_type == ND_INTEGER && expr->int_value == 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+Expr *insert_cast(Type *type, Expr *expr, Token *token) {
+  Expr *cast = expr_cast(NULL, expr, token);
+  cast->type = type;
+
+  if (!check_cast(cast->type, expr)) {
+    error(token, "invalid casting.");
+  }
+
+  return cast;
+}
+
+// integer promotion
+Type *promote_integer(Expr **expr) {
+  TypeType ty_types[] = { TY_BOOL, TY_CHAR, TY_UCHAR, TY_SHORT, TY_USHORT };
+
+  for (int i = 0; i < sizeof(ty_types) / sizeof(TypeType); i++) {
+    if ((*expr)->type->ty_type == ty_types[i]) {
+      *expr = insert_cast(type_int(), *expr, (*expr)->token);
+      break;
+    }
+  }
+
+  return (*expr)->type;
+}
+
+// usual arithmetic conversion
+Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
+  promote_integer(lhs);
+  promote_integer(rhs);
+
+  // types of lhs and rhs are expected to be int.
+  return type_int();
+}
+
 Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
@@ -116,7 +168,7 @@ Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
 
 Expr *sema_identifier(Expr *expr) {
   if (expr->symbol) {
-    expr->type = type_convert(expr->symbol->type);
+    expr->type = expr->symbol->type;
   } else {
     error(expr->token, "undefined variable: %s.", expr->identifier);
   }
@@ -136,9 +188,7 @@ Expr *sema_enum_const(Expr *expr) {
 
 Expr *sema_string(Expr *expr) {
   int length = expr->string_literal->length;
-  Type *type = type_array(type_array_incomplete(type_char()), length);
-
-  expr->type = type_convert(type);
+  expr->type = type_array(type_array_incomplete(type_char()), length);
 
   return expr;
 }
@@ -185,12 +235,12 @@ Expr *sema_call(Expr *expr) {
       }
     }
 
+    for (int i = 0; i < args->length; i++) {
+      promote_integer((Expr **) &args->buffer[i]);
+    }
     for (int i = 0; i < params->length; i++) {
-      Expr *arg = args->buffer[i];
       Symbol *param = params->buffer[i];
-      if (!check_same(arg->type, param->type)) {
-        error(expr->token, "parameter types and argument types should be the same.");
-      }
+      args->buffer[i] = insert_cast(param->type, args->buffer[i], expr->token);
     }
   }
 
@@ -218,7 +268,7 @@ Expr *sema_dot(Expr *expr) {
     error(expr->token, "undefined struct member: %s.", expr->member);
   }
 
-  expr->type = type_convert(member->type);
+  expr->type = member->type;
   expr->offset = member->offset;
 
   return expr;
@@ -270,7 +320,7 @@ Expr *sema_indirect(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_pointer(expr->expr->type)) {
-    expr->type = type_convert(expr->expr->type->pointer_to);
+    expr->type = expr->expr->type->pointer_to;
   } else {
     error(expr->token, "operand should have pointer type.");
   }
@@ -278,22 +328,24 @@ Expr *sema_indirect(Expr *expr) {
   return expr;
 }
 
-// convert +expr to expr
 Expr *sema_uplus(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
-  if (!check_integer(expr->expr->type)) {
+  if (check_arithmetic(expr->expr->type)) {
+    promote_integer(&expr->expr);
+  } else {
     error(expr->token, "operand should have arithmetic type.");
   }
 
+  // we can remove node of unary + before code generation.
   return expr->expr;
 }
 
 Expr *sema_uminus(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
-  if (check_integer(expr->expr->type)) {
-    expr->type = expr->expr->type;
+  if (check_arithmetic(expr->expr->type)) {
+    expr->type = promote_integer(&expr->expr);
   } else {
     error(expr->token, "operand should have arithmetic type.");
   }
@@ -305,7 +357,7 @@ Expr *sema_not(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_integer(expr->expr->type)) {
-    expr->type = expr->expr->type;
+    expr->type = promote_integer(&expr->expr);
   } else {
     error(expr->token, "operand should have integer type.");
   }
@@ -317,6 +369,7 @@ Expr *sema_lnot(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_scalar(expr->expr->type)) {
+    promote_integer(&expr->expr);
     expr->type = type_int();
   } else {
     error(expr->token, "operand should have scalar type.");
@@ -329,34 +382,49 @@ Expr *sema_lnot(Expr *expr) {
 Expr *sema_sizeof(Expr *expr) {
   if (expr->expr) {
     Type *type = sema_expr(expr->expr)->type;
-    return sema_integer(expr_integer(type->original->size, expr->token));
+    return sema_expr(expr_integer(type->original->size, expr->token));
   }
 
   Type *type = sema_type_name(expr->type_name);
-  return sema_integer(expr_integer(type->original->size, expr->token));
+  return sema_expr(expr_integer(type->original->size, expr->token));
 }
 
 // convert alignof to integer-constant
 Expr *sema_alignof(Expr *expr) {
   Type *type = sema_type_name(expr->type_name);
-  return sema_integer(expr_integer(type->align, expr->token));
+  return sema_expr(expr_integer(type->align, expr->token));
 }
 
 Expr *sema_cast(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
   expr->type = sema_type_name(expr->type_name);
 
-  // TODO: check casting
+  if (!check_cast(expr->type, expr->expr)) {
+    error(expr->token, "invalid casting.");
+  }
 
   return expr;
 }
 
-Expr *sema_multiplicative(Expr *expr) {
+Expr *sema_mul(Expr *expr) {
+  expr->lhs = sema_expr(expr->lhs);
+  expr->rhs = sema_expr(expr->rhs);
+
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
+  } else {
+    error(expr->token, "operands should have intger type.");
+  }
+
+  return expr;
+}
+
+Expr *sema_mod(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
     error(expr->token, "operands should have intger type.");
   }
@@ -368,14 +436,16 @@ Expr *sema_add(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
-  if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else if (check_pointer(expr->lhs->type) && check_integer(expr->rhs->type)) {
+    promote_integer(&expr->rhs);
     expr->type = expr->lhs->type;
   } else if (check_integer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     Expr *tmp = expr->lhs;
     expr->lhs = expr->rhs;
     expr->rhs = tmp;
+    promote_integer(&expr->rhs);
     expr->type = expr->lhs->type;
   } else {
     error(expr->token, "invalid operand types.");
@@ -388,9 +458,10 @@ Expr *sema_sub(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
-  if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else if (check_pointer(expr->lhs->type) && check_integer(expr->rhs->type)) {
+    promote_integer(&expr->rhs);
     expr->type = expr->lhs->type;
   } else {
     error(expr->token, "invalid operand types.");
@@ -404,7 +475,7 @@ Expr *sema_shift(Expr *expr) {
   expr->rhs = sema_expr(expr->rhs);
 
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
     error(expr->token, "invalid operand types.");
   }
@@ -416,7 +487,8 @@ Expr *sema_relational(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
-  if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    convert_arithmetic(&expr->lhs, &expr->rhs);
     expr->type = type_int();
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = type_int();
@@ -445,7 +517,8 @@ Expr *sema_equality(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
-  if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    convert_arithmetic(&expr->lhs, &expr->rhs);
     expr->type = type_int();
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = type_int();
@@ -461,7 +534,7 @@ Expr *sema_bitwise(Expr *expr) {
   expr->rhs = sema_expr(expr->rhs);
 
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
     error(expr->token, "invalid operand types.");
   }
@@ -474,6 +547,8 @@ Expr *sema_logical(Expr *expr) {
   expr->rhs = sema_expr(expr->rhs);
 
   if (check_scalar(expr->lhs->type) && check_scalar(expr->rhs->type)) {
+    promote_integer(&expr->lhs);
+    promote_integer(&expr->rhs);
     expr->type = type_int();
   } else {
     error(expr->token, "invalid operand types.");
@@ -487,8 +562,14 @@ Expr *sema_condition(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
-  if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    expr->type = type_int();
+  if (check_scalar(expr->cond->type)) {
+    promote_integer(&expr->cond);
+  } else {
+    error(expr->token, "control expression should have scalar type.");
+  }
+
+  if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = expr->lhs->type;
   } else {
@@ -503,6 +584,7 @@ Expr *sema_assign(Expr *expr) {
   expr->rhs = sema_expr(expr->rhs);
 
   if (check_lvalue(expr->lhs)) {
+    expr->rhs = insert_cast(expr->lhs->type, expr->rhs, expr->token);
     expr->type = expr->lhs->type;
   } else {
     error(expr->token, "invalid operands.");
@@ -541,82 +623,98 @@ Expr *sema_comma(Expr *expr) {
 }
 
 Expr *sema_expr(Expr *expr) {
-  if (expr->nd_type == ND_IDENTIFIER)
-    return sema_identifier(expr);
-  if (expr->nd_type == ND_INTEGER)
-    return sema_integer(expr);
-  if (expr->nd_type == ND_ENUM_CONST)
-    return sema_enum_const(expr);
-  if (expr->nd_type == ND_STRING)
-    return sema_string(expr);
-  if (expr->nd_type == ND_SUBSCRIPTION)
-    return sema_subscription(expr);
-  if (expr->nd_type == ND_CALL)
-    return sema_call(expr);
-  if (expr->nd_type == ND_DOT)
-    return sema_dot(expr);
-  if (expr->nd_type == ND_ARROW)
-    return sema_arrow(expr);
-  if (expr->nd_type == ND_POST_INC)
-    return sema_post_inc(expr);
-  if (expr->nd_type == ND_POST_DEC)
-    return sema_post_dec(expr);
-  if (expr->nd_type == ND_PRE_INC)
-    return sema_pre_inc(expr);
-  if (expr->nd_type == ND_PRE_DEC)
-    return sema_pre_dec(expr);
-  if (expr->nd_type == ND_ADDRESS)
-    return sema_address(expr);
-  if (expr->nd_type == ND_INDIRECT)
-    return sema_indirect(expr);
-  if (expr->nd_type == ND_UPLUS)
-    return sema_uplus(expr);
-  if (expr->nd_type == ND_UMINUS)
-    return sema_uminus(expr);
-  if (expr->nd_type == ND_NOT)
-    return sema_not(expr);
-  if (expr->nd_type == ND_LNOT)
-    return sema_lnot(expr);
-  if (expr->nd_type == ND_SIZEOF)
-    return sema_sizeof(expr);
-  if (expr->nd_type == ND_ALIGNOF)
-    return sema_alignof(expr);
-  if (expr->nd_type == ND_CAST)
-    return sema_cast(expr);
-  if (expr->nd_type == ND_MUL || expr->nd_type == ND_DIV || expr->nd_type == ND_MOD)
-    return sema_multiplicative(expr);
-  if (expr->nd_type == ND_ADD)
-    return sema_add(expr);
-  if (expr->nd_type == ND_SUB)
-    return sema_sub(expr);
-  if (expr->nd_type == ND_LSHIFT || expr->nd_type == ND_RSHIFT)
-    return sema_shift(expr);
-  if (expr->nd_type == ND_LT || expr->nd_type == ND_GT || expr->nd_type == ND_LTE || expr->nd_type == ND_GTE)
-    return sema_relational(expr);
-  if (expr->nd_type == ND_EQ || expr->nd_type == ND_NEQ)
-    return sema_equality(expr);
-  if (expr->nd_type == ND_AND || expr->nd_type == ND_XOR || expr->nd_type == ND_OR)
-    return sema_bitwise(expr);
-  if (expr->nd_type == ND_LAND || expr->nd_type == ND_LOR)
-    return sema_logical(expr);
-  if (expr->nd_type == ND_CONDITION)
-    return sema_condition(expr);
-  if (expr->nd_type == ND_ASSIGN)
-    return sema_assign(expr);
-  if (expr->nd_type == ND_MUL_ASSIGN)
-    return sema_mul_assign(expr);
-  if (expr->nd_type == ND_DIV_ASSIGN)
-    return sema_div_assign(expr);
-  if (expr->nd_type == ND_MOD_ASSIGN)
-    return sema_mod_assign(expr);
-  if (expr->nd_type == ND_ADD_ASSIGN)
-    return sema_add_assign(expr);
-  if (expr->nd_type == ND_SUB_ASSIGN)
-    return sema_sub_assign(expr);
-  if (expr->nd_type == ND_COMMA)
-    return sema_comma(expr);
+  if (expr->type) {
+    return expr;
+  }
 
-  error(expr->token, "invalid node type.");
+  if (expr->nd_type == ND_IDENTIFIER) {
+    expr = sema_identifier(expr);
+  } else if (expr->nd_type == ND_INTEGER) {
+    expr = sema_integer(expr);
+  } else if (expr->nd_type == ND_ENUM_CONST) {
+    expr = sema_enum_const(expr);
+  } else if (expr->nd_type == ND_STRING) {
+    expr = sema_string(expr);
+  } else if (expr->nd_type == ND_SUBSCRIPTION) {
+    expr = sema_subscription(expr);
+  } else if (expr->nd_type == ND_CALL) {
+    expr = sema_call(expr);
+  } else if (expr->nd_type == ND_DOT) {
+    expr = sema_dot(expr);
+  } else if (expr->nd_type == ND_ARROW) {
+    expr = sema_arrow(expr);
+  } else if (expr->nd_type == ND_POST_INC) {
+    expr = sema_post_inc(expr);
+  } else if (expr->nd_type == ND_POST_DEC) {
+    expr = sema_post_dec(expr);
+  } else if (expr->nd_type == ND_PRE_INC) {
+    expr = sema_pre_inc(expr);
+  } else if (expr->nd_type == ND_PRE_DEC) {
+    expr = sema_pre_dec(expr);
+  } else if (expr->nd_type == ND_ADDRESS) {
+    expr = sema_address(expr);
+  } else if (expr->nd_type == ND_INDIRECT) {
+    expr = sema_indirect(expr);
+  } else if (expr->nd_type == ND_UPLUS) {
+    expr = sema_uplus(expr);
+  } else if (expr->nd_type == ND_UMINUS) {
+    expr = sema_uminus(expr);
+  } else if (expr->nd_type == ND_NOT) {
+    expr = sema_not(expr);
+  } else if (expr->nd_type == ND_LNOT) {
+    expr = sema_lnot(expr);
+  } else if (expr->nd_type == ND_SIZEOF) {
+    expr = sema_sizeof(expr);
+  } else if (expr->nd_type == ND_ALIGNOF) {
+    expr = sema_alignof(expr);
+  } else if (expr->nd_type == ND_CAST) {
+    expr = sema_cast(expr);
+  } else if (expr->nd_type == ND_MUL || expr->nd_type == ND_DIV) {
+    expr = sema_mul(expr);
+  } else if (expr->nd_type == ND_MOD) {
+    expr = sema_mod(expr);
+  } else if (expr->nd_type == ND_ADD) {
+    expr = sema_add(expr);
+  } else if (expr->nd_type == ND_SUB) {
+    expr = sema_sub(expr);
+  } else if (expr->nd_type == ND_LSHIFT || expr->nd_type == ND_RSHIFT) {
+    expr = sema_shift(expr);
+  } else if (expr->nd_type == ND_LT || expr->nd_type == ND_GT || expr->nd_type == ND_LTE || expr->nd_type == ND_GTE) {
+    expr = sema_relational(expr);
+  } else if (expr->nd_type == ND_EQ || expr->nd_type == ND_NEQ) {
+    expr = sema_equality(expr);
+  } else if (expr->nd_type == ND_AND || expr->nd_type == ND_XOR || expr->nd_type == ND_OR) {
+    expr = sema_bitwise(expr);
+  } else if (expr->nd_type == ND_LAND || expr->nd_type == ND_LOR) {
+    expr = sema_logical(expr);
+  } else if (expr->nd_type == ND_CONDITION) {
+    expr = sema_condition(expr);
+  } else if (expr->nd_type == ND_ASSIGN) {
+    expr = sema_assign(expr);
+  } else if (expr->nd_type == ND_MUL_ASSIGN) {
+    expr = sema_mul_assign(expr);
+  } else if (expr->nd_type == ND_DIV_ASSIGN) {
+    expr = sema_div_assign(expr);
+  } else if (expr->nd_type == ND_MOD_ASSIGN) {
+    expr = sema_mod_assign(expr);
+  } else if (expr->nd_type == ND_ADD_ASSIGN) {
+    expr = sema_add_assign(expr);
+  } else if (expr->nd_type == ND_SUB_ASSIGN) {
+    expr = sema_sub_assign(expr);
+  } else if (expr->nd_type == ND_COMMA) {
+    expr = sema_comma(expr);
+  } else {
+    error(expr->token, "invalid node type.");
+  }
+
+  // convert array to pointer
+  if (expr->type->ty_type == TY_ARRAY) {
+    Type *pointer = type_pointer(expr->type->array_of);
+    pointer->original = expr->type;
+    expr->type = pointer;
+  }
+
+  return expr;
 }
 
 // semantics of declaration
@@ -877,6 +975,7 @@ void sema_initializer(Initializer *init, Type *type) {
     }
   } else {
     init->expr = sema_expr(init->expr);
+    init->expr = insert_cast(type, init->expr, init->token);
   }
 }
 
@@ -896,7 +995,11 @@ void sema_stmt(Stmt *stmt);
 
 void sema_if(Stmt *stmt) {
   stmt->if_cond = sema_expr(stmt->if_cond);
-  check_scalar(stmt->if_cond->type);
+  if (check_scalar(stmt->if_cond->type)) {
+    promote_integer(&stmt->if_cond);
+  } else {
+    error(stmt->token, "control expression should have scalar type.");
+  }
 
   sema_stmt(stmt->then_body);
 
@@ -909,7 +1012,11 @@ void sema_while(Stmt *stmt) {
   begin_loop();
 
   stmt->while_cond = sema_expr(stmt->while_cond);
-  check_scalar(stmt->while_cond->type);
+  if (check_scalar(stmt->while_cond->type)) {
+    promote_integer(&stmt->while_cond);
+  } else {
+    error(stmt->token, "control expression should have scalar type.");
+  }
 
   sema_stmt(stmt->while_body);
 
@@ -920,7 +1027,11 @@ void sema_do(Stmt *stmt) {
   begin_loop();
 
   stmt->do_cond = sema_expr(stmt->do_cond);
-  check_scalar(stmt->do_cond->type);
+  if (check_scalar(stmt->do_cond->type)) {
+    promote_integer(&stmt->do_cond);
+  } else {
+    error(stmt->token, "control expression should have scalar type.");
+  }
 
   sema_stmt(stmt->do_body);
 
@@ -942,7 +1053,11 @@ void sema_for(Stmt *stmt) {
 
   if (stmt->for_cond) {
     stmt->for_cond = sema_expr(stmt->for_cond);
-    check_scalar(stmt->for_cond->type);
+    if (check_scalar(stmt->for_cond->type)) {
+      promote_integer(&stmt->for_cond);
+    } else {
+      error(stmt->token, "control expression should have scalar type.");
+    }
   }
 
   if (stmt->for_after) {
@@ -968,11 +1083,18 @@ void sema_break(Stmt *stmt) {
 }
 
 void sema_return(Stmt *stmt) {
-  if (stmt->ret) {
-    stmt->ret = sema_expr(stmt->ret);
+  Type *type = func_symbol->type->returning;
+  if (type->ty_type != TY_VOID) {
+    if (stmt->ret) {
+      stmt->ret = insert_cast(type, sema_expr(stmt->ret), stmt->token);
+    } else {
+      error(stmt->token, "'return' without expression in function returning non-void.");
+    }
+  } else {
+    if (stmt->ret) {
+      error(stmt->token, "'return' with an expression in function returning void.");
+    }
   }
-
-  // TODO: return type check and casting
 }
 
 void sema_stmt(Stmt *stmt) {
@@ -1025,6 +1147,7 @@ void sema_func(Func *func) {
     error(func->symbol->token, "duplicated function definition: %s.", func->symbol->identifier);
   }
 
+  func_symbol = func->symbol;
   stack_size = func->symbol->type->ellipsis ? 176 : 0;
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
