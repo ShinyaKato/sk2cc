@@ -44,6 +44,7 @@ char *tk_names[] = {
   "char",
   "short",
   "int",
+  "long",
   "signed",
   "unsigned",
   "_Bool",

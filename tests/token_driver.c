@@ -50,6 +50,7 @@ int main(void) {
   test_token(TK_CHAR, "char");
   test_token(TK_SHORT, "short");
   test_token(TK_INT, "int");
+  test_token(TK_LONG, "long");
   test_token(TK_SIGNED, "signed");
   test_token(TK_UNSIGNED, "unsigned");
   test_token(TK_BOOL, "_Bool");

@@ -186,6 +186,8 @@ Token *next_token() {
       return create_token(TK_SHORT);
     if (strcmp(string->buffer, "int") == 0)
       return create_token(TK_INT);
+    if (strcmp(string->buffer, "long") == 0)
+      return create_token(TK_LONG);
     if (strcmp(string->buffer, "signed") == 0)
       return create_token(TK_SIGNED);
     if (strcmp(string->buffer, "unsigned") == 0)

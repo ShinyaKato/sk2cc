@@ -38,6 +38,14 @@ Type *type_uint() {
   return type_new(TY_UINT, 4, 4, true);
 }
 
+Type *type_long() {
+  return type_new(TY_LONG, 8, 8, true);
+}
+
+Type *type_ulong() {
+  return type_new(TY_ULONG, 8, 8, true);
+}
+
 Type *type_bool() {
   return type_new(TY_BOOL, 1, 1, true);
 }
@@ -154,6 +162,8 @@ bool check_integer(Type *type) {
   if (type->ty_type == TY_USHORT) return true;
   if (type->ty_type == TY_INT) return true;
   if (type->ty_type == TY_UINT) return true;
+  if (type->ty_type == TY_LONG) return true;
+  if (type->ty_type == TY_ULONG) return true;
   if (type->ty_type == TY_BOOL) return true;
   return false;
 }

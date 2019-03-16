@@ -81,11 +81,20 @@ expect_stdout() {
 test_error() {
   prog=$1
   echo "$prog" > tmp/cc_test.c
-  if $target tmp/cc_test.c > /dev/null 2> /dev/null; then
+  $target tmp/cc_test.c > /dev/null 2> /dev/null
+  ret=$?
+  if [ $ret -eq 0 ]; then
     echo "[failed]"
     echo "compilation is unexpectedly succeeded."
     echo "[input]"
-    head  tmp/cc_test.c
+    head -n 10 tmp/cc_test.c
+    exit 1
+  fi
+  if [ $ret -ne 1 ]; then
+    echo "[failed]"
+    echo "compilation is failed."
+    echo "[input]"
+    head -n 10 tmp/cc_test.c
     exit 1
   fi
   return 0
@@ -874,6 +883,22 @@ intf("%\\
 d\n", 4\\
 2); ret\\
 urn 0; }
+EOS
+
+expect_stdout "40000000000\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  long x = (long) 200000 * 200000;
+  printf("%ld\n", x);
+}
+EOS
+
+expect_stdout "40000000000\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  unsigned long x = (unsigned long) 200000 * 200000;
+  printf("%lu\n", x);
+}
 EOS
 
 # testing error case

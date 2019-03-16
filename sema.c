@@ -112,8 +112,14 @@ Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
   promote_integer(lhs);
   promote_integer(rhs);
 
-  // types of lhs and rhs are expected to be int.
-  return type_int();
+  Type *ltype = (*lhs)->type;
+  Type *rtype = (*rhs)->type;
+
+  Type *type = ltype->ty_type > rtype->ty_type ? ltype : rtype;
+  (*lhs) = insert_cast(type, *lhs, (*lhs)->token);
+  (*rhs) = insert_cast(type, *rhs, (*rhs)->token);
+
+  return type;
 }
 
 Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
@@ -764,6 +770,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   int sp_char = 0;
   int sp_short = 0;
   int sp_int = 0;
+  int sp_long = 0;
   int sp_signed = 0;
   int sp_unsigned = 0;
   int sp_bool = 0;
@@ -792,6 +799,9 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     } else if (spec->sp_type == SP_INT) {
       sp_type++;
       sp_int++;
+    } else if (spec->sp_type == SP_LONG) {
+      sp_type++;
+      sp_long++;
     } else if (spec->sp_type == SP_SIGNED) {
       sp_type++;
       sp_signed++;
@@ -850,6 +860,18 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     type = type_uint();
   } else if (sp_type == 2 && sp_unsigned == 1 && sp_int == 1) {
     type = type_uint();
+  } else if (sp_type == 1 && sp_long == 1) {
+    type = type_long();
+  } else if (sp_type == 2 && sp_signed == 1 && sp_long == 1) {
+    type = type_long();
+  } else if (sp_type == 2 && sp_long == 1 && sp_int == 1) {
+    type = type_long();
+  } else if (sp_type == 3 && sp_signed == 1 && sp_long == 1 && sp_int == 1) {
+    type = type_long();
+  } else if (sp_type == 2 && sp_unsigned == 1 && sp_long == 1) {
+    type = type_ulong();
+  } else if (sp_type == 3 && sp_unsigned == 1 && sp_long == 1 && sp_int == 1) {
+    type = type_ulong();
   } else if (sp_type == 1 && sp_bool == 1) {
     type = type_bool();
   } else if (sp_type == 1 && sp_struct->length == 1) {

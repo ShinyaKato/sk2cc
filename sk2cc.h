@@ -125,6 +125,7 @@ typedef enum token_type {
   TK_CHAR,
   TK_SHORT,
   TK_INT,
+  TK_LONG,
   TK_SIGNED,
   TK_UNSIGNED,
   TK_BOOL,
@@ -378,6 +379,7 @@ typedef enum specifier_type {
   SP_CHAR,
   SP_SHORT,
   SP_INT,
+  SP_LONG,
   SP_SIGNED,
   SP_UNSIGNED,
   SP_BOOL,
@@ -462,6 +464,8 @@ typedef enum type_type {
   TY_USHORT,
   TY_INT,
   TY_UINT,
+  TY_LONG,
+  TY_ULONG,
   TY_POINTER,
   TY_ARRAY,
   TY_FUNCTION,
@@ -603,6 +607,8 @@ extern Type *type_short();
 extern Type *type_ushort();
 extern Type *type_int();
 extern Type *type_uint();
+extern Type *type_long();
+extern Type *type_ulong();
 extern Type *type_bool();
 extern Type *type_pointer(Type *pointer_to);
 extern Type *type_array_incomplete(Type *array_of);
