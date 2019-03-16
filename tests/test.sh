@@ -18,6 +18,10 @@ gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch vector.c tests/vector_drive
 gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch map.c tests/map_driver.c -o tmp/map_test
 ./tmp/map_test || failed "assertion of map.c was failed."
 
+# unit test for token.
+gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch token.c tests/token_driver.c -o tmp/token_test
+./tmp/token_test || failed "assertion of token.c was failed."
+
 # failed to compile
 error() {
   echo "[failed]"

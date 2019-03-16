@@ -161,13 +161,12 @@ Vector *include_directive() {
 Vector *text_line() {
   Vector *text_tokens = vector_new();
 
-  while (1) {
+  while (!check_token(TK_EOF)) {
     Token *token = get_token();
     vector_push(text_tokens, token);
 
-    if (token->tk_type == TK_NEWLINE) {
-      if (check_token('#')) break;
-      if (check_token(TK_EOF)) break;
+    if (token->tk_type == TK_NEWLINE && check_token('#')) {
+      break;
     }
   }
 

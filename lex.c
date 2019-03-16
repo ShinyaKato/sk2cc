@@ -1,42 +1,5 @@
 #include "sk2cc.h"
 
-char *tk_chars[] = {
-  "[", "]", "(", ")", "{", "}", ".", "&",
-  "*", "+", "-", "~", "!", "/", "%", "<",
-  ">", "^", "|", "?", ":", ";", "=", ",",
-  "#"
-};
-
-char *tk_names[] = {
-  // newline, white space
-  "newline", "white space",
-
-  // keywords for expressions
-  "sizeof", "_Alignof",
-
-  // keywords for declarations
-  "void", "char", "short", "int",
-  "unsigned", "_Bool", "struct", "enum",
-  "typedef", "extern", "_Noreturn",
-
-  // keywords for statements
-  "if", "else", "while", "do",
-  "for", "continue", "break", "return",
-
-  // identifiers, constants, string literals
-  "identifier", "integer constant", "string literal",
-
-  // punctuators
-  "->", "++", "--", "<<",
-  ">>", "<=", ">=", "==",
-  "!=", "&&", "||", "*=",
-  "/=", "%=", "+=", "-=",
-  "...",
-
-  // EOF
-  "end of file"
-};
-
 char *src;
 int pos;
 
@@ -44,37 +7,51 @@ char *line_ptr;
 int lineno;
 int column;
 
-String *token_text;
-char *token_filename;
-char *token_line_ptr;
-int token_lineno;
-int token_column;
+String *lex_text;
+char *lex_filename;
+char *lex_line_ptr;
+int lex_lineno;
+int lex_column;
 
-char *token_name(TokenType tk_type) {
-  for (int i = 0; i < sizeof(tk_chars) / sizeof(char*); i++) {
-    if (tk_type == tk_chars[i][0]) {
-      return tk_chars[i];
+String *read_file(char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    perror(filename);
+    exit(1);
+  }
+
+  String *file = string_new();
+  char buffer[4096];
+  while (1) {
+    int n = fread(buffer, 1, sizeof(buffer), fp);
+    if (n == 0) break;
+    for (int i = 0; i < n; i++) {
+      string_push(file, buffer[i]);
     }
   }
 
-  if (128 <= tk_type && tk_type && 128 + sizeof(tk_names) / sizeof(char*)) {
-    return tk_names[tk_type - 128];
-  }
+  fclose(fp);
 
-  // assertion
-  fprintf(stderr, "unknown token type: %d\n", tk_type);
-  exit(1);
+  return file;
 }
 
-Token *token_new(TokenType tk_type) {
-  Token *token = calloc(1, sizeof(Token));
-  token->tk_type = tk_type;
-  token->text = token_text->buffer;
-  token->filename = token_filename;
-  token->line_ptr = token_line_ptr;
-  token->lineno = token_lineno;
-  token->column = token_column;
-  return token;
+// replace '\r\n' with '\n'
+String *replace_newline(String *file) {
+  String *src = string_new();
+  for (int i = 0; i < file->length; i++) {
+    char c = file->buffer[i];
+    if (c == '\r' && i + 1 < file->length && file->buffer[i + 1] == '\n') {
+      c = '\n';
+      i++;
+    }
+    string_push(src, c);
+  }
+
+  return src;
+}
+
+Token *create_token(TokenType tk_type) {
+  return token_new(tk_type, lex_text->buffer, lex_filename, lex_line_ptr, lex_lineno, lex_column);
 }
 
 void next_line() {
@@ -101,7 +78,7 @@ char get_char() {
 
   // read the character and add it to the token text
   char c = src[pos++];
-  string_push(token_text, c);
+  string_push(lex_text, c);
 
   column++;
   if (c == '\n') next_line();
@@ -111,7 +88,7 @@ char get_char() {
 
 char expect_char(char c) {
   if (peek_char() != c) {
-    error(token_new(-1), "%c is expected.", c);
+    error(create_token(-1), "%c is expected.", c);
   }
   return get_char();
 }
@@ -138,21 +115,21 @@ char get_escape_sequence() {
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
 
-  error(token_new(-1), "invalid escape sequence.");
+  error(create_token(-1), "invalid escape sequence.");
 }
 
 Token *next_token() {
   skip_backslash_newline();
 
   // store the start position of the next token.
-  token_text = string_new();
-  token_line_ptr = line_ptr;
-  token_lineno = lineno;
-  token_column = column;
+  lex_text = string_new();
+  lex_line_ptr = line_ptr;
+  lex_lineno = lineno;
+  lex_column = column;
 
   // check EOF
   if (peek_char() == '\0') {
-    return token_new(TK_EOF);
+    return create_token(TK_EOF);
   }
 
   // get first character
@@ -160,13 +137,13 @@ Token *next_token() {
 
   // nwe line and white space
   if (c == '\n') {
-    return token_new(TK_NEWLINE);
+    return create_token(TK_NEWLINE);
   }
   if (isspace(c)) {
     while (isspace(peek_char()) && peek_char() != '\n') {
       get_char();
     }
-    return token_new(TK_SPACE);
+    return create_token(TK_SPACE);
   }
 
   // comment
@@ -174,14 +151,14 @@ Token *next_token() {
     while (peek_char() != '\n') {
       get_char();
     }
-    return token_new(TK_SPACE);
+    return create_token(TK_SPACE);
   }
   if (c == '/' && read_char('*')) { // block comment
     while (1) {
       char c = get_char();
       if (c == '*' && read_char('/')) break;
     }
-    return token_new(TK_SPACE);
+    return create_token(TK_SPACE);
   }
 
   // keyword or identifier
@@ -194,51 +171,51 @@ Token *next_token() {
 
     // check keywords
     if (strcmp(string->buffer, "sizeof") == 0)
-      return token_new(TK_SIZEOF);
+      return create_token(TK_SIZEOF);
     if (strcmp(string->buffer, "_Alignof") == 0)
-      return token_new(TK_ALIGNOF);
-    if (strcmp(string->buffer, "void") == 0)
-      return token_new(TK_VOID);
-    if (strcmp(string->buffer, "char") == 0)
-      return token_new(TK_CHAR);
-    if (strcmp(string->buffer, "short") == 0)
-      return token_new(TK_SHORT);
-    if (strcmp(string->buffer, "int") == 0)
-      return token_new(TK_INT);
-    if (strcmp(string->buffer, "signed") == 0)
-      return token_new(TK_SIGNED);
-    if (strcmp(string->buffer, "unsigned") == 0)
-      return token_new(TK_UNSIGNED);
-    if (strcmp(string->buffer, "_Bool") == 0)
-      return token_new(TK_BOOL);
-    if (strcmp(string->buffer, "struct") == 0)
-      return token_new(TK_STRUCT);
-    if (strcmp(string->buffer, "enum") == 0)
-      return token_new(TK_ENUM);
+      return create_token(TK_ALIGNOF);
     if (strcmp(string->buffer, "typedef") == 0)
-      return token_new(TK_TYPEDEF);
+      return create_token(TK_TYPEDEF);
     if (strcmp(string->buffer, "extern") == 0)
-      return token_new(TK_EXTERN);
+      return create_token(TK_EXTERN);
+    if (strcmp(string->buffer, "void") == 0)
+      return create_token(TK_VOID);
+    if (strcmp(string->buffer, "char") == 0)
+      return create_token(TK_CHAR);
+    if (strcmp(string->buffer, "short") == 0)
+      return create_token(TK_SHORT);
+    if (strcmp(string->buffer, "int") == 0)
+      return create_token(TK_INT);
+    if (strcmp(string->buffer, "signed") == 0)
+      return create_token(TK_SIGNED);
+    if (strcmp(string->buffer, "unsigned") == 0)
+      return create_token(TK_UNSIGNED);
+    if (strcmp(string->buffer, "_Bool") == 0)
+      return create_token(TK_BOOL);
+    if (strcmp(string->buffer, "struct") == 0)
+      return create_token(TK_STRUCT);
+    if (strcmp(string->buffer, "enum") == 0)
+      return create_token(TK_ENUM);
     if (strcmp(string->buffer, "_Noreturn") == 0)
-      return token_new(TK_NORETURN);
+      return create_token(TK_NORETURN);
     if (strcmp(string->buffer, "if") == 0)
-      return token_new(TK_IF);
+      return create_token(TK_IF);
     if (strcmp(string->buffer, "else") == 0)
-      return token_new(TK_ELSE);
+      return create_token(TK_ELSE);
     if (strcmp(string->buffer, "while") == 0)
-      return token_new(TK_WHILE);
+      return create_token(TK_WHILE);
     if (strcmp(string->buffer, "do") == 0)
-      return token_new(TK_DO);
+      return create_token(TK_DO);
     if (strcmp(string->buffer, "for") == 0)
-      return token_new(TK_FOR);
+      return create_token(TK_FOR);
     if (strcmp(string->buffer, "continue") == 0)
-      return token_new(TK_CONTINUE);
+      return create_token(TK_CONTINUE);
     if (strcmp(string->buffer, "break") == 0)
-      return token_new(TK_BREAK);
+      return create_token(TK_BREAK);
     if (strcmp(string->buffer, "return") == 0)
-      return token_new(TK_RETURN);
+      return create_token(TK_RETURN);
 
-    Token *token = token_new(TK_IDENTIFIER);
+    Token *token = create_token(TK_IDENTIFIER);
     token->identifier = string->buffer;
     return token;
   }
@@ -250,7 +227,7 @@ Token *next_token() {
       int_value = int_value * 10 + (get_char() - '0');
     }
 
-    Token *token = token_new(TK_INTEGER_CONST);
+    Token *token = create_token(TK_INTEGER_CONST);
     token->int_value = int_value;
     return token;
   }
@@ -263,7 +240,7 @@ Token *next_token() {
     }
     expect_char('\'');
 
-    Token *token = token_new(TK_INTEGER_CONST);
+    Token *token = create_token(TK_INTEGER_CONST);
     token->int_value = c;
     return token;
   }
@@ -281,84 +258,54 @@ Token *next_token() {
     expect_char('"');
     string_push(string_literal, '\0');
 
-    Token *token = token_new(TK_STRING_LITERAL);
+    Token *token = create_token(TK_STRING_LITERAL);
     token->string_literal = string_literal;
     return token;
   }
 
   // punctuators
-  if (c == '-' && read_char('>')) return token_new(TK_ARROW);      // ->
-  if (c == '+' && read_char('+')) return token_new(TK_INC);        // ++
-  if (c == '-' && read_char('-')) return token_new(TK_DEC);        // --
-  if (c == '<' && read_char('<')) return token_new(TK_LSHIFT);     // <<
-  if (c == '>' && read_char('>')) return token_new(TK_RSHIFT);     // >>
-  if (c == '<' && read_char('=')) return token_new(TK_LTE);        // <=
-  if (c == '>' && read_char('=')) return token_new(TK_GTE);        // >=
-  if (c == '=' && read_char('=')) return token_new(TK_EQ);         // ==
-  if (c == '!' && read_char('=')) return token_new(TK_NEQ);        // !=
-  if (c == '&' && read_char('&')) return token_new(TK_AND);        // &&
-  if (c == '|' && read_char('|')) return token_new(TK_OR);         // ||
-  if (c == '*' && read_char('=')) return token_new(TK_MUL_ASSIGN); // *=
-  if (c == '/' && read_char('=')) return token_new(TK_DIV_ASSIGN); // /=
-  if (c == '%' && read_char('=')) return token_new(TK_MOD_ASSIGN); // %=
-  if (c == '+' && read_char('=')) return token_new(TK_ADD_ASSIGN); // +=
-  if (c == '-' && read_char('=')) return token_new(TK_SUB_ASSIGN); // -=
+  if (c == '-' && read_char('>')) return create_token(TK_ARROW);      // ->
+  if (c == '+' && read_char('+')) return create_token(TK_INC);        // ++
+  if (c == '-' && read_char('-')) return create_token(TK_DEC);        // --
+  if (c == '<' && read_char('<')) return create_token(TK_LSHIFT);     // <<
+  if (c == '>' && read_char('>')) return create_token(TK_RSHIFT);     // >>
+  if (c == '<' && read_char('=')) return create_token(TK_LTE);        // <=
+  if (c == '>' && read_char('=')) return create_token(TK_GTE);        // >=
+  if (c == '=' && read_char('=')) return create_token(TK_EQ);         // ==
+  if (c == '!' && read_char('=')) return create_token(TK_NEQ);        // !=
+  if (c == '&' && read_char('&')) return create_token(TK_AND);        // &&
+  if (c == '|' && read_char('|')) return create_token(TK_OR);         // ||
+  if (c == '*' && read_char('=')) return create_token(TK_MUL_ASSIGN); // *=
+  if (c == '/' && read_char('=')) return create_token(TK_DIV_ASSIGN); // /=
+  if (c == '%' && read_char('=')) return create_token(TK_MOD_ASSIGN); // %=
+  if (c == '+' && read_char('=')) return create_token(TK_ADD_ASSIGN); // +=
+  if (c == '-' && read_char('=')) return create_token(TK_SUB_ASSIGN); // -=
 
   if (c == '.' && read_char('.')) { // ...
     expect_char('.');
-    return token_new(TK_ELLIPSIS);
+    return create_token(TK_ELLIPSIS);
   }
 
-  for (int i = 0; i < sizeof(tk_chars) / sizeof(char*); i++) {
-    if (c == tk_chars[i][0]) {
-      return token_new(c);
-    }
+  if (check_char_token(c)) {
+    return create_token(c);
   }
 
-  error(token_new(-1), "failed to tokenize.");
+  error(create_token(-1), "failed to tokenize.");
 }
 
 Vector *tokenize(char *filename) {
   // read the input file
-  FILE *fp = fopen(filename, "r");
-  if (!fp) {
-    perror(filename);
-    exit(1);
-  }
-
-  String *file = string_new();
-  char buffer[4096];
-  while (1) {
-    int n = fread(buffer, 1, sizeof(buffer), fp);
-    if (n == 0) break;
-    for (int i = 0; i < n; i++) {
-      string_push(file, buffer[i]);
-    }
-  }
-  string_push(file, '\0');
-
-  fclose(fp);
-
-  // replace '\r\n' with '\n'
-  for (int i = 0, j = 0; i < file->length; i++, j++) {
-    char c = file->buffer[i];
-    if (c == '\r' && i + 1 < file->length && file->buffer[i + 1] == '\n') {
-      c = '\n';
-      i++;
-    } else {
-    }
-    file->buffer[j] = c;
-  }
+  String *file = read_file(filename);
 
   // initialization
-  src = file->buffer;
+  src = replace_newline(file)->buffer;
   pos = 0;
 
   line_ptr = src;
   lineno = 1;
   column = 1;
 
-  token_filename = filename;
+  lex_filename = filename;
 
   // tokenize
   Vector *pp_tokens = vector_new();

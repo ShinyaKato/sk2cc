@@ -119,6 +119,8 @@ typedef enum token_type {
   TK_ALIGNOF,
 
   // keywords for declarations
+  TK_TYPEDEF,
+  TK_EXTERN,
   TK_VOID,
   TK_CHAR,
   TK_SHORT,
@@ -128,8 +130,6 @@ typedef enum token_type {
   TK_BOOL,
   TK_STRUCT,
   TK_ENUM,
-  TK_TYPEDEF,
-  TK_EXTERN,
   TK_NORETURN,
 
   // keywords for statements
@@ -175,6 +175,8 @@ typedef enum token_type {
 // This information is used for error report.
 struct token {
   TokenType tk_type;
+  char *tk_name;
+
   char *identifier;
   int int_value;
   String *string_literal;
@@ -536,8 +538,12 @@ struct symbol {
 // error.c
 extern noreturn void error(Token *token, char *format, ...);
 
-// lex.c
+// token.c
+extern bool check_char_token(char c);
 extern char *token_name(TokenType tk_type);
+extern Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column);
+
+// lex.c
 extern Vector *tokenize(char *input_filename);
 
 // scan.c
