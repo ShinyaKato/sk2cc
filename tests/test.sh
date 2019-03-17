@@ -901,6 +901,13 @@ int main() {
 }
 EOS
 
+expect_stdout "18446744073709551615\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  printf("%llu\n", 18446744073709551615ull);
+}
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"

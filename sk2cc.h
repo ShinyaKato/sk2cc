@@ -176,8 +176,16 @@ struct token {
   TokenType tk_type;
   char *tk_name;
 
+  // identifier
   char *identifier;
-  int int_value;
+
+  // integer-constant
+  unsigned long long int_value;
+  bool int_u;
+  bool int_l;
+  bool int_ll;
+
+  // string-literal
   String *string_literal;
 
   // for token stringification
@@ -288,7 +296,10 @@ struct expr {
   Symbol *symbol;
 
   // integer constant
-  int int_value;
+  unsigned long long int_value;
+  bool int_u;
+  bool int_l;
+  bool int_ll;
 
   // string literal
   String *string_literal;
@@ -569,7 +580,7 @@ extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
 
 // node.c
 extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
-extern Expr *expr_integer(int int_value, Token *token);
+extern Expr *expr_integer(unsigned long long int_value, bool int_u, bool int_l, bool int_ll, Token *token);
 extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);
 extern Expr *expr_string(String *string_literal, int string_label, Token *token);
 extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);

@@ -224,13 +224,39 @@ Token *next_token() {
 
   // integer constant
   if (isdigit(c)) {
-    int int_value = c - '0';
+    unsigned long long int_value = c - '0';
     while (isdigit(peek_char())) {
       int_value = int_value * 10 + (get_char() - '0');
     }
 
+    bool int_u = false;
+    bool int_l = false;
+    bool int_ll = false;
+    if (read_char('u') || read_char('U')) {
+      int_u = true;
+      if (read_char('l') || read_char('L')) {
+        if (read_char('l') || read_char('L')) {
+          int_ll = true;
+        } else {
+          int_l = true;
+        }
+      }
+    } else if (read_char('l') || read_char('L')) {
+      if (read_char('l') || read_char('L')) {
+        int_ll = true;
+      } else {
+        int_l = true;
+      }
+      if (read_char('u') || read_char('U')) {
+        int_u = true;
+      }
+    }
+
     Token *token = create_token(TK_INTEGER_CONST);
     token->int_value = int_value;
+    token->int_u = int_u;
+    token->int_l = int_l;
+    token->int_ll = int_ll;
     return token;
   }
 

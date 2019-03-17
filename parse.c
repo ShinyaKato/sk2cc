@@ -97,14 +97,17 @@ Expr *primary_expression() {
       return expr_identifier(token->identifier, symbol, token);
     }
   }
+
   if (read_token(TK_INTEGER_CONST)) {
-    return expr_integer(token->int_value, token);
+    return expr_integer(token->int_value, token->int_u, token->int_l, token->int_ll, token);
   }
+
   if (read_token(TK_STRING_LITERAL)) {
     int string_label = literals->length;
     vector_push(literals, token->string_literal);
     return expr_string(token->string_literal, string_label, token);
   }
+
   if (read_token('(')) {
     Expr *expr = expression();
     expect_token(')');
