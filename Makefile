@@ -44,7 +44,7 @@ $(SELF2): $(ASMS_SELF2)
 TEST_SCRIPT = ./tests/test.sh
 
 .PHONY: test_check
-test_check:
+test_check: $(DIR)
 	$(TEST_SCRIPT) "gcc -std=c11 --pedantic-errors -S -o -"
 
 .PHONY: test
