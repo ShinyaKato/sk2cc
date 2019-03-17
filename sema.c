@@ -183,43 +183,71 @@ Expr *sema_identifier(Expr *expr) {
 }
 
 Expr *sema_integer(Expr *expr) {
-  if (!expr->int_u) {
-    if (!expr->int_l && !expr->int_ll) {
-      if (expr->int_value <= 2147483647u) {
-        expr->type = type_int();
-        return expr;
-      } else if (expr->int_value <= 9223372036854775807u) {
-        expr->type = type_long();
-        return expr;
+  if (!expr->int_decimal) {
+    if (!expr->int_u) {
+      if (!expr->int_l && !expr->int_ll) {
+        if (expr->int_value <= 0x7fffffff) {
+          expr->type = type_int();
+        } else if (expr->int_value <= 0xffffffff) {
+          expr->type = type_uint();
+        } else if (expr->int_value <= 0x7fffffffffffffff) {
+          expr->type = type_long();
+        } else {
+          expr->type = type_ulong();
+        }
+      } else {
+        if (expr->int_value <= 0x7fffffffffffffff) {
+          expr->type = type_long();
+        } else {
+          expr->type = type_ulong();
+        }
       }
     } else {
-      if (expr->int_value <= 9223372036854775807u) {
-        expr->type = type_long();
-        return expr;
+      if (!expr->int_l && !expr->int_ll) {
+        if (expr->int_value <= 0xffffffff) {
+          expr->type = type_uint();
+        } else {
+          expr->type = type_ulong();
+        }
+      } else {
+        expr->type = type_ulong();
       }
     }
   } else {
-    if (!expr->int_l && !expr->int_ll) {
-      if (expr->int_value <= 4294967295u) {
-        expr->type = type_uint();
-        return expr;
-      } else if (expr->int_value <= 18446744073709551615u) {
-        expr->type = type_ulong();
-        return expr;
+    if (!expr->int_u) {
+      if (!expr->int_l && !expr->int_ll) {
+        if (expr->int_value <= 0x7fffffff) {
+          expr->type = type_int();
+        } else if (expr->int_value <= 0x7fffffffffffffff) {
+          expr->type = type_long();
+        } else {
+          error(expr->token, "can not represents integer-constant.");
+        }
+      } else {
+        if (expr->int_value <= 0x7fffffffffffffff) {
+          expr->type = type_long();
+        } else {
+          error(expr->token, "can not represents integer-constant.");
+        }
       }
     } else {
-      if (expr->int_value <= 18446744073709551615u) {
+      if (!expr->int_l && !expr->int_ll) {
+        if (expr->int_value <= 0xffffffff) {
+          expr->type = type_uint();
+        } else {
+          expr->type = type_ulong();
+        }
+      } else {
         expr->type = type_ulong();
-        return expr;
       }
     }
   }
 
-  error(expr->token, "can not represents integer-constant.");
+  return expr;
 }
 
 Expr *sema_enum_const(Expr *expr) {
-  return sema_expr(expr_integer(expr->symbol->const_value, false, false, false, expr->token));
+  return sema_expr(expr_integer(expr->symbol->const_value, false, false, false, false, expr->token));
 }
 
 Expr *sema_string(Expr *expr) {
@@ -321,22 +349,22 @@ Expr *sema_arrow(Expr *expr) {
 }
 
 Expr *sema_post_inc(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_post(ND_ADD, expr->expr, int_const, expr->token);
 }
 
 Expr *sema_post_dec(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_post(ND_SUB, expr->expr, int_const, expr->token);
 }
 
 Expr *sema_pre_inc(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_pre(ND_ADD, expr->expr, int_const, expr->token);
 }
 
 Expr *sema_pre_dec(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_pre(ND_SUB, expr->expr, int_const, expr->token);
 }
 
@@ -418,17 +446,17 @@ Expr *sema_lnot(Expr *expr) {
 Expr *sema_sizeof(Expr *expr) {
   if (expr->expr) {
     Type *type = sema_expr(expr->expr)->type;
-    return sema_expr(expr_integer(type->original->size, false, false, false, expr->token));
+    return sema_expr(expr_integer(type->original->size, false, false, false, false, expr->token));
   }
 
   Type *type = sema_type_name(expr->type_name);
-  return sema_expr(expr_integer(type->original->size, false, false, false, expr->token));
+  return sema_expr(expr_integer(type->original->size, false, false, false, false, expr->token));
 }
 
 // convert alignof to integer-constant
 Expr *sema_alignof(Expr *expr) {
   Type *type = sema_type_name(expr->type_name);
-  return sema_expr(expr_integer(type->align, false, false, false, expr->token));
+  return sema_expr(expr_integer(type->align, false, false, false, false, expr->token));
 }
 
 Expr *sema_cast(Expr *expr) {

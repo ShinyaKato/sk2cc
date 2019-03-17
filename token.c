@@ -137,34 +137,52 @@ Token *inspect_pp_number(Token *token) {
   int pos = 0;
 
   unsigned long long int_value = 0;
-  while (isdigit(pp_number[pos])) {
-    int_value = int_value * 10 + (pp_number[pos++] - '0');
+  bool int_decimal = false;
+  if (pp_number[pos] == '0') {
+    pos++;
+    if (tolower(pp_number[pos]) == 'x') {
+      pos++;
+      while (isxdigit(pp_number[pos])) {
+        char c = pp_number[pos++];
+        int d = isdigit(c) ? c - '0' : tolower(c) - 'a' + 10;
+        int_value = int_value * 16 + d;
+      }
+    } else {
+      while ('0' <= pp_number[pos] && pp_number[pos] < '8') {
+        int_value = int_value * 8 + (pp_number[pos++] - '0');
+      }
+    }
+  } else {
+    int_decimal = true;
+    while (isdigit(pp_number[pos])) {
+      int_value = int_value * 10 + (pp_number[pos++] - '0');
+    }
   }
 
   bool int_u = false;
   bool int_l = false;
   bool int_ll = false;
-  if (pp_number[pos] == 'u' || pp_number[pos] == 'U') {
+  if (tolower(pp_number[pos]) == 'u') {
     int_u = true;
     pos++;
-    if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+    if (tolower(pp_number[pos] == 'l')) {
       pos++;
-      if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+      if (tolower(pp_number[pos] == 'l')) {
         int_ll = true;
         pos++;
       } else {
         int_l = true;
       }
     }
-  } else if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+  } else if (tolower(pp_number[pos]) == 'l') {
     pos++;
-    if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+    if (tolower(pp_number[pos]) == 'l') {
       int_ll = true;
       pos++;
     } else {
       int_l = true;
     }
-    if (pp_number[pos] == 'u' || pp_number[pos] == 'U') {
+    if (tolower(pp_number[pos]) == 'u') {
       int_u = true;
       pos++;
     }
@@ -176,6 +194,7 @@ Token *inspect_pp_number(Token *token) {
 
   Token *new_token = token_new(TK_INTEGER_CONST, token->text, token->filename, token->line_ptr, token->column, token->lineno);
   new_token->int_value = int_value;
+  new_token->int_decimal = int_decimal;
   new_token->int_u = int_u;
   new_token->int_l = int_l;
   new_token->int_ll = int_ll;

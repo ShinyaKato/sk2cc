@@ -14,9 +14,10 @@ Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token) {
   return node;
 }
 
-Expr *expr_integer(unsigned long long int_value, bool int_u, bool int_l, bool int_ll, Token *token) {
+Expr *expr_integer(unsigned long long int_value, bool int_decimal, bool int_u, bool int_l, bool int_ll, Token *token) {
   Expr *node = expr_new(ND_INTEGER, token);
   node->int_value = int_value;
+  node->int_decimal = int_decimal;
   node->int_u = int_u;
   node->int_l = int_l;
   node->int_ll = int_ll;

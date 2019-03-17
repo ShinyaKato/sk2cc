@@ -50,6 +50,8 @@ int isalpha(int c);
 int isalnum(int c);
 int isdigit(int c);
 int isspace(int c);
+int isxdigit(int c);
+int tolower(int c);
 
 // string.c
 typedef struct string {
@@ -188,6 +190,7 @@ struct token {
 
   // integer-constant
   unsigned long long int_value;
+  bool int_decimal;
   bool int_u;
   bool int_l;
   bool int_ll;
@@ -307,6 +310,7 @@ struct expr {
 
   // integer constant
   unsigned long long int_value;
+  bool int_decimal;
   bool int_u;
   bool int_l;
   bool int_ll;
@@ -591,7 +595,7 @@ extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
 
 // node.c
 extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
-extern Expr *expr_integer(unsigned long long int_value, bool int_u, bool int_l, bool int_ll, Token *token);
+extern Expr *expr_integer(unsigned long long int_value, bool int_decimal, bool int_u, bool int_l, bool int_ll, Token *token);
 extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);
 extern Expr *expr_string(String *string_literal, int string_label, Token *token);
 extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);

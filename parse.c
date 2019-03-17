@@ -99,11 +99,11 @@ Expr *primary_expression() {
   }
 
   if (read_token(TK_INTEGER_CONST)) {
-    return expr_integer(token->int_value, token->int_u, token->int_l, token->int_ll, token);
+    return expr_integer(token->int_value, token->int_decimal, token->int_u, token->int_l, token->int_ll, token);
   }
 
   if (read_token(TK_CHAR_CONST)) {
-    return expr_integer(token->char_value, false, false, false, token);
+    return expr_integer(token->char_value, false, false, false, false, token);
   }
 
   if (read_token(TK_STRING_LITERAL)) {
