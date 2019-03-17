@@ -9,17 +9,17 @@ failed() {
 }
 
 # unit test for string, vector and map.
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch string.c tests/string_driver.c -o tmp/string_test
+gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
 ./tmp/string_test || failed "assertion of string.c was failed."
 
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch vector.c tests/vector_driver.c -o tmp/vector_test
+gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test
 ./tmp/vector_test || failed "assertion of vector.c was failed."
 
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch map.c tests/map_driver.c -o tmp/map_test
+gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
 ./tmp/map_test || failed "assertion of map.c was failed."
 
 # unit test for token.
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch token.c tests/token_driver.c -o tmp/token_test
+gcc -std=c11 -Wall token.c tests/token_driver.c -o tmp/token_test
 ./tmp/token_test || failed "assertion of token.c was failed."
 
 # failed to compile
@@ -100,9 +100,9 @@ test_error() {
   return 0
 }
 
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -c tests/func_call_stub.c -o tmp/func_call_stub.o
+gcc -std=c11 -Wall -c tests/func_call_stub.c -o tmp/func_call_stub.o
 
-gcc -std=c11 -Wall -Wno-builtin-declaration-mismatch -P -E tests/test.c > tmp/test.c
+gcc -std=c11 -Wall -P -E tests/test.c > tmp/test.c
 expect_return 0 < tmp/test.c
 
 expect_return 0 <<-EOS

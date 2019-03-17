@@ -1,6 +1,5 @@
 CC = gcc
-CFLAGS = -std=c11 --pedantic-errors -Wall -Wno-builtin-declaration-mismatch -g
-# TODO removing -Wno-builtin-declaration-mismatch
+CFLAGS = -std=c11 --pedantic-errors -Wall -g
 
 HEADERS = sk2cc.h
 SRCS = $(wildcard *.c)

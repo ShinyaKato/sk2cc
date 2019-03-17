@@ -872,6 +872,18 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     type = type_ulong();
   } else if (sp_type == 3 && sp_unsigned == 1 && sp_long == 1 && sp_int == 1) {
     type = type_ulong();
+  } else if (sp_type == 2 && sp_long == 2) {
+    type = type_long();
+  } else if (sp_type == 3 && sp_signed == 1 && sp_long == 2) {
+    type = type_long();
+  } else if (sp_type == 3 && sp_long == 2 && sp_int == 1) {
+    type = type_long();
+  } else if (sp_type == 4 && sp_signed == 1 && sp_long == 2 && sp_int == 1) {
+    type = type_long();
+  } else if (sp_type == 3 && sp_unsigned == 1 && sp_long == 2) {
+    type = type_ulong();
+  } else if (sp_type == 4 && sp_unsigned == 1 && sp_long == 2 && sp_int == 1) {
+    type = type_ulong();
   } else if (sp_type == 1 && sp_bool == 1) {
     type = type_bool();
   } else if (sp_type == 1 && sp_struct->length == 1) {

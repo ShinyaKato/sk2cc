@@ -1,9 +1,7 @@
-// We define size_t as int
-// because we do not support unsigned long long.
-typedef int size_t;
-
 // The preprocessor is not sufficiently supported
 // enough to read the header file of the system.
+
+typedef unsigned long long size_t;
 
 // stdbool.h
 #define bool _Bool
