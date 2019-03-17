@@ -41,6 +41,8 @@ int main(void) {
   test_token(TK_NEWLINE, "newline");
   test_token(TK_SPACE, "white space");
 
+  test_token(TK_PP_NUMBER, "preprocessing number");
+
   test_token(TK_SIZEOF, "sizeof");
   test_token(TK_ALIGNOF, "_Alignof");
 
@@ -69,6 +71,7 @@ int main(void) {
 
   test_token(TK_IDENTIFIER, "identifier");
   test_token(TK_INTEGER_CONST, "integer constant");
+  test_token(TK_CHAR_CONST, "character constant");
   test_token(TK_STRING_LITERAL, "string literal");
 
   test_token(TK_ARROW, "->");

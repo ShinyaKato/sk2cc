@@ -102,6 +102,10 @@ Expr *primary_expression() {
     return expr_integer(token->int_value, token->int_u, token->int_l, token->int_ll, token);
   }
 
+  if (read_token(TK_CHAR_CONST)) {
+    return expr_integer(token->char_value, false, false, false, token);
+  }
+
   if (read_token(TK_STRING_LITERAL)) {
     int string_label = literals->length;
     vector_push(literals, token->string_literal);
@@ -1161,16 +1165,31 @@ TransUnit *translation_unit() {
   return trans_unit_new(literals, decls);
 }
 
-// parse
+// parser
 
-TransUnit *parse(Vector *input_tokens) {
-  Vector *tokens = vector_new();
-  for (int i = 0; i < input_tokens->length; i++) {
-    Token *token = input_tokens->buffer[i];
+// remove newlines and white-spaces
+// inspect pp-numbers
+Vector *inspect_tokens(Vector *tokens) {
+  Vector *parse_tokens = vector_new();
+
+  for (int i = 0; i < tokens->length; i++) {
+    Token *token = tokens->buffer[i];
+
     if (token->tk_type == TK_SPACE) continue;
     if (token->tk_type == TK_NEWLINE) continue;
-    vector_push(tokens, token);
+
+    if (token->tk_type == TK_PP_NUMBER) {
+      vector_push(parse_tokens, inspect_pp_number(token));
+    } else {
+      vector_push(parse_tokens, token);
+    }
   }
+
+  return parse_tokens;
+}
+
+TransUnit *parse(Vector *tokens) {
+  tokens = inspect_tokens(tokens);
   scanner_init(tokens);
 
   literals = vector_new();

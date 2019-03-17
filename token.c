@@ -33,6 +33,9 @@ char *tk_names[] = {
   "newline",
   "white space",
 
+  // pp-number
+  "preprocessing number",
+
   // keywords for expressions
   "sizeof",
   "_Alignof",
@@ -65,6 +68,7 @@ char *tk_names[] = {
   // identifiers, constants, string literals
   "identifier",
   "integer constant",
+  "character constant",
   "string literal",
 
   // punctuators
@@ -126,4 +130,54 @@ Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, 
   token->lineno = lineno;
   token->column = column;
   return token;
+}
+
+Token *inspect_pp_number(Token *token) {
+  char *pp_number = token->pp_number;
+  int pos = 0;
+
+  unsigned long long int_value = 0;
+  while (isdigit(pp_number[pos])) {
+    int_value = int_value * 10 + (pp_number[pos++] - '0');
+  }
+
+  bool int_u = false;
+  bool int_l = false;
+  bool int_ll = false;
+  if (pp_number[pos] == 'u' || pp_number[pos] == 'U') {
+    int_u = true;
+    pos++;
+    if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+      pos++;
+      if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+        int_ll = true;
+        pos++;
+      } else {
+        int_l = true;
+      }
+    }
+  } else if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+    pos++;
+    if (pp_number[pos] == 'l' || pp_number[pos] == 'L') {
+      int_ll = true;
+      pos++;
+    } else {
+      int_l = true;
+    }
+    if (pp_number[pos] == 'u' || pp_number[pos] == 'U') {
+      int_u = true;
+      pos++;
+    }
+  }
+
+  if (pp_number[pos] != '\0') {
+    error(token, "invalid preprocessing number.");
+  }
+
+  Token *new_token = token_new(TK_INTEGER_CONST, token->text, token->filename, token->line_ptr, token->column, token->lineno);
+  new_token->int_value = int_value;
+  new_token->int_u = int_u;
+  new_token->int_l = int_l;
+  new_token->int_ll = int_ll;
+  return new_token;
 }

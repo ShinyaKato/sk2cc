@@ -135,7 +135,7 @@ Token *next_token() {
   // get first character
   char c = get_char();
 
-  // nwe line and white space
+  // nwe-line and white-space
   if (c == '\n') {
     return create_token(TK_NEWLINE);
   }
@@ -222,58 +222,33 @@ Token *next_token() {
     return token;
   }
 
-  // integer constant
+  // pp-number
   if (isdigit(c)) {
-    unsigned long long int_value = c - '0';
-    while (isdigit(peek_char())) {
-      int_value = int_value * 10 + (get_char() - '0');
+    String *pp_number = string_new();
+    string_push(pp_number, c);
+    while (isalnum(peek_char()) || peek_char() == '_') {
+      string_push(pp_number, get_char());
     }
 
-    bool int_u = false;
-    bool int_l = false;
-    bool int_ll = false;
-    if (read_char('u') || read_char('U')) {
-      int_u = true;
-      if (read_char('l') || read_char('L')) {
-        if (read_char('l') || read_char('L')) {
-          int_ll = true;
-        } else {
-          int_l = true;
-        }
-      }
-    } else if (read_char('l') || read_char('L')) {
-      if (read_char('l') || read_char('L')) {
-        int_ll = true;
-      } else {
-        int_l = true;
-      }
-      if (read_char('u') || read_char('U')) {
-        int_u = true;
-      }
-    }
-
-    Token *token = create_token(TK_INTEGER_CONST);
-    token->int_value = int_value;
-    token->int_u = int_u;
-    token->int_l = int_l;
-    token->int_ll = int_ll;
+    Token *token = create_token(TK_PP_NUMBER);
+    token->pp_number = pp_number->buffer;
     return token;
   }
 
-  // character constant
+  // character-constant
   if (c == '\'') {
-    char c = get_char();
-    if (c == '\\') {
-      c = get_escape_sequence();
+    char char_value = get_char();
+    if (char_value == '\\') {
+      char_value = get_escape_sequence();
     }
     expect_char('\'');
 
-    Token *token = create_token(TK_INTEGER_CONST);
-    token->int_value = c;
+    Token *token = create_token(TK_CHAR_CONST);
+    token->char_value = char_value;
     return token;
   }
 
-  // string literal
+  // string-literal
   if (c == '"') {
     String *string_literal = string_new();
     while (!(peek_char() == '"' || peek_char() == '\0')) {

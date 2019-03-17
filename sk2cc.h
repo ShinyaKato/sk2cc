@@ -112,6 +112,9 @@ typedef enum token_type {
   TK_NEWLINE = 128,
   TK_SPACE,
 
+  // pp-number (converted before syntax analysis)
+  TK_PP_NUMBER,
+
   // keywords for expressions
   TK_SIZEOF,
   TK_ALIGNOF,
@@ -144,6 +147,7 @@ typedef enum token_type {
   // identifiers, constants, string literals
   TK_IDENTIFIER,
   TK_INTEGER_CONST,
+  TK_CHAR_CONST,
   TK_STRING_LITERAL,
 
   // punctuators
@@ -176,6 +180,9 @@ struct token {
   TokenType tk_type;
   char *tk_name;
 
+  // pp-number
+  char *pp_number;
+
   // identifier
   char *identifier;
 
@@ -184,6 +191,9 @@ struct token {
   bool int_u;
   bool int_l;
   bool int_ll;
+
+  // character-constant
+  char char_value;
 
   // string-literal
   String *string_literal;
@@ -555,6 +565,7 @@ extern noreturn void error(Token *token, char *format, ...);
 extern bool check_char_token(char c);
 extern char *token_name(TokenType tk_type);
 extern Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column);
+extern Token *inspect_pp_number(Token *token);
 
 // lex.c
 extern Vector *tokenize(char *input_filename);
