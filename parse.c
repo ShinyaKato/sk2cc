@@ -604,7 +604,8 @@ Specifier *storage_class_specifier() {
   if (read_token(TK_EXTERN))
     return specifier_new(SP_EXTERN, token);
 
-  error(token, "invalid storage-class-specifier.");
+  // unreachable
+  internal_error("invalid storage-class-specifier.");
 }
 
 // type-specifier :
@@ -645,7 +646,8 @@ Specifier *type_specifier() {
   if (check_typedef_name())
     return typedef_name();
 
-  error(token, "invalid type-specifier.");
+  // unreachable
+  internal_error("invalid type-specifier.");
 }
 
 // struct-or-union-specifier :
@@ -760,7 +762,8 @@ Specifier *function_specifier() {
   if (read_token(TK_NORETURN))
     return specifier_new(SP_NORETURN, token);
 
-  error(token, "invalid function-specifier.");
+  // unreachable
+  internal_error("unknown function-specifier.");
 }
 
 // init-declarator :

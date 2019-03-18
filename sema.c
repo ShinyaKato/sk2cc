@@ -768,7 +768,8 @@ Expr *sema_expr(Expr *expr) {
   } else if (expr->nd_type == ND_COMMA) {
     expr = sema_comma(expr);
   } else {
-    error(expr->token, "invalid node type.");
+    // unreachable
+    internal_error("unknown expression type.");
   }
 
   // convert array to pointer

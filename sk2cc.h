@@ -564,6 +564,7 @@ struct symbol {
 
 // error.c
 extern noreturn void error(Token *token, char *format, ...);
+extern noreturn void internal_error(char *format, ...);
 
 // token.c
 extern bool check_char_token(char c);

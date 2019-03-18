@@ -629,6 +629,8 @@ void gen_expr(Expr *node) {
     gen_assign(node);
   } else if (node->nd_type == ND_COMMA) {
     gen_comma(node);
+  } else {
+    internal_error("unknown expression type.");
   }
 }
 

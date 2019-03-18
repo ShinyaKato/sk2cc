@@ -115,9 +115,8 @@ char *token_name(TokenType tk_type) {
     return tk_names[tk_type - 128];
   }
 
-  // assertion
-  fprintf(stderr, "unknown token type: %d\n", tk_type);
-  exit(1);
+  // unreachable
+  internal_error("unknown token type: %d\n", tk_type);
 }
 
 Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column) {
