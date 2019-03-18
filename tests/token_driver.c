@@ -65,6 +65,7 @@ int main(void) {
   test_token(TK_WHILE, "while");
   test_token(TK_DO, "do");
   test_token(TK_FOR, "for");
+  test_token(TK_GOTO, "goto");
   test_token(TK_CONTINUE, "continue");
   test_token(TK_BREAK, "break");
   test_token(TK_RETURN, "return");

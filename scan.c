@@ -34,6 +34,13 @@ bool check_token(TokenType tk_type) {
   return peek_token()->tk_type == tk_type;
 }
 
+bool check_next_token(TokenType tk_type) {
+  if (!has_next_token()) return false;
+
+  Token *token = cur_sc->tokens->buffer[cur_sc->pos + 1];
+  return token->tk_type == tk_type;
+}
+
 Token *read_token(TokenType tk_type) {
   if (check_token(tk_type)) {
     return get_token();

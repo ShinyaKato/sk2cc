@@ -61,6 +61,7 @@ char *tk_names[] = {
   "while",
   "do",
   "for",
+  "goto",
   "continue",
   "break",
   "return",

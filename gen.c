@@ -2,10 +2,10 @@
 
 char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
-Vector *continue_labels, *break_labels;
-
 int label_no;
 int return_label;
+Map *labels;
+Vector *continue_labels, *break_labels;
 
 int gp_offset;
 int stack_depth;
@@ -756,6 +756,11 @@ void gen_for(Stmt *node) {
   gen_label(label_break);
 }
 
+void gen_goto(Stmt *node) {
+  int *label = map_lookup(labels, node->goto_label);
+  gen_jump("jmp", *label);
+}
+
 void gen_continue(Stmt *node) {
   int *label = continue_labels->buffer[continue_labels->length - 1];
   gen_jump("jmp", *label);
@@ -774,7 +779,11 @@ void gen_return(Stmt *node) {
 }
 
 void gen_stmt(Stmt *node) {
-  if (node->nd_type == ND_COMP) {
+  if (node->nd_type == ND_LABEL) {
+    int *label = map_lookup(labels, node->label_name);
+    gen_label(*label);
+    gen_stmt(node->label_stmt);
+  } else if (node->nd_type == ND_COMP) {
     for (int i = 0; i < node->block_items->length; i++) {
       Node *item = node->block_items->buffer[i];
       if (item->nd_type == ND_DECL) {
@@ -795,12 +804,16 @@ void gen_stmt(Stmt *node) {
     gen_do(node);
   } else if (node->nd_type == ND_FOR) {
     gen_for(node);
+  } else if (node->nd_type == ND_GOTO) {
+    gen_goto(node);
   } else if (node->nd_type == ND_CONTINUE) {
     gen_continue(node);
   } else if (node->nd_type == ND_BREAK) {
     gen_break(node);
   } else if (node->nd_type == ND_RETURN) {
     gen_return(node);
+  } else {
+    internal_error("unknown statement type.");
   }
 }
 
@@ -852,6 +865,14 @@ void gen_func(Func *node) {
   gp_offset = type->params->length * 8;
   stack_depth = 8;
   return_label = label_no++;
+
+  labels = map_new();
+  for (int i = 0; i < node->label_names->length; i++) {
+    char *label_name = node->label_names->buffer[i];
+    int *label = calloc(1, sizeof(int));
+    *label = label_no++;
+    map_put(labels, label_name, label);
+  }
 
   printf("  .text\n");
   printf("  .global %s\n", symbol->identifier);

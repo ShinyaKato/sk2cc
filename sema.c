@@ -11,6 +11,9 @@ Vector *tag_scopes; // Vector<Map<Type*>*>
 Symbol *func_symbol;
 int stack_size;
 
+Vector *label_names;
+Vector *goto_stmts;
+
 int continue_level;
 int break_level;
 
@@ -1112,6 +1115,18 @@ void end_loop() {
 
 void sema_stmt(Stmt *stmt);
 
+void sema_label(Stmt *stmt) {
+  for (int i = 0; i < label_names->length; i++) {
+    char *label_name = label_names->buffer[i];
+    if (strcmp(stmt->label_name, label_name) == 0) {
+      error(stmt->token, "duplicated label declaration: %s.", stmt->label_name);
+    }
+  }
+  vector_push(label_names, stmt->label_name);
+
+  sema_stmt(stmt->label_stmt);
+}
+
 void sema_if(Stmt *stmt) {
   stmt->if_cond = sema_expr(stmt->if_cond);
   if (check_scalar(stmt->if_cond->type)) {
@@ -1189,6 +1204,10 @@ void sema_for(Stmt *stmt) {
   end_loop();
 }
 
+void sema_goto(Stmt *stmt) {
+  vector_push(goto_stmts, stmt);
+}
+
 void sema_continue(Stmt *stmt) {
   if (continue_level == 0) {
     error(stmt->token, "continue statement should appear in loops.");
@@ -1217,7 +1236,9 @@ void sema_return(Stmt *stmt) {
 }
 
 void sema_stmt(Stmt *stmt) {
-  if (stmt->nd_type == ND_COMP) {
+  if (stmt->nd_type == ND_LABEL) {
+    sema_label(stmt);
+  } else if (stmt->nd_type == ND_COMP) {
     vector_push(tag_scopes, map_new());
     for (int i = 0; i < stmt->block_items->length; i++) {
       Node *item = stmt->block_items->buffer[i];
@@ -1240,12 +1261,16 @@ void sema_stmt(Stmt *stmt) {
     sema_do(stmt);
   } else if (stmt->nd_type == ND_FOR) {
     sema_for(stmt);
+  } else if (stmt->nd_type == ND_GOTO) {
+    sema_goto(stmt);
   } else if (stmt->nd_type == ND_CONTINUE) {
     sema_continue(stmt);
   } else if (stmt->nd_type == ND_BREAK) {
     sema_break(stmt);
   } else if (stmt->nd_type == ND_RETURN) {
     sema_return(stmt);
+  } else {
+    internal_error("unknown statement type.");
   }
 }
 
@@ -1268,6 +1293,8 @@ void sema_func(Func *func) {
 
   func_symbol = func->symbol;
   stack_size = func->symbol->type->ellipsis ? 176 : 0;
+  label_names = vector_new();
+  goto_stmts = vector_new();
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
     Symbol *param = func->symbol->type->params->buffer[i];
@@ -1278,7 +1305,23 @@ void sema_func(Func *func) {
   sema_stmt(func->body);
   vector_pop(tag_scopes);
 
+  // check goto statements
+  for (int i = 0; i < goto_stmts->length; i++) {
+    Stmt *stmt = goto_stmts->buffer[i];
+    bool found = false;
+    for (int j = 0; j < label_names->length; j++) {
+      char *label_name = label_names->buffer[j];
+      if (strcmp(stmt->goto_label, label_name) == 0) {
+        found = true;
+      }
+    }
+    if (!found) {
+      error(stmt->token, "label: %s is not found.", stmt->goto_label);
+    }
+  }
+
   func->stack_size = stack_size;
+  func->label_names = label_names;
 }
 
 void sema_trans_unit(TransUnit *trans_unit) {

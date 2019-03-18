@@ -210,6 +210,8 @@ Token *next_token() {
       return create_token(TK_DO);
     if (strcmp(string->buffer, "for") == 0)
       return create_token(TK_FOR);
+    if (strcmp(string->buffer, "goto") == 0)
+      return create_token(TK_GOTO);
     if (strcmp(string->buffer, "continue") == 0)
       return create_token(TK_CONTINUE);
     if (strcmp(string->buffer, "break") == 0)

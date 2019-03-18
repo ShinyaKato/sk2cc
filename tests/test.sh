@@ -894,6 +894,25 @@ int main() {
 }
 EOS
 
+expect_return 0 <<-EOS
+int main() {
+  int x = 100;
+label:
+  --x;
+  if (x > 0) goto label;
+  return x;
+}
+EOS
+
+expect_return 0 <<-EOS
+int main() {
+  goto label;
+  return 1;
+label:
+  return 0;
+}
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"
@@ -925,5 +944,8 @@ test_error "int f(int x) { int x; }"
 test_error "int f[4](int x) { int a[4]; return a; }"
 test_error "struct abc { struct abc p; }; int main() { return 0; }"
 test_error "int main() { int a[4] = { 4, 5, 6, 7, 8 }; return 0; }"
+test_error "int main() { goto label; }"
+test_error "int main() { label: return 0; label: return 1; }"
+test_error "int f() { label: return 0; } int main() { goto label; }"
 
 exit 0

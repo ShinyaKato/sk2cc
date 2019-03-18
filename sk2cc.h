@@ -142,6 +142,7 @@ typedef enum token_type {
   TK_WHILE,
   TK_DO,
   TK_FOR,
+  TK_GOTO,
   TK_CONTINUE,
   TK_BREAK,
   TK_RETURN,
@@ -272,12 +273,14 @@ typedef enum node_type {
   ND_DECL,
 
   // statement
+  ND_LABEL,
   ND_COMP,
   ND_EXPR,
   ND_IF,
   ND_WHILE,
   ND_DO,
   ND_FOR,
+  ND_GOTO,
   ND_CONTINUE,
   ND_BREAK,
   ND_RETURN,
@@ -348,6 +351,10 @@ struct decl {
 struct stmt {
   NodeType nd_type;
 
+  // labeled statement
+  char *label_name;
+  Stmt *label_stmt;
+
   // compound statement (block)
   Vector *block_items; // Vector<Node*> (Decl* or Stmt*)
 
@@ -373,6 +380,9 @@ struct stmt {
   Expr *for_after; // optional
   Stmt *for_body;
 
+  // goto statement
+  char *goto_label;
+
   // return statement
   Expr *ret; // optional
 
@@ -386,7 +396,8 @@ struct func {
   Symbol *symbol;
   Stmt *body;
 
-  int stack_size; // stack size for local variables
+  int stack_size;      // stack size for local variables
+  Vector *label_names; // Vector<char*>
 
   Token *token;
 };
@@ -583,6 +594,7 @@ extern bool has_next_token();
 extern Token *peek_token();
 extern Token *get_token();
 extern bool check_token(TokenType tk_type);
+extern bool check_next_token(TokenType tk_type);
 extern Token *read_token(TokenType tk_type);
 extern Token *expect_token(TokenType tk_type);
 

@@ -910,6 +910,19 @@ Initializer *initializer() {
 
 Stmt *statement();
 
+// labbeled-statement :
+//   identifier ':' statement
+Stmt *labeled_statement() {
+  Token *token = expect_token(TK_IDENTIFIER);
+  expect_token(':');
+  Stmt *label_stmt = statement();
+
+  Stmt *stmt = stmt_new(ND_LABEL, token);
+  stmt->label_name = token->identifier;
+  stmt->label_stmt = label_stmt;
+  return stmt;
+}
+
 // compound-statement :
 //   '{' (declaration | statement)* '}'
 Stmt *compound_statement() {
@@ -1027,6 +1040,18 @@ Stmt *for_statement() {
   return stmt;
 }
 
+// goto-statmemt :
+//   'goto' identifier ';'
+Stmt *goto_statement() {
+  Token *token = expect_token(TK_GOTO);
+  char *goto_label = expect_token(TK_IDENTIFIER)->identifier;
+  expect_token(';');
+
+  Stmt *stmt = stmt_new(ND_GOTO, token);
+  stmt->goto_label = goto_label;
+  return stmt;
+}
+
 // continue-statement :
 //   'continue' ';'
 Stmt *continue_statement() {
@@ -1058,15 +1083,27 @@ Stmt *return_statement() {
 }
 
 // statement :
+//   labeled-statement
 //   compound-statement
 //   expression-statement
 //   if-statement
 //   while-statement
 //   do-statement
+//   goto-statement
 //   continue-statement
 //   break-statement
 //   return-statement
 Stmt *statement() {
+  if (check_token(TK_IDENTIFIER) && check_next_token(':'))
+    return labeled_statement();
+
+  if (check_token('{')) {
+    vector_push(symbol_scopes, map_new()); // begin block scope
+    Stmt *stmt = compound_statement();
+    vector_pop(symbol_scopes); // end block scope
+    return stmt;
+  }
+
   if (check_token(TK_IF))
     return if_statement();
   if (check_token(TK_WHILE))
@@ -1075,19 +1112,14 @@ Stmt *statement() {
     return do_statement();
   if (check_token(TK_FOR))
     return for_statement();
+  if (check_token(TK_GOTO))
+    return goto_statement();
   if (check_token(TK_CONTINUE))
     return continue_statement();
   if (check_token(TK_BREAK))
     return break_statement();
   if (check_token(TK_RETURN))
     return return_statement();
-
-  if (check_token('{')) {
-    vector_push(symbol_scopes, map_new()); // begin block scope
-    Stmt *stmt = compound_statement();
-    vector_pop(symbol_scopes); // end block scope
-    return stmt;
-  }
 
   return expression_statement();
 }
