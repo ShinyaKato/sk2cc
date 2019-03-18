@@ -62,8 +62,8 @@ TEST_SCRIPT = ./tests/test.sh
 test_check: $(DIR)
 	$(TEST_SCRIPT) "gcc -std=c11 --pedantic-errors -S -o -"
 
-.PHONY: test
-test: $(DIR) $(SK2CC)
+.PHONY: test_sk2cc
+test_sk2cc: $(DIR) $(SK2CC)
 	$(TEST_SCRIPT) $(SK2CC)
 
 .PHONY: test_self
@@ -80,11 +80,11 @@ test_diff: $(DIR) $(ASMS_SELF) $(ASMS_SELF2)
 		diff tmp/`echo $$src | sed -e "s/\.c$$/.s/g"` tmp/`echo $$src | sed -e "s/\.c$$/2.s/g"`; \
 	done
 
-.PHONY: test_full
-test_full:
+.PHONY: test
+test:
 	make test_unit
 	make test_check
-	make test
+	make test_sk2cc
 	make test_self
 	make test_self2
 	make test_diff
