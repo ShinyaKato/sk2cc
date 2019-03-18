@@ -41,6 +41,21 @@ $(SELF2): $(ASMS_SELF2)
 	$(CC) $(CFLAGS) -o $@ $^
 
 # test commands
+.PHONY: test_unit
+test_unit: $(DIR)
+	# string
+	gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
+	./tmp/string_test
+	# vector
+	gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test
+	./tmp/vector_test
+	# map
+	gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
+	./tmp/map_test
+	# token
+	gcc -std=c11 -Wall error.c token.c tests/token_driver.c -o tmp/token_test
+	./tmp/token_test
+
 TEST_SCRIPT = ./tests/test.sh
 
 .PHONY: test_check
@@ -67,6 +82,7 @@ test_diff: $(DIR) $(ASMS_SELF) $(ASMS_SELF2)
 
 .PHONY: test_full
 test_full:
+	make test_unit
 	make test_check
 	make test
 	make test_self
