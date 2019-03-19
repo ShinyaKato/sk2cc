@@ -785,6 +785,16 @@ Expr *sema_expr(Expr *expr) {
   return expr;
 }
 
+Expr *sema_const_expr(Expr *expr) {
+  expr = sema_expr(expr);
+
+  if (expr->nd_type != ND_INTEGER) {
+    error(expr->token, "invalid integer constant expression.");
+  }
+
+  return expr;
+}
+
 // semantics of declaration
 
 void sema_decl(Decl *decl, bool global);
@@ -1012,9 +1022,8 @@ Type *sema_enum(Specifier *spec) {
     for (int i = 0; i < spec->enums->length; i++) {
       Symbol *symbol = spec->enums->buffer[i];
       if (symbol->const_expr) {
-        symbol->const_expr = sema_expr(symbol->const_expr);
+        symbol->const_expr = sema_const_expr(symbol->const_expr);
         const_value = symbol->const_expr->int_value;
-      } else {
       }
       symbol->const_value = const_value++;
     }
@@ -1059,6 +1068,9 @@ Type *sema_declarator(Declarator *decl, Type *type) {
     Type *array_of = sema_declarator(decl->decl, type);
     Type *type = type_array_incomplete(array_of);
     if (decl->size) {
+      if (decl->size->nd_type != ND_INTEGER) {
+        error(decl->size->token, "only integer constant is supported for array size.");
+      }
       type = type_array(type, decl->size->int_value);
     }
     return type;

@@ -501,6 +501,12 @@ Expr *expression() {
   return expr;
 }
 
+// constant-expression :
+//   conditional-expression
+Expr *constant_expression() {
+  return conditional_expression(NULL);
+}
+
 // parse declaration
 
 bool check_typedef(Vector *specs) {
@@ -737,10 +743,10 @@ Specifier *enum_specifier() {
 
 // enumerator :
 //   enumeration-constant
-//   enumeration-constant '=' conditional-expression
+//   enumeration-constant '=' constant-expression
 Symbol *enumerator() {
   Token *token = expect_token(TK_IDENTIFIER);
-  Expr *const_expr = read_token('=') ? conditional_expression(NULL) : NULL;
+  Expr *const_expr = read_token('=') ? constant_expression() : NULL;
 
   return symbol_const(token->identifier, const_expr, token);
 }
