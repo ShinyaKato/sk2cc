@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -std=c11 --pedantic-errors -Wall -g
 
 HEADERS = sk2cc.h
-SRCS = $(wildcard *.c)
+SRCS = vector.c string.c map.c error.c token.c lex.c scan.c cpp.c node.c symbol.c type.c parse.c sema.c gen.c main.c
 
 DIR = tmp
 
