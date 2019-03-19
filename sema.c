@@ -804,7 +804,7 @@ Type *sema_enum(Specifier *spec);
 Type *sema_typedef_name(Specifier *spec);
 Type *sema_declarator(Declarator *decl, Type *type);
 Type *sema_type_name(TypeName *type_name);
-void sema_initializer(Initializer *init, Type *type);
+void sema_initializer(Initializer *init, Type *type, bool global);
 
 void sema_decl(Decl *decl, bool global) {
   DeclAttribution *attr = sema_specs(decl->specs, decl->token);
@@ -814,7 +814,7 @@ void sema_decl(Decl *decl, bool global) {
     symbol->type = sema_declarator(symbol->decl, attr->type);
 
     if (symbol->init) {
-      sema_initializer(symbol->init, symbol->type);
+      sema_initializer(symbol->init, symbol->type, global);
 
       if (symbol->type->ty_type == TY_ARRAY) {
         if (symbol->type->complete) {
@@ -1100,14 +1100,19 @@ Type *sema_type_name(TypeName *type_name) {
   return sema_declarator(type_name->decl, attr->type);
 }
 
-void sema_initializer(Initializer *init, Type *type) {
+void sema_initializer(Initializer *init, Type *type, bool global) {
   init->type = type;
 
   if (init->list) {
     for (int i = 0; i < init->list->length; i++) {
-      sema_initializer(init->list->buffer[i], type->array_of);
+      sema_initializer(init->list->buffer[i], type->array_of, global);
     }
   } else {
+    if (global) {
+      if (init->expr->nd_type != ND_INTEGER && init->expr->nd_type != ND_STRING) {
+        error(init->expr->token, "initializer expression should be integer constant or string literal.");
+      }
+    }
     init->expr = sema_expr(init->expr);
     init->expr = insert_cast(type, init->expr, init->token);
   }
