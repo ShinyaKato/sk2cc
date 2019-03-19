@@ -913,6 +913,35 @@ label:
 }
 EOS
 
+expect_stdout "x == 0\nx == 1\nother\nx == 3\nother\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  for (int x = 0; x < 5; x++) {
+    switch (x) {
+      case 0: printf("x == 0\n"); break;
+      case 1: printf("x == 1\n"); break;
+      case 3: printf("x == 3\n"); break;
+      default: printf("other\n");
+    }
+  }
+  return 0;
+}
+EOS
+
+expect_stdout "1\n2\ndefault\n" <<-EOS
+int printf(char *format, ...);
+int main() {
+  int x = 1;
+  switch (x) {
+    case 0: printf("0\n");
+    case 1: printf("1\n");
+    case 2: printf("2\n");
+    default: printf("default\n");
+  }
+  return 0;
+}
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"

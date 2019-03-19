@@ -14,6 +14,8 @@ int stack_size;
 Vector *label_names;
 Vector *goto_stmts;
 
+Vector *switch_cases;
+
 int continue_level;
 int break_level;
 
@@ -1120,6 +1122,16 @@ void sema_initializer(Initializer *init, Type *type, bool global) {
 
 // semantics of statement
 
+void begin_switch() {
+  vector_push(switch_cases, vector_new());
+  break_level++;
+}
+
+void end_switch() {
+  vector_pop(switch_cases);
+  break_level--;
+}
+
 void begin_loop() {
   continue_level++;
   break_level++;
@@ -1144,6 +1156,28 @@ void sema_label(Stmt *stmt) {
   sema_stmt(stmt->label_stmt);
 }
 
+void sema_case(Stmt *stmt) {
+  if (switch_cases->length > 0) {
+    vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
+  } else {
+    error(stmt->token, "'case' should be in switch statement.");
+  }
+
+  stmt->case_const = sema_expr(stmt->case_const);
+
+  sema_stmt(stmt->case_stmt);
+}
+
+void sema_default(Stmt *stmt) {
+  if (switch_cases->length > 0) {
+    vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
+  } else {
+    error(stmt->token, "'default' should be in switch statement.");
+  }
+
+  sema_stmt(stmt->default_stmt);
+}
+
 void sema_if(Stmt *stmt) {
   stmt->if_cond = sema_expr(stmt->if_cond);
   if (check_scalar(stmt->if_cond->type)) {
@@ -1157,6 +1191,23 @@ void sema_if(Stmt *stmt) {
   if (stmt->else_body) {
     sema_stmt(stmt->else_body);
   }
+}
+
+void sema_switch(Stmt *stmt) {
+  begin_switch();
+
+  stmt->switch_cond = sema_expr(stmt->switch_cond);
+  if (check_scalar(stmt->switch_cond->type)) {
+    promote_integer(&stmt->switch_cond);
+  } else {
+    error(stmt->token, "control expression should have scalar type.");
+  }
+
+  sema_stmt(stmt->switch_body);
+
+  stmt->switch_cases = switch_cases->buffer[switch_cases->length - 1];
+
+  end_switch();
 }
 
 void sema_while(Stmt *stmt) {
@@ -1255,6 +1306,10 @@ void sema_return(Stmt *stmt) {
 void sema_stmt(Stmt *stmt) {
   if (stmt->nd_type == ND_LABEL) {
     sema_label(stmt);
+  } else if (stmt->nd_type == ND_CASE) {
+    sema_case(stmt);
+  } else if (stmt->nd_type == ND_DEFAULT) {
+    sema_default(stmt);
   } else if (stmt->nd_type == ND_COMP) {
     vector_push(tag_scopes, map_new());
     for (int i = 0; i < stmt->block_items->length; i++) {
@@ -1272,6 +1327,8 @@ void sema_stmt(Stmt *stmt) {
     }
   } else if (stmt->nd_type == ND_IF) {
     sema_if(stmt);
+  } else if (stmt->nd_type == ND_SWITCH) {
+    sema_switch(stmt);
   } else if (stmt->nd_type == ND_WHILE) {
     sema_while(stmt);
   } else if (stmt->nd_type == ND_DO) {
@@ -1358,6 +1415,8 @@ void sema_trans_unit(TransUnit *trans_unit) {
 
 void sema(TransUnit *trans_unit) {
   tag_scopes = vector_new();
+
+  switch_cases = vector_new();
 
   continue_level = 0;
   break_level = 0;

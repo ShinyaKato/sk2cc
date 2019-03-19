@@ -60,8 +60,11 @@ int main(void) {
   test_token(TK_ENUM, "enum");
   test_token(TK_NORETURN, "_Noreturn");
 
+  test_token(TK_CASE, "case");
+  test_token(TK_DEFAULT, "default");
   test_token(TK_IF, "if");
   test_token(TK_ELSE, "else");
+  test_token(TK_SWITCH, "switch");
   test_token(TK_WHILE, "while");
   test_token(TK_DO, "do");
   test_token(TK_FOR, "for");

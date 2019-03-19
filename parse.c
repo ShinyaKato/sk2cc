@@ -929,6 +929,32 @@ Stmt *labeled_statement() {
   return stmt;
 }
 
+// case-statement :
+//   'case' constant-expression ':' statement
+Stmt *case_statement() {
+  Token *token = expect_token(TK_CASE);
+  Expr *case_const = constant_expression();
+  expect_token(':');
+  Stmt *case_stmt = statement();
+
+  Stmt *stmt = stmt_new(ND_CASE, token);
+  stmt->case_const = case_const;
+  stmt->case_stmt = case_stmt;
+  return stmt;
+}
+
+// default-statement :
+//   'default' ':' statement
+Stmt *default_statement() {
+  Token *token = expect_token(TK_DEFAULT);
+  expect_token(':');
+  Stmt *default_stmt = statement();
+
+  Stmt *stmt = stmt_new(ND_DEFAULT, token);
+  stmt->default_stmt = default_stmt;
+  return stmt;
+}
+
 // compound-statement :
 //   '{' (declaration | statement)* '}'
 Stmt *compound_statement() {
@@ -976,6 +1002,21 @@ Stmt *if_statement() {
   stmt->if_cond = if_cond;
   stmt->then_body = then_body;
   stmt->else_body = else_body;
+  return stmt;
+}
+
+// switch-statement :
+//   'switch' '(' expression ')' statement
+Stmt *switch_statement() {
+  Token *token = expect_token(TK_SWITCH);
+  expect_token('(');
+  Expr *switch_cond = expression();
+  expect_token(')');
+  Stmt *switch_body = statement();
+
+  Stmt *stmt = stmt_new(ND_SWITCH, token);
+  stmt->switch_cond = switch_cond;
+  stmt->switch_body = switch_body;
   return stmt;
 }
 
@@ -1090,9 +1131,12 @@ Stmt *return_statement() {
 
 // statement :
 //   labeled-statement
+//   case-statement
+//   default-statement
 //   compound-statement
 //   expression-statement
 //   if-statement
+//   switch-statement
 //   while-statement
 //   do-statement
 //   goto-statement
@@ -1102,16 +1146,14 @@ Stmt *return_statement() {
 Stmt *statement() {
   if (check_token(TK_IDENTIFIER) && check_next_token(':'))
     return labeled_statement();
-
-  if (check_token('{')) {
-    vector_push(symbol_scopes, map_new()); // begin block scope
-    Stmt *stmt = compound_statement();
-    vector_pop(symbol_scopes); // end block scope
-    return stmt;
-  }
-
+  if (check_token(TK_CASE))
+    return case_statement();
+  if (check_token(TK_DEFAULT))
+    return default_statement();
   if (check_token(TK_IF))
     return if_statement();
+  if (check_token(TK_SWITCH))
+    return switch_statement();
   if (check_token(TK_WHILE))
     return while_statement();
   if (check_token(TK_DO))
@@ -1126,6 +1168,13 @@ Stmt *statement() {
     return break_statement();
   if (check_token(TK_RETURN))
     return return_statement();
+
+  if (check_token('{')) {
+    vector_push(symbol_scopes, map_new()); // begin block scope
+    Stmt *stmt = compound_statement();
+    vector_pop(symbol_scopes); // end block scope
+    return stmt;
+  }
 
   return expression_statement();
 }

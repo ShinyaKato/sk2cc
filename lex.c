@@ -200,10 +200,16 @@ Token *next_token() {
       return create_token(TK_ENUM);
     if (strcmp(string->buffer, "_Noreturn") == 0)
       return create_token(TK_NORETURN);
+    if (strcmp(string->buffer, "case") == 0)
+      return create_token(TK_CASE);
+    if (strcmp(string->buffer, "default") == 0)
+      return create_token(TK_DEFAULT);
     if (strcmp(string->buffer, "if") == 0)
       return create_token(TK_IF);
     if (strcmp(string->buffer, "else") == 0)
       return create_token(TK_ELSE);
+    if (strcmp(string->buffer, "switch") == 0)
+      return create_token(TK_SWITCH);
     if (strcmp(string->buffer, "while") == 0)
       return create_token(TK_WHILE);
     if (strcmp(string->buffer, "do") == 0)

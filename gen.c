@@ -10,6 +10,14 @@ Vector *continue_labels, *break_labels;
 int gp_offset;
 int stack_depth;
 
+void begin_switch_gen(int *label_break) {
+  vector_push(break_labels, label_break);
+}
+
+void end_switch_gen() {
+  vector_pop(break_labels);
+}
+
 void begin_loop_gen(int *label_continue, int *label_break) {
   vector_push(continue_labels, label_continue);
   vector_push(break_labels, label_break);
@@ -662,6 +670,16 @@ void gen_decl_local(Decl *node) {
 
 void gen_stmt(Stmt *node);
 
+void gen_case(Stmt *node) {
+  gen_label(node->case_label);
+  gen_stmt(node->case_stmt);
+}
+
+void gen_default(Stmt *node) {
+  gen_label(node->default_label);
+  gen_stmt(node->default_stmt);
+}
+
 void gen_if(Stmt *node) {
   int label_else = label_no++;
   int label_end = label_no++;
@@ -680,6 +698,29 @@ void gen_if(Stmt *node) {
   }
 
   gen_label(label_end);
+}
+
+void gen_switch(Stmt *node) {
+  int label_break = label_no++;
+
+  gen_operand(node->switch_cond, "rax");
+  for (int i = 0; i < node->switch_cases->length; i++) {
+    Stmt *stmt = node->switch_cases->buffer[i];
+    if (stmt->nd_type == ND_CASE) {
+      stmt->case_label = label_no++;
+      printf("  cmpq $%llu, %%rax\n", stmt->case_const->int_value);
+      gen_jump("je", stmt->case_label);
+    } else if (stmt->nd_type == ND_DEFAULT) {
+      stmt->default_label = label_no++;
+      gen_jump("jmp", stmt->default_label);
+    }
+  }
+
+  begin_switch_gen(&label_break);
+  gen_stmt(node->switch_body);
+  end_switch_gen();
+
+  gen_label(label_break);
 }
 
 void gen_while(Stmt *node) {
@@ -783,6 +824,10 @@ void gen_stmt(Stmt *node) {
     int *label = map_lookup(labels, node->label_name);
     gen_label(*label);
     gen_stmt(node->label_stmt);
+  } else if (node->nd_type == ND_CASE) {
+    gen_case(node);
+  } else if (node->nd_type == ND_DEFAULT) {
+    gen_default(node);
   } else if (node->nd_type == ND_COMP) {
     for (int i = 0; i < node->block_items->length; i++) {
       Node *item = node->block_items->buffer[i];
@@ -798,6 +843,8 @@ void gen_stmt(Stmt *node) {
     }
   } else if (node->nd_type == ND_IF) {
     gen_if(node);
+  } else if (node->nd_type == ND_SWITCH) {
+    gen_switch(node);
   } else if (node->nd_type == ND_WHILE) {
     gen_while(node);
   } else if (node->nd_type == ND_DO) {

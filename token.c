@@ -56,8 +56,11 @@ char *tk_names[] = {
   "_Noreturn",
 
   // keywords for statements
+  "case",
+  "default",
   "if",
   "else",
+  "switch",
   "while",
   "do",
   "for",

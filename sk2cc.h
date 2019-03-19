@@ -137,8 +137,11 @@ typedef enum token_type {
   TK_NORETURN,
 
   // keywords for statements
+  TK_CASE,
+  TK_DEFAULT,
   TK_IF,
   TK_ELSE,
+  TK_SWITCH,
   TK_WHILE,
   TK_DO,
   TK_FOR,
@@ -274,9 +277,12 @@ typedef enum node_type {
 
   // statement
   ND_LABEL,
+  ND_CASE,
+  ND_DEFAULT,
   ND_COMP,
   ND_EXPR,
   ND_IF,
+  ND_SWITCH,
   ND_WHILE,
   ND_DO,
   ND_FOR,
@@ -355,6 +361,15 @@ struct stmt {
   char *label_name;
   Stmt *label_stmt;
 
+  // case statement
+  Expr *case_const;
+  Stmt *case_stmt;
+  int case_label;
+
+  // default statement
+  Stmt *default_stmt;
+  int default_label;
+
   // compound statement (block)
   Vector *block_items; // Vector<Node*> (Decl* or Stmt*)
 
@@ -365,6 +380,11 @@ struct stmt {
   Expr *if_cond;
   Stmt *then_body;
   Stmt *else_body; // optional
+
+  // switch statement
+  Expr *switch_cond;
+  Stmt *switch_body;
+  Vector *switch_cases;
 
   // while statement
   Expr *while_cond;
