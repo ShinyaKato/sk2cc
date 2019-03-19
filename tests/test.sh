@@ -942,6 +942,14 @@ int main() {
 }
 EOS
 
+expect_return "42" <<-EOS
+typedef long long intptr_t;
+int main() {
+  void *p = (void *) (intptr_t) 42;
+  return (int) (intptr_t) p;
+}
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"

@@ -84,6 +84,18 @@ bool check_cast(Type *type, Expr *expr) {
     }
   }
 
+  // conversion between pointer and integer
+  if (check_pointer(type)) {
+    if (expr->type->ty_type == TY_LONG || expr->type->ty_type == TY_ULONG) {
+      return true;
+    }
+  }
+  if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
+    if (check_pointer(expr->type)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
