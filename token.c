@@ -25,7 +25,7 @@ char *tk_chars[] = {
   ";",
   "=",
   ",",
-  "#"
+  "#",
 };
 
 char *tk_names[] = {
@@ -95,7 +95,7 @@ char *tk_names[] = {
   "...",
 
   // EOF
-  "end of file"
+  "end of file",
 };
 
 bool check_char_token(char c) {

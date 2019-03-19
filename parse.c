@@ -706,7 +706,8 @@ Decl *struct_declaration() {
 }
 
 // enum-specifier :
-//   'enum' identifier? '{' (enumerator (',' enumerator)*) '}'
+//   'enum' identifier? '{' enumerator (',' enumerator)* '}'
+//   'enum' identifier? '{' enumerator (',' enumerator)* ',' '}'
 //   'enum' identifier
 Specifier *enum_specifier() {
   Token *token = expect_token(TK_ENUM);
@@ -720,7 +721,7 @@ Specifier *enum_specifier() {
         Symbol *symbol = enumerator();
         vector_push(enums, symbol);
         put_symbol(symbol->identifier, symbol);
-      } while (read_token(','));
+      } while (read_token(',') && !check_token('}'));
       expect_token('}');
 
       return specifier_enum(tag, enums, token);
@@ -735,7 +736,7 @@ Specifier *enum_specifier() {
     Symbol *symbol = enumerator();
     vector_push(enums, symbol);
     put_symbol(symbol->identifier, symbol);
-  } while (read_token(','));
+  } while (read_token(',') && !check_token('}'));
   expect_token('}');
 
   return specifier_enum(NULL, enums, token);
@@ -894,6 +895,7 @@ Declarator *abstract_declarator(Declarator *decl) {
 // initializer :
 //   assignment-expression
 //   '{' initializer (',' initializer)* '}'
+//   '{' initializer (',' initializer)* ',' '}'
 Initializer *initializer() {
   Token *token = peek_token();
 
@@ -902,7 +904,7 @@ Initializer *initializer() {
     if (!check_token('}')) {
       do {
         vector_push(list, initializer());
-      } while (read_token(','));
+      } while (read_token(',') && !check_token('}'));
     }
     expect_token('}');
 

@@ -176,7 +176,7 @@ typedef enum token_type {
   TK_ELLIPSIS,   // ...
 
   // EOF (the end of the input source file)
-  TK_EOF
+  TK_EOF,
 } TokenType;
 
 // Token
@@ -292,7 +292,7 @@ typedef enum node_type {
   ND_RETURN,
 
   // function definition
-  ND_FUNC
+  ND_FUNC,
 } NodeType;
 
 // Node (AST node)
@@ -442,7 +442,7 @@ typedef enum specifier_type {
   SP_TYPEDEF_NAME,
 
   // function-specifier
-  SP_NORETURN
+  SP_NORETURN,
 } SpecifierType;
 
 // Specifier
@@ -468,7 +468,7 @@ struct specifier {
 typedef enum declarator_type {
   DECL_POINTER,
   DECL_ARRAY,
-  DECL_FUNCTION
+  DECL_FUNCTION,
 } DeclaratorType;
 
 // Declarator
@@ -523,7 +523,7 @@ typedef enum type_type {
   TY_POINTER,
   TY_ARRAY,
   TY_FUNCTION,
-  TY_STRUCT
+  TY_STRUCT,
 } TypeType;
 
 // Type
@@ -563,13 +563,13 @@ struct member {
 typedef enum symbol_type {
   SY_VARIABLE, // variable
   SY_TYPE,     // typedef-name
-  SY_CONST     // enumeration-constant
+  SY_CONST,    // enumeration-constant
 } SymbolType;
 
 // SymbolLink
 typedef enum symbol_link {
   LN_EXTERNAL, // global variable
-  LN_NONE      // local variable
+  LN_NONE,     // local variable
 } SymbolLink;
 
 // Symbol

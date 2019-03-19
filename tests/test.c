@@ -330,10 +330,10 @@ int main() {
   { enum { U, L, D, R }; test(L, 1); }
   { enum { U, L, D, R }; test(D, 2); }
   { enum { U, L, D, R }; test(R, 3); }
-  { enum { U, L, D, R } d; d = U; test(d, 0); }
-  { enum { U, L, D, R } d; d = L; test(d, 1); }
-  { enum { U, L, D, R } d; d = D; test(d, 2); }
-  { enum { U, L, D, R } d; d = R; test(d, 3); }
+  { enum { U, L, D, R, } d; d = U; test(d, 0); }
+  { enum { U, L, D, R, } d; d = L; test(d, 1); }
+  { enum { U, L, D, R, } d; d = D; test(d, 2); }
+  { enum { U, L, D, R, } d; d = R; test(d, 3); }
 
   { enum { U, L = 13, D, R }; test(U, 0); }
   { enum { U, L = 13, D, R }; test(L, 13); }
@@ -396,6 +396,8 @@ int main() {
 
   { int x = 19; test(x /= 3, 6); test(x, 6); }
   { int x = 19; test(x %= 3, 1); test(x, 1); }
+
+  { int x[4] = { 1, 2, 3, 4, }; test(x[3], 4); }
 
   return 0;
 }
