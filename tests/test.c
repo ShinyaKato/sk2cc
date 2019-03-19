@@ -15,6 +15,8 @@ int func_arg3(int a, int b, int c);
 int func_arg4(int a, int b, int c, int d);
 int func_arg5(int a, int b, int c, int d, int e);
 int func_arg6(int a, int b, int c, int d, int e, int f);
+int func_arg7(int a, int b, int c, int d, int e, int f, int g);
+int func_arg8(int a, int b, int c, int d, int e, int f, int g, int h);
 int *alloc();
 int test_struct(struct test_struct *s);
 _Bool bool_ret(int b);
@@ -121,6 +123,8 @@ int main() {
   test(func_arg4(1, 2, 3, 4), 30);
   test(func_arg5(1, 2, 3, 4, 5), 55);
   test(func_arg6(1, 2, 3, 4, 5, 6), 91);
+  test(func_arg7(1, 2, 3, 4, 5, 6, 7), 140);
+  test(func_arg8(1, 2, 3, 4, 5, 6, 7, 8), 204);
 
   { int x = 5; if (3 * 4 > 10) { x = 7; } test(x, 7); }
   { int x = 5; if (3 * 4 < 10) { x = 7; } test(x, 5); }

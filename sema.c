@@ -282,12 +282,8 @@ Expr *sema_call(Expr *expr) {
     error(expr->token, "invalid function call.");
   }
 
-  if (expr->args->length <= 6) {
-    for (int i = 0; i < expr->args->length; i++) {
-      expr->args->buffer[i] = sema_expr(expr->args->buffer[i]);
-    }
-  } else {
-    error(expr->token, "too many arguments.");
+  for (int i = 0; i < expr->args->length; i++) {
+    expr->args->buffer[i] = sema_expr(expr->args->buffer[i]);
   }
 
   if (expr->expr->symbol) {
@@ -1353,9 +1349,6 @@ void sema_func(Func *func) {
 
   func->symbol->type = sema_declarator(func->symbol->decl, attr->type);
 
-  if (func->symbol->type->params->length > 6) {
-    error(func->symbol->token, "too many parameters.");
-  }
   if (func->symbol->type->returning->ty_type == TY_ARRAY) {
     error(func->symbol->token, "definition of function returning array.");
   }

@@ -27,6 +27,14 @@ int func_arg6(int a, int b, int c, int d, int e, int f) {
   return a * a + b * b + c * c + d * d + e * e + f * f;
 }
 
+int func_arg7(int a, int b, int c, int d, int e, int f, int g) {
+  return a * a + b * b + c * c + d * d + e * e + f * f + g * g;
+}
+
+int func_arg8(int a, int b, int c, int d, int e, int f, int g, int h) {
+  return a * a + b * b + c * c + d * d + e * e + f * f + g * g + h * h;
+}
+
 int* alloc() {
   int *p = (int *) calloc(3, sizeof(int));
   p[0] = 53;

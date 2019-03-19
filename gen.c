@@ -160,19 +160,45 @@ void gen_call(Expr *node) {
     return;
   }
 
-  // generate arguments
+  // In the System V ABI, up to 6 arguments are stored in a register.
+  // The remaining arguments are placed on the stack.
+  //
+  // Additionally, %rsp must be a multiple of 16 just before the call instruction.
+  // The stack state just before the call instruction is as follows:
+  //
+  // [higher address]
+  //   --- <= 16-byte aligned
+  //   return address
+  //   %rbp of the previous frame
+  //   --- <= %rbp
+  //   local variables of the current frame
+  //   evaluated expressions
+  //   ---
+  //   (padding for 16-byte alignment)
+  //   argument N
+  //   ...
+  //   argument 8
+  //   argument 7
+  //   --- <= %rsp (16-byte aligned)
+  // [lower address]
+
+  // 16-byte alignment
+  int stack_args = node->args->length > 6 ? node->args->length - 6 : 0;
+  int stack_top = stack_depth + stack_args * 8;
+  int padding = stack_top % 16 ? 16 - stack_top % 16 : 0;
+  if (padding > 0) {
+    printf("  subq $%d, %%rsp\n", padding);
+    stack_depth += padding;
+  }
+
+  // evaluate arguments
   for (int i = node->args->length - 1; i >= 0; i--) {
     Expr *arg = node->args->buffer[i];
     gen_expr(arg);
   }
   for (int i = 0; i < node->args->length; i++) {
+    if (i >= 6) break;
     gen_pop(arg_reg[i]);
-  }
-
-  // 16-byte alignment
-  int top = stack_depth % 16;
-  if (top > 0) {
-    printf("  subq $%d, %%rsp\n", 16 - top);
   }
 
   // for function with variable length arguments
@@ -183,8 +209,9 @@ void gen_call(Expr *node) {
   printf("  call %s@PLT\n", node->expr->identifier);
 
   // restore rsp
-  if (top > 0) {
-    printf("  addq $%d, %%rsp\n", 16 - top);
+  if (padding + stack_args * 8 > 0) {
+    printf("  addq $%d, %%rsp\n", padding + stack_args * 8);
+    stack_depth -= padding + stack_args * 8;
   }
 
   gen_push("rax");
@@ -939,13 +966,38 @@ void gen_func(Func *node) {
     }
   }
 
+  // The current stack state is as follows:
+  //
+  // [higher address]
+  //   ----
+  //   argument N
+  //   ...
+  //   argument 8
+  //   argument 7
+  //   ---- <= (16-byte aligned)
+  //   return address
+  //   %rbp of the previous frame
+  //   ---- <= %rbp
+  //   local variables of the current frame
+  //   ---- <= %rsp
+  // [lower address]
+
   for (int i = 0; i < type->params->length; i++) {
     Symbol *param = type->params->buffer[i];
-    printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
-    gen_push("rax");
-    gen_push(arg_reg[i]);
-    gen_store(param->type);
-    gen_pop(NULL);
+    if (i < 6) {
+      printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
+      gen_push("rax");
+      gen_push(arg_reg[i]);
+      gen_store(param->type);
+      gen_pop(NULL);
+    } else {
+      printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
+      gen_push("rax");
+      printf("  movq %d(%%rbp), %%rax\n", 16 + (i - 6) * 8);
+      gen_push("rax");
+      gen_store(param->type);
+      gen_pop(NULL);
+    }
   }
 
   gen_stmt(node->body);
