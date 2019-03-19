@@ -1,104 +1,96 @@
 #include "sk2cc.h"
 
-char *token_type_name[] = {
-  "void",
-  "bool",
-  "char",
-  "short",
-  "int",
-  "double",
-  "unsigned",
-  "struct",
-  "enum",
-  "typedef",
-  "extern",
-  "_Noreturn",
-  "sizeof",
-  "_Alignof",
-  "if",
-  "else",
-  "while",
-  "do",
-  "for",
-  "continue",
-  "break",
-  "return",
-  "identifier",
-  "integer constant",
-  "floating point constant",
-  "string literal",
-  "[",
-  "]",
-  "(",
-  ")",
-  "{",
-  "}",
-  ".",
-  "->",
-  "++",
-  "--",
-  "~",
-  "!",
-  "*",
-  "/",
-  "%",
-  "+",
-  "-",
-  "<<",
-  ">>",
-  "<",
-  ">",
-  "<=",
-  ">=",
-  "==",
-  "!=",
-  "&",
-  "^",
-  "|",
-  "&&",
-  "||",
-  "?",
-  ":",
-  ";",
-  "...",
-  "=",
-  "+=",
-  "-=",
-  "*=",
-  "/=",
-  "%=",
-  ",",
-  "#",
-  "space",
-  "new line",
-  "end of file"
-};
+char *src;
+int pos;
 
-Vector *src;
-int src_pos;
+char *line_ptr;
+int lineno;
+int column;
 
-Token *token_new() {
-  Token *token = (Token *) calloc(1, sizeof(Token));
-  token->schar = (SourceChar **) &(src->array[src_pos]);
-  return token;
+String *lex_text;
+char *lex_filename;
+char *lex_line_ptr;
+int lex_lineno;
+int lex_column;
+
+String *read_file(char *filename) {
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    perror(filename);
+    exit(1);
+  }
+
+  String *file = string_new();
+  char buffer[4096];
+  while (1) {
+    int n = fread(buffer, 1, sizeof(buffer), fp);
+    if (n == 0) break;
+    for (int i = 0; i < n; i++) {
+      string_push(file, buffer[i]);
+    }
+  }
+
+  fclose(fp);
+
+  return file;
+}
+
+// replace '\r\n' with '\n'
+String *replace_newline(String *file) {
+  String *src = string_new();
+  for (int i = 0; i < file->length; i++) {
+    char c = file->buffer[i];
+    if (c == '\r' && i + 1 < file->length && file->buffer[i + 1] == '\n') {
+      c = '\n';
+      i++;
+    }
+    string_push(src, c);
+  }
+
+  return src;
+}
+
+Token *create_token(TokenType tk_type) {
+  return token_new(tk_type, lex_text->buffer, lex_filename, lex_line_ptr, lex_lineno, lex_column);
+}
+
+void next_line() {
+  line_ptr = &src[pos];
+  lineno++;
+  column = 1;
+}
+
+// skip '\' '\n' and concat previous and next lines
+void skip_backslash_newline() {
+  while (src[pos] == '\\' && src[pos + 1] == '\n') {
+    pos += 2;
+    next_line();
+  }
 }
 
 char peek_char() {
-  SourceChar *schar = src->array[src_pos];
-  return *(schar->char_ptr);
+  skip_backslash_newline();
+  return src[pos];
 }
 
 char get_char() {
-  char c = peek_char();
-  src_pos++;
+  skip_backslash_newline();
+
+  // read the character and add it to the token text
+  char c = src[pos++];
+  string_push(lex_text, c);
+
+  column++;
+  if (c == '\n') next_line();
+
   return c;
 }
 
-void expect_char(char c) {
+char expect_char(char c) {
   if (peek_char() != c) {
-    error(token_new(), "%c is expected.", c);
+    error(create_token(-1), "%c is expected.", c);
   }
-  get_char();
+  return get_char();
 }
 
 bool read_char(char c) {
@@ -122,254 +114,235 @@ char get_escape_sequence() {
   if (read_char('v')) return '\v';
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
-  error(token_new(), "invalid escape sequence.");
+
+  error(create_token(-1), "invalid escape sequence.");
 }
 
-Token *lex() {
-  Token *token = token_new();
-  if (isdigit(peek_char())) {
-    String *s = string_new();
-    while (isdigit(peek_char())) {
-      string_push(s, get_char());
-    }
-    if (peek_char() == '.') {
-      string_push(s, get_char());
-      while (isdigit(peek_char())) {
-        string_push(s, get_char());
-      }
-      token->type = tFLOAT_CONST;
-      token->double_value = strtod(s->buffer, NULL);
-    } else {
-      int int_value = 0;
-      for (int i = 0; i < s->length; i++) {
-        int_value = int_value * 10 + (s->buffer[i] - '0');
-      }
-      token->type = tINT_CONST;
-      token->int_value = int_value;
-    }
-  } else if (read_char('\'')) {
-    int int_value;
-    if (read_char('\\')) {
-      int_value = get_escape_sequence();
-    } else {
-      int_value = get_char();
-    }
-    expect_char('\'');
-    token->type = tINT_CONST;
-    token->int_value = int_value;
-  } else if (read_char('"')) {
-    String *string_value = string_new();
-    while (peek_char() != '"') {
-      char c = get_char();
-      if (c == '\\') c = get_escape_sequence();
-      string_push(string_value, c);
-    }
-    get_char();
-    string_push(string_value, '\0');
-    token->type = tSTRING_LITERAL;
-    token->string_value = string_value;
-  } else if (isalpha(peek_char()) || peek_char() == '_') {
-    String *identifier = string_new();
-    string_push(identifier, get_char());
-    while (isalnum(peek_char()) || peek_char() == '_') {
-      string_push(identifier, get_char());
-    }
-    if (strcmp(identifier->buffer, "void") == 0) {
-      token->type = tVOID;
-    } else if (strcmp(identifier->buffer, "_Bool") == 0) {
-      token->type = tBOOL;
-    } else if (strcmp(identifier->buffer, "char") == 0) {
-      token->type = tCHAR;
-    } else if (strcmp(identifier->buffer, "short") == 0) {
-      token->type = tSHORT;
-    } else if (strcmp(identifier->buffer, "int") == 0) {
-      token->type = tINT;
-    } else if (strcmp(identifier->buffer, "double") == 0) {
-      token->type = tDOUBLE;
-    } else if (strcmp(identifier->buffer, "unsigned") == 0) {
-      token->type = tUNSIGNED;
-    } else if (strcmp(identifier->buffer, "struct") == 0) {
-      token->type = tSTRUCT;
-    } else if (strcmp(identifier->buffer, "enum") == 0) {
-      token->type = tENUM;
-    } else if (strcmp(identifier->buffer, "typedef") == 0) {
-      token->type = tTYPEDEF;
-    } else if (strcmp(identifier->buffer, "extern") == 0) {
-      token->type = tEXTERN;
-    } else if (strcmp(identifier->buffer, "_Noreturn") == 0) {
-      token->type = tNORETURN;
-    } else if (strcmp(identifier->buffer, "sizeof") == 0) {
-      token->type = tSIZEOF;
-    } else if (strcmp(identifier->buffer, "_Alignof") == 0) {
-      token->type = tALIGNOF;
-    } else if (strcmp(identifier->buffer, "if") == 0) {
-      token->type = tIF;
-    } else if (strcmp(identifier->buffer, "else") == 0) {
-      token->type = tELSE;
-    } else if (strcmp(identifier->buffer, "while") == 0) {
-      token->type = tWHILE;
-    } else if (strcmp(identifier->buffer, "do") == 0) {
-      token->type = tDO;
-    } else if (strcmp(identifier->buffer, "for") == 0) {
-      token->type = tFOR;
-    } else if (strcmp(identifier->buffer, "continue") == 0) {
-      token->type = tCONTINUE;
-    } else if (strcmp(identifier->buffer, "break") == 0) {
-      token->type = tBREAK;
-    } else if (strcmp(identifier->buffer, "return") == 0) {
-      token->type = tRETURN;
-    } else {
-      token->type = tIDENTIFIER;
-      token->identifier = identifier->buffer;
-    }
-  } else if (read_char('~')) {
-    token->type = tNOT;
-  } else if (read_char('+')) {
-    if (read_char('+')) {
-      token->type = tINC;
-    } else if (read_char('=')) {
-      token->type = tADD_ASSIGN;
-    } else {
-      token->type = tADD;
-    }
-  } else if (read_char('-')) {
-    if (read_char('>')) {
-      token->type = tARROW;
-    } else if (read_char('-')) {
-      token->type = tDEC;
-    } else if (read_char('=')) {
-      token->type = tSUB_ASSIGN;
-    } else {
-      token->type = tSUB;
-    }
-  } else if (read_char('*')) {
-    if (read_char('=')) {
-      token->type = tMUL_ASSIGN;
-    } else {
-      token->type = tMUL;
-    }
-  } else if (read_char('/')) {
-    if (read_char('=')) {
-      token->type = tDIV_ASSIGN;
-    } else if (read_char('/')) {
-      while (1) {
-        char c = get_char();
-        if (c == '\n') break;
-      }
-      token->type = tSPACE;
-    } else if (read_char('*')) {
-      while (1) {
-        char c = get_char();
-        if (c == '*' && read_char('/')) break;
-      }
-      token->type = tSPACE;
-    } else {
-      token->type = tDIV;
-    }
-  } else if (read_char('%')) {
-    if (read_char('=')) {
-      token->type = tMOD_ASSIGN;
-    } else {
-      token->type = tMOD;
-    }
-  } else if (read_char('<')) {
-    if (read_char('=')) {
-      token->type = tLTE;
-    } else if (read_char('<')) {
-      token->type = tLSHIFT;
-    } else {
-      token->type = tLT;
-    }
-  } else if (read_char('>')) {
-    if (read_char('=')) {
-      token->type = tGTE;
-    } else if (read_char('>')) {
-      token->type = tRSHIFT;
-    } else {
-      token->type = tGT;
-    }
-  } else if (read_char('=')) {
-    if (read_char('=')) {
-      token->type = tEQ;
-    } else {
-      token->type = tASSIGN;
-    }
-  } else if (read_char('!')) {
-    if (read_char('=')) {
-      token->type = tNEQ;
-    } else {
-      token->type = tLNOT;
-    }
-  } else if (read_char('&')) {
-    if (read_char('&')) {
-      token->type = tLAND;
-    } else {
-      token->type = tAND;
-    }
-  } else if (read_char('|')) {
-    if (read_char('|')) {
-      token->type = tLOR;
-    } else {
-      token->type = tOR;
-    }
-  } else if (read_char('^')) {
-    token->type = tXOR;
-  } else if (read_char('?')) {
-    token->type = tQUESTION;
-  } else if (read_char(':')) {
-    token->type = tCOLON;
-  } else if (read_char(';')) {
-    token->type = tSEMICOLON;
-  } else if (read_char('[')) {
-    token->type = tLBRACKET;
-  } else if (read_char(']')) {
-    token->type = tRBRACKET;
-  } else if (read_char('(')) {
-    token->type = tLPAREN;
-  } else if (read_char(')')) {
-    token->type = tRPAREN;
-  } else if (read_char('{')) {
-    token->type = tLBRACE;
-  } else if (read_char('}')) {
-    token->type = tRBRACE;
-  } else if (read_char(',')) {
-    token->type = tCOMMA;
-  } else if (read_char('.')) {
-    if (read_char('.')) {
-      if (!read_char('.')) {
-        error(token, "invalid token '..'");
-      }
-      token->type = tELLIPSIS;
-    } else {
-      token->type = tDOT;
-    }
-  } else if (read_char('#')) {
-    token->type = tHASH;
-  } else if (read_char(' ')) {
-    token->type = tSPACE;
-  } else if (read_char('\n')) {
-    token->type = tNEWLINE;
-  } else if (peek_char() == EOF) {
-    token->type = tEND;
-  } else {
-    error(token, "unexpected character: %c.", peek_char());
+Token *next_token() {
+  skip_backslash_newline();
+
+  // store the start position of the next token.
+  lex_text = string_new();
+  lex_line_ptr = line_ptr;
+  lex_lineno = lineno;
+  lex_column = column;
+
+  // check EOF
+  if (peek_char() == '\0') {
+    return create_token(TK_EOF);
   }
 
-  token->type_name = token_type_name[token->type];
-  token->schar_end = (SourceChar **) &(src->array[src_pos]);
+  // get first character
+  char c = get_char();
 
-  return token;
+  // nwe-line and white-space
+  if (c == '\n') {
+    return create_token(TK_NEWLINE);
+  }
+  if (isspace(c)) {
+    while (isspace(peek_char()) && peek_char() != '\n') {
+      get_char();
+    }
+    return create_token(TK_SPACE);
+  }
+
+  // comment
+  if (c == '/' && read_char('/')) { // line comment
+    while (peek_char() != '\n') {
+      get_char();
+    }
+    return create_token(TK_SPACE);
+  }
+  if (c == '/' && read_char('*')) { // block comment
+    while (1) {
+      char c = get_char();
+      if (c == '*' && read_char('/')) break;
+    }
+    return create_token(TK_SPACE);
+  }
+
+  // keyword or identifier
+  if (isalpha(c) || c == '_') {
+    String *string = string_new();
+    string_push(string, c);
+    while (isalnum(peek_char()) || peek_char() == '_') {
+      string_push(string, get_char());
+    }
+
+    // check keywords
+    if (strcmp(string->buffer, "sizeof") == 0)
+      return create_token(TK_SIZEOF);
+    if (strcmp(string->buffer, "_Alignof") == 0)
+      return create_token(TK_ALIGNOF);
+    if (strcmp(string->buffer, "typedef") == 0)
+      return create_token(TK_TYPEDEF);
+    if (strcmp(string->buffer, "extern") == 0)
+      return create_token(TK_EXTERN);
+    if (strcmp(string->buffer, "void") == 0)
+      return create_token(TK_VOID);
+    if (strcmp(string->buffer, "char") == 0)
+      return create_token(TK_CHAR);
+    if (strcmp(string->buffer, "short") == 0)
+      return create_token(TK_SHORT);
+    if (strcmp(string->buffer, "int") == 0)
+      return create_token(TK_INT);
+    if (strcmp(string->buffer, "long") == 0)
+      return create_token(TK_LONG);
+    if (strcmp(string->buffer, "signed") == 0)
+      return create_token(TK_SIGNED);
+    if (strcmp(string->buffer, "unsigned") == 0)
+      return create_token(TK_UNSIGNED);
+    if (strcmp(string->buffer, "_Bool") == 0)
+      return create_token(TK_BOOL);
+    if (strcmp(string->buffer, "struct") == 0)
+      return create_token(TK_STRUCT);
+    if (strcmp(string->buffer, "enum") == 0)
+      return create_token(TK_ENUM);
+    if (strcmp(string->buffer, "_Noreturn") == 0)
+      return create_token(TK_NORETURN);
+    if (strcmp(string->buffer, "case") == 0)
+      return create_token(TK_CASE);
+    if (strcmp(string->buffer, "default") == 0)
+      return create_token(TK_DEFAULT);
+    if (strcmp(string->buffer, "if") == 0)
+      return create_token(TK_IF);
+    if (strcmp(string->buffer, "else") == 0)
+      return create_token(TK_ELSE);
+    if (strcmp(string->buffer, "switch") == 0)
+      return create_token(TK_SWITCH);
+    if (strcmp(string->buffer, "while") == 0)
+      return create_token(TK_WHILE);
+    if (strcmp(string->buffer, "do") == 0)
+      return create_token(TK_DO);
+    if (strcmp(string->buffer, "for") == 0)
+      return create_token(TK_FOR);
+    if (strcmp(string->buffer, "goto") == 0)
+      return create_token(TK_GOTO);
+    if (strcmp(string->buffer, "continue") == 0)
+      return create_token(TK_CONTINUE);
+    if (strcmp(string->buffer, "break") == 0)
+      return create_token(TK_BREAK);
+    if (strcmp(string->buffer, "return") == 0)
+      return create_token(TK_RETURN);
+
+    Token *token = create_token(TK_IDENTIFIER);
+    token->identifier = string->buffer;
+    return token;
+  }
+
+  // pp-number
+  if (isdigit(c)) {
+    String *pp_number = string_new();
+    string_push(pp_number, c);
+    while (isalnum(peek_char()) || peek_char() == '_') {
+      string_push(pp_number, get_char());
+    }
+
+    Token *token = create_token(TK_PP_NUMBER);
+    token->pp_number = pp_number->buffer;
+    return token;
+  }
+
+  // character-constant
+  if (c == '\'') {
+    char char_value = get_char();
+    if (char_value == '\\') {
+      char_value = get_escape_sequence();
+    }
+    expect_char('\'');
+
+    Token *token = create_token(TK_CHAR_CONST);
+    token->char_value = char_value;
+    return token;
+  }
+
+  // string-literal
+  if (c == '"') {
+    String *string_literal = string_new();
+    while (!(peek_char() == '"' || peek_char() == '\0')) {
+      char c = get_char();
+      if (c == '\\') {
+        c = get_escape_sequence();
+      }
+      string_push(string_literal, c);
+    }
+    expect_char('"');
+    string_push(string_literal, '\0');
+
+    Token *token = create_token(TK_STRING_LITERAL);
+    token->string_literal = string_literal;
+    return token;
+  }
+
+  // punctuators
+  if (c == '-' && read_char('>')) return create_token(TK_ARROW);      // ->
+  if (c == '+' && read_char('+')) return create_token(TK_INC);        // ++
+  if (c == '-' && read_char('-')) return create_token(TK_DEC);        // --
+  if (c == '<' && read_char('<')) return create_token(TK_LSHIFT);     // <<
+  if (c == '>' && read_char('>')) return create_token(TK_RSHIFT);     // >>
+  if (c == '<' && read_char('=')) return create_token(TK_LTE);        // <=
+  if (c == '>' && read_char('=')) return create_token(TK_GTE);        // >=
+  if (c == '=' && read_char('=')) return create_token(TK_EQ);         // ==
+  if (c == '!' && read_char('=')) return create_token(TK_NEQ);        // !=
+  if (c == '&' && read_char('&')) return create_token(TK_AND);        // &&
+  if (c == '|' && read_char('|')) return create_token(TK_OR);         // ||
+  if (c == '*' && read_char('=')) return create_token(TK_MUL_ASSIGN); // *=
+  if (c == '/' && read_char('=')) return create_token(TK_DIV_ASSIGN); // /=
+  if (c == '%' && read_char('=')) return create_token(TK_MOD_ASSIGN); // %=
+  if (c == '+' && read_char('=')) return create_token(TK_ADD_ASSIGN); // +=
+  if (c == '-' && read_char('=')) return create_token(TK_SUB_ASSIGN); // -=
+
+  if (c == '.' && read_char('.')) { // ...
+    expect_char('.');
+    return create_token(TK_ELLIPSIS);
+  }
+
+  if (check_char_token(c)) {
+    return create_token(c);
+  }
+
+  error(create_token(-1), "failed to tokenize.");
 }
 
-Vector *tokenize(Vector *input_src) {
-  src = input_src;
-  src_pos = 0;
+Vector *tokenize(char *filename) {
+  // read the input file
+  String *file = read_file(filename);
 
+  // initialization
+  src = replace_newline(file)->buffer;
+  pos = 0;
+
+  line_ptr = src;
+  lineno = 1;
+  column = 1;
+
+  lex_filename = filename;
+
+  // tokenize
   Vector *pp_tokens = vector_new();
   while (1) {
-    Token *pp_token = lex();
-    vector_push(pp_tokens, pp_token);
-    if (pp_token->type == tEND) break;
+    Token *token = next_token();
+
+    // concat consecutive white spaces
+    if (token->tk_type == TK_SPACE) {
+      token->text = " ";
+      vector_push(pp_tokens, token);
+
+      while (token->tk_type == TK_SPACE) {
+        token = next_token();
+      }
+    }
+
+    vector_push(pp_tokens, token);
+    if (token->tk_type == TK_EOF) break;
+  }
+
+  // replace '\n' with '\0' for debugging
+  // we can display the line by printf("%s\n", token->line_ptr);
+  for (int i = 0; src[i]; i++) {
+    if (src[i] == '\n') {
+      src[i] = '\0';
+    }
   }
 
   return pp_tokens;

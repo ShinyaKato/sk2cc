@@ -20,24 +20,21 @@ int main(int argc, char **argv) {
     print_usage();
   }
 
-  Vector *src = scan(filename);
-  Vector *pp_tokens = tokenize(src);
+  Vector *pp_tokens = tokenize(filename);
   Vector *tokens = preprocess(pp_tokens);
 
   if (only_cpp) {
     for (int i = 0; i < tokens->length; i++) {
-      Token *token = tokens->array[i];
-      if (token->type == tEND) break;
-      for (SourceChar **p = token->schar; p != token->schar_end; p++) {
-        SourceChar *schar = *p;
-        printf("%c", *(schar->char_ptr));
-      }
+      Token *token = tokens->buffer[i];
+      if (token->tk_type == TK_EOF) break;
+      printf("%s", token->text);
     }
     exit(0);
   }
 
-  Node *node = parse(tokens);
-  gen(node);
+  TransUnit *trans_unit = parse(tokens);
+  sema(trans_unit);
+  gen(trans_unit);
 
   return 0;
 }

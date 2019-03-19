@@ -1,71 +1,103 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wno-builtin-declaration-mismatch -ggdb # TODO removing -Wno-builtin-declaration-mismatch
+CFLAGS = -std=c11 --pedantic-errors -Wall -g
+
+HEADERS = sk2cc.h
+SRCS = vector.c string.c map.c error.c token.c lex.c scan.c cpp.c node.c symbol.c type.c parse.c sema.c gen.c main.c
+
+DIR = tmp
+
+SK2CC = ./sk2cc
+SELF = ./self
+SELF2 = ./self2
 
 .PHONY: all
 all:
 	make sk2cc
 
-sk2cc: sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c node.c parse.c gen.c main.c
-	$(CC) $(CFLAGS) string.c vector.c map.c error.c scan.c lex.c cpp.c type.c node.c parse.c gen.c main.c -o sk2cc
+# working directory
+$(DIR):
+	mkdir $@
 
-sk2cc_self: tmp sk2cc sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c node.c parse.c gen.c main.c
-	./sk2cc string.c > tmp/string.s
-	./sk2cc vector.c > tmp/vector.s
-	./sk2cc map.c > tmp/map.s
-	./sk2cc error.c > tmp/error.s
-	./sk2cc scan.c > tmp/scan.s
-	./sk2cc lex.c > tmp/lex.s
-	./sk2cc cpp.c > tmp/cpp.s
-	./sk2cc type.c > tmp/type.s
-	./sk2cc node.c > tmp/node.s
-	./sk2cc parse.c > tmp/parse.s
-	./sk2cc gen.c > tmp/gen.s
-	./sk2cc main.c > tmp/main.s
-	gcc tmp/string.s tmp/vector.s tmp/map.s tmp/error.s tmp/scan.s tmp/lex.s tmp/cpp.s tmp/type.s tmp/node.s tmp/parse.s tmp/gen.s tmp/main.s -o sk2cc_self
+# compile with gcc
+$(SK2CC): $(HEADERS) $(SRCS)
+	$(CC) $(CFLAGS) -o $@ $(SRCS)
 
-sk2cc_self2: tmp sk2cc_self sk2cc.h string.h string.c vector.h vector.c map.h map.c error.c scan.c lex.c cpp.c type.c node.c parse.c gen.c main.c
-	./sk2cc_self string.c > tmp/string2.s
-	./sk2cc_self vector.c > tmp/vector2.s
-	./sk2cc_self map.c > tmp/map2.s
-	./sk2cc_self error.c > tmp/error2.s
-	./sk2cc_self scan.c > tmp/scan2.s
-	./sk2cc_self lex.c > tmp/lex2.s
-	./sk2cc_self cpp.c > tmp/cpp2.s
-	./sk2cc_self type.c > tmp/type2.s
-	./sk2cc_self node.c > tmp/node2.s
-	./sk2cc_self parse.c > tmp/parse2.s
-	./sk2cc_self gen.c > tmp/gen2.s
-	./sk2cc_self main.c > tmp/main2.s
-	gcc tmp/string2.s tmp/vector2.s tmp/map2.s tmp/error2.s tmp/scan2.s tmp/lex2.s tmp/cpp2.s tmp/type2.s tmp/node2.s tmp/parse2.s tmp/gen2.s tmp/main2.s -o sk2cc_self2
+# self host
+ASMS_SELF = $(patsubst %.c,$(DIR)/%.s,$(SRCS))
 
+$(ASMS_SELF): $(DIR)/%.s:%.c $(HEADERS) $(DIR) $(SK2CC)
+	$(SK2CC) $< > $@
+
+$(SELF): $(ASMS_SELF)
+	$(CC) $(CFLAGS) -o $@ $^
+
+# self host by self-hosted executable
+ASMS_SELF2 = $(patsubst %.c,$(DIR)/%2.s,$(SRCS))
+
+$(ASMS_SELF2): $(DIR)/%2.s:%.c $(HEADERS) $(DIR) $(SELF)
+	$(SELF) $< > $@
+
+$(SELF2): $(ASMS_SELF2)
+	$(CC) $(CFLAGS) -o $@ $^
+
+# test commands
+.PHONY: test_unit
+test_unit: $(DIR)
+	# string
+	gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test
+	./tmp/string_test
+	# vector
+	gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test
+	./tmp/vector_test
+	# map
+	gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test
+	./tmp/map_test
+	# token
+	gcc -std=c11 -Wall error.c token.c tests/token_driver.c -o tmp/token_test
+	./tmp/token_test
+
+TEST_SCRIPT = ./tests/test.sh
+
+.PHONY: test_check
+test_check: $(DIR)
+	$(TEST_SCRIPT) "gcc -std=c11 --pedantic-errors -S -o -"
+
+.PHONY: test_sk2cc
+test_sk2cc: $(DIR) $(SK2CC)
+	$(TEST_SCRIPT) $(SK2CC)
+
+.PHONY: test_self
+test_self: $(DIR) $(SELF)
+	$(TEST_SCRIPT) $(SELF)
+
+.PHONY: test_self2
+test_self2: $(DIR) $(SELF2)
+	$(TEST_SCRIPT) $(SELF2)
+
+.PHONY: test_diff
+test_diff: $(DIR) $(ASMS_SELF) $(ASMS_SELF2)
+	for src in $(SRCS); do \
+		diff tmp/`echo $$src | sed -e "s/\.c$$/.s/g"` tmp/`echo $$src | sed -e "s/\.c$$/2.s/g"`; \
+	done
+
+.PHONY: test
+test:
+	make test_unit
+	make test_check
+	make test_sk2cc
+	make test_self
+	make test_self2
+	make test_diff
+
+# assembler
 as: as.h as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c
 	$(CC) $(CFLAGS) as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c -o as
 
-tmp:
-	mkdir tmp
-
-.PHONY: test
-test: tmp sk2cc
-	./tests/test.sh ./sk2cc
-
-.PHONY: self_test
-self_test: sk2cc_self
-	./tests/test.sh ./sk2cc_self
-
-.PHONY: self_self_test
-self2_test: sk2cc_self2
-	./tests/test.sh ./sk2cc_self2
-
-.PHONY: as_test
-as_test: tmp as
+.PHONY: test_as
+test_as: tmp as
 	./tests/as_test.sh
 
-.PHONY: full_test
-full_test:
-	make test
-	make self_test
-	make self2_test
-
+# clean
 .PHONY: clean
 clean:
-	rm -rf sk2cc sk2cc_self sk2cc_self2 as tmp
+	rm -rf $(DIR) $(SK2CC) $(SELF) $(SELF2) as

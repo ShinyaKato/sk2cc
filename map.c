@@ -1,15 +1,9 @@
-#include "map.h"
+#include "sk2cc.h"
 
 Map *map_new() {
   Map *map = (Map *) calloc(1, sizeof(Map));
-
   map->count = 0;
-
   return map;
-}
-
-int map_count(Map *map) {
-  return map->count;
 }
 
 bool map_put(Map *map, char *key, void *value) {

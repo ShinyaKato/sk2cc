@@ -6,72 +6,25 @@ typedef enum macro_type {
 } MacroType;
 
 typedef struct macro {
-  MacroType type;
+  MacroType mc_type;
   Vector *params;
   Vector *replace;
 } Macro;
 
-typedef struct scanner {
-  Vector *tokens;
-  int pos;
-} Scanner;
-
 Map *macros;
 
-Scanner *scanner_new(Vector *tokens) {
-  Scanner *sc = (Scanner *) calloc(1, sizeof(Scanner));
-  sc->tokens = tokens;
-  sc->pos = 0;
-  return sc;
-}
-
-Token *scanner_peek(Scanner *sc) {
-  return sc->tokens->array[sc->pos];
-}
-
-Token *scanner_get(Scanner *sc) {
-  return sc->tokens->array[sc->pos++];
-}
-
-Token *scanner_expect(Scanner *sc, TokenType type) {
-  Token *token;
-  while (sc->pos < sc->tokens->length) {
-    token = scanner_get(sc);
-    if (token->type == type) return token;
-    if (token->type != tSPACE) break;
-  }
-  error(token, "unexpected token.");
-}
-
-bool scanner_check(Scanner *sc, TokenType type) {
-  for (int i = sc->pos; i < sc->tokens->length; i++) {
-    Token *token = sc->tokens->array[i];
-    if (token->type == type) return true;
-    if (token->type != tSPACE) break;
-  }
-  return false;
-}
-
-bool scanner_read(Scanner *sc, TokenType type) {
-  if (scanner_check(sc, type)) {
-    scanner_expect(sc, type);
-    return true;
-  }
-  return false;
-}
-
 bool check_object_macro(Token *token) {
-  if (token->type != tIDENTIFIER) return false;
+  if (token->tk_type != TK_IDENTIFIER) return false;
 
   Macro *macro = map_lookup(macros, token->identifier);
-  return macro && macro->type == OBJECT_MACRO;
+  return macro && macro->mc_type == OBJECT_MACRO;
 }
 
-bool check_function_macro(Token *token, Scanner *sc) {
-  if (token->type != tIDENTIFIER) return false;
+bool check_function_macro(Token *token) {
+  if (token->tk_type != TK_IDENTIFIER) return false;
 
   Macro *macro = map_lookup(macros, token->identifier);
-  return macro && macro->type == FUNCTION_MACRO && scanner_check(sc, tLPAREN);
+  return macro && macro->mc_type == FUNCTION_MACRO && check_token('(');
 }
 
 Vector *expand_object_macro(Token *token) {
@@ -79,40 +32,43 @@ Vector *expand_object_macro(Token *token) {
   return macro->replace;
 }
 
-Vector *expand_function_macro(Token *token, Scanner *sc) {
+Vector *expand_function_macro(Token *token) {
   Macro *macro = map_lookup(macros, token->identifier);
+
   Map *args = map_new();
   int args_count = 0;
 
-  scanner_expect(sc, tLPAREN);
-  if (!scanner_check(sc, tRPAREN)) {
+  expect_token('(');
+  if (!check_token(')')) {
     do {
       Vector *arg = vector_new();
       int depth = 0;
 
-      scanner_read(sc, tSPACE);
+      read_token(TK_SPACE);
       while (1) {
-        Token *token = scanner_get(sc);
-        if (token->type == tLPAREN) depth++;
-        if (token->type == tRPAREN) depth--;
+        Token *token = get_token();
+        if (token->tk_type == '(') depth++;
+        if (token->tk_type == ')') depth--;
 
-        bool end = depth == 0 && (scanner_check(sc, tCOMMA) || scanner_check(sc, tRPAREN));
-        if (token->type == tSPACE && end) break;
+        bool finished = depth == 0 && (check_token(',') || check_token(')'));
+        if (token->tk_type == TK_SPACE && finished) break;
         vector_push(arg, token);
-        if (end) break;
+
+        if (finished) break;
       }
 
-      Token *param = macro->params->array[args_count++];
+      Token *param = macro->params->buffer[args_count++];
       map_put(args, param->identifier, arg);
-    } while (scanner_read(sc, tCOMMA));
+    } while (read_token(','));
   }
-  scanner_expect(sc, tRPAREN);
+  expect_token(')');
+
+  Scanner *prev = scanner_preserve(macro->replace);
 
   Vector *result = vector_new();
-  Scanner *macro_sc = scanner_new(macro->replace);
-  while (macro_sc->pos < macro_sc->tokens->length) {
-    Token *token = scanner_get(macro_sc);
-    if (token->type == tIDENTIFIER && map_lookup(args, token->identifier)) {
+  while (has_next_token()) {
+    Token *token = get_token();
+    if (token->tk_type == TK_IDENTIFIER && map_lookup(args, token->identifier)) {
       Vector *arg = map_lookup(args, token->identifier);
       vector_merge(result, arg);
       continue;
@@ -120,128 +76,142 @@ Vector *expand_function_macro(Token *token, Scanner *sc) {
     vector_push(result, token);
   }
 
+  scanner_restore(prev);
+
   return result;
 }
 
 Vector *replace_macro(Vector *tokens) {
-  Scanner *sc = scanner_new(tokens);
-  Vector *result = vector_new();
+  Scanner *prev = scanner_preserve(tokens);
 
-  while (sc->pos < sc->tokens->length) {
-    Token *token = scanner_get(sc);
+  Vector *result = vector_new();
+  while (has_next_token()) {
+    Token *token = get_token();
     if (check_object_macro(token)) {
       vector_merge(result, expand_object_macro(token));
-    } else if (check_function_macro(token, sc)) {
-      vector_merge(result, expand_function_macro(token, sc));
+    } else if (check_function_macro(token)) {
+      vector_merge(result, expand_function_macro(token));
     } else {
       vector_push(result, token);
     }
   }
 
+  scanner_restore(prev);
+
   return result;
 }
 
-Vector *preprocessing_unit(Scanner *sc);
+Vector *preprocessing_unit();
 
-void define_directive(Scanner *sc) {
-  char *identifier = scanner_expect(sc, tIDENTIFIER)->identifier;
+void define_directive() {
+  char *identifier = expect_token(TK_IDENTIFIER)->identifier;
 
-  MacroType type;
+  MacroType mc_type;
   Vector *params;
-  if (scanner_peek(sc)->type == tSPACE || scanner_peek(sc)->type == tNEWLINE) {
-    type = OBJECT_MACRO;
-  } else if (scanner_peek(sc)->type == tLPAREN) {
-    scanner_get(sc);
-    type = FUNCTION_MACRO;
+  if (check_token(TK_SPACE) || check_token(TK_NEWLINE)) {
+    mc_type = OBJECT_MACRO;
+    params = NULL;
+  } else if (read_token('(')) {
+    mc_type = FUNCTION_MACRO;
     params = vector_new();
-    if (!scanner_check(sc, tRPAREN)) {
+    if (!check_token(')')) {
       do {
-        Token *param = scanner_expect(sc, tIDENTIFIER);
+        read_token(TK_SPACE);
+        Token *param = expect_token(TK_IDENTIFIER);
+        read_token(TK_SPACE);
         vector_push(params, param);
-      } while (scanner_read(sc, tCOMMA));
+      } while (read_token(','));
     }
-    scanner_expect(sc, tRPAREN);
+    expect_token(')');
   }
 
   Vector *replace = vector_new();
-  if (!scanner_check(sc, tNEWLINE)) {
-    scanner_expect(sc, tSPACE);
-    while (1) {
-      Token *token = scanner_get(sc);
-      if (token->type == tSPACE && scanner_check(sc, tNEWLINE)) break;
+  if (!check_token(TK_NEWLINE)) {
+    expect_token(TK_SPACE);
+    while (!check_token(TK_NEWLINE)) {
+      Token *token = get_token();
+      if (token->tk_type == TK_SPACE && check_token(TK_NEWLINE)) break;
       vector_push(replace, token);
-      if (scanner_check(sc, tNEWLINE)) break;
     }
   }
-  scanner_expect(sc, tNEWLINE);
+  expect_token(TK_NEWLINE);
 
   Macro *macro = (Macro *) calloc(1, sizeof(Macro));
-  macro->type = type;
+  macro->mc_type = mc_type;
   macro->params = params;
   macro->replace = replace;
 
   map_put(macros, identifier, macro);
 }
 
-Vector *include_directive(Scanner *sc) {
-  char *filename = scanner_expect(sc, tSTRING_LITERAL)->string_value->buffer;
-  Vector *src = scan(filename);
-  Vector *pp_tokens = tokenize(src);
-  Scanner *next_sc = scanner_new(pp_tokens);
-  Vector *tokens = preprocessing_unit(next_sc);
+Vector *include_directive() {
+  char *filename = expect_token(TK_STRING_LITERAL)->string_literal->buffer;
+  read_token(TK_SPACE);
+  expect_token(TK_NEWLINE);
+
+  Vector *pp_tokens = tokenize(filename);
+
+  Scanner *prev = scanner_preserve(pp_tokens);
+  Vector *tokens = preprocessing_unit();
+  scanner_restore(prev);
+
   return tokens;
 }
 
-Vector *text_line(Scanner *sc) {
-  Vector *line_tokens = vector_new();
+Vector *text_line() {
+  Vector *text_tokens = vector_new();
 
-  while (1) {
-    Token *token = scanner_get(sc);
-    vector_push(line_tokens, token);
-    if (token->type == tNEWLINE) {
-      if (scanner_check(sc, tHASH)) break;
-      if (scanner_check(sc, tEND)) break;
+  while (!check_token(TK_EOF)) {
+    Token *token = get_token();
+    vector_push(text_tokens, token);
+
+    if (token->tk_type == TK_NEWLINE && check_token('#')) {
+      break;
     }
   }
 
-  return replace_macro(line_tokens);
+  return replace_macro(text_tokens);
 }
 
-Vector *group(Scanner *sc) {
+Vector *group() {
   Vector *tokens = vector_new();
 
-  while (!scanner_check(sc, tEND)) {
-    if (scanner_read(sc, tHASH)) {
-      Token *directive = scanner_expect(sc, tIDENTIFIER);
-      if (strcmp(directive->identifier, "define") == 0) {
-        define_directive(sc);
-      } else if (strcmp(directive->identifier, "include") == 0) {
-        Vector *include_tokens = include_directive(sc);
+  while (!check_token(TK_EOF)) {
+    if (read_token('#')) {
+      read_token(TK_SPACE);
+
+      char *directive = expect_token(TK_IDENTIFIER)->identifier;
+      read_token(TK_SPACE);
+
+      if (strcmp(directive, "define") == 0) {
+        define_directive();
+      } else if (strcmp(directive, "include") == 0) {
+        Vector *include_tokens = include_directive();
         vector_merge(tokens, include_tokens);
       } else {
-        error(scanner_peek(sc), "invalid preprocessing directive.");
+        error(peek_token(), "invalid preprocessing directive.");
       }
     } else {
-      Vector *line_tokens = text_line(sc);
-      vector_merge(tokens, line_tokens);
+      Vector *text_tokens = text_line();
+      vector_merge(tokens, text_tokens);
     }
   }
 
   return tokens;
 }
 
-Vector *preprocessing_unit(Scanner *sc) {
-  Vector *tokens = group(sc);
+Vector *preprocessing_unit() {
+  Vector *tokens = group();
   return tokens;
 }
 
 Vector *preprocess(Vector *pp_tokens) {
   macros = map_new();
 
-  Scanner *sc = scanner_new(pp_tokens);
+  scanner_init(pp_tokens);
 
-  Vector *tokens = preprocessing_unit(sc);
-  vector_push(tokens, pp_tokens->array[pp_tokens->length - 1]);
+  Vector *tokens = preprocessing_unit();
+  vector_push(tokens, pp_tokens->buffer[pp_tokens->length - 1]);
 
   return tokens;
 }

@@ -1,3 +1,5 @@
+int printf(char *format, ...);
+
 struct test_struct {
   char c;
   int n;
@@ -332,6 +334,11 @@ int main() {
   { enum { U, L, D, R } d; d = L; test(d, 1); }
   { enum { U, L, D, R } d; d = D; test(d, 2); }
   { enum { U, L, D, R } d; d = R; test(d, 3); }
+
+  { enum { U, L = 13, D, R }; test(U, 0); }
+  { enum { U, L = 13, D, R }; test(L, 13); }
+  { enum { U, L = 13, D, R }; test(D, 14); }
+  { enum { U, L = 13, D, R }; test(R, 15); }
 
   { char c = 5; c *= 13; test(c, 65); }
   { int x = 5; x *= 8; test(x, 40); }
