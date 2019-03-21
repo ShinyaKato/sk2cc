@@ -8,6 +8,7 @@ typedef enum macro_type {
 typedef struct macro {
   MacroType mc_type;
   Vector *params;
+  bool ellipsis;
   Vector *replace;
 } Macro;
 
@@ -34,32 +35,55 @@ Vector *expand_object_macro(Token *token) {
 
 Vector *expand_function_macro(Token *token) {
   Macro *macro = map_lookup(macros, token->identifier);
-
   Map *args = map_new();
-  int args_count = 0;
 
+  read_token(TK_SPACE);
   expect_token('(');
-  if (!check_token(')')) {
-    do {
-      Vector *arg = vector_new();
-      int depth = 0;
+  for (int i = 0; i < macro->params->length; i++) {
+    Token *param = macro->params->buffer[i];
 
-      read_token(TK_SPACE);
-      while (1) {
-        Token *token = get_token();
-        if (token->tk_type == '(') depth++;
-        if (token->tk_type == ')') depth--;
+    Vector *arg = vector_new();
+    int depth = 0;
 
-        bool finished = depth == 0 && (check_token(',') || check_token(')'));
-        if (token->tk_type == TK_SPACE && finished) break;
-        vector_push(arg, token);
+    read_token(TK_SPACE);
+    while (1) {
+      Token *token = get_token();
+      if (token->tk_type == '(') depth++;
+      if (token->tk_type == ')') depth--;
 
-        if (finished) break;
+      bool finished = depth == 0 && (check_token(',') || check_token(')'));
+      if (token->tk_type == TK_SPACE && finished) break;
+      vector_push(arg, token);
+      if (finished) break;
+    }
+
+    map_put(args, param->identifier, arg);
+
+    if (i != macro->params->length - 1) {
+      expect_token(',');
+    } else {
+      if (macro->ellipsis && !check_token(')')) {
+        expect_token(',');
       }
+    }
+  }
+  if (macro->ellipsis) {
+    Vector *va_args = vector_new();
+    int depth = 0;
 
-      Token *param = macro->params->buffer[args_count++];
-      map_put(args, param->identifier, arg);
-    } while (read_token(','));
+    read_token(TK_SPACE);
+    while (1) {
+      Token *token = get_token();
+      if (token->tk_type == '(') depth++;
+      if (token->tk_type == ')') depth--;
+
+      bool finished = depth == 0 && check_token(')');
+      if (token->tk_type == TK_SPACE && finished) break;
+      vector_push(va_args, token);
+      if (finished) break;
+    }
+
+    map_put(args, "__VA_ARGS__", va_args);
   }
   expect_token(')');
 
@@ -107,19 +131,23 @@ void define_directive() {
   char *identifier = expect_token(TK_IDENTIFIER)->identifier;
 
   MacroType mc_type;
-  Vector *params;
+  Vector *params = NULL;
+  bool ellipsis = false;
   if (check_token(TK_SPACE) || check_token(TK_NEWLINE)) {
     mc_type = OBJECT_MACRO;
-    params = NULL;
   } else if (read_token('(')) {
     mc_type = FUNCTION_MACRO;
     params = vector_new();
     if (!check_token(')')) {
       do {
         read_token(TK_SPACE);
-        Token *param = expect_token(TK_IDENTIFIER);
+        if (read_token(TK_ELLIPSIS)) {
+          ellipsis = true;
+          read_token(TK_SPACE);
+          break;
+        }
+        vector_push(params, expect_token(TK_IDENTIFIER));
         read_token(TK_SPACE);
-        vector_push(params, param);
       } while (read_token(','));
     }
     expect_token(')');
@@ -139,6 +167,7 @@ void define_directive() {
   Macro *macro = (Macro *) calloc(1, sizeof(Macro));
   macro->mc_type = mc_type;
   macro->params = params;
+  macro->ellipsis = ellipsis;
   macro->replace = replace;
 
   map_put(macros, identifier, macro);
