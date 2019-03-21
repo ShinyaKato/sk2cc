@@ -48,6 +48,7 @@ int main(void) {
 
   test_token(TK_TYPEDEF, "typedef");
   test_token(TK_EXTERN, "extern");
+  test_token(TK_STATIC, "static");
   test_token(TK_VOID, "void");
   test_token(TK_CHAR, "char");
   test_token(TK_SHORT, "short");

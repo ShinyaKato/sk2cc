@@ -178,6 +178,8 @@ Token *next_token() {
       return create_token(TK_TYPEDEF);
     if (strcmp(string->buffer, "extern") == 0)
       return create_token(TK_EXTERN);
+    if (strcmp(string->buffer, "static") == 0)
+      return create_token(TK_STATIC);
     if (strcmp(string->buffer, "void") == 0)
       return create_token(TK_VOID);
     if (strcmp(string->buffer, "char") == 0)

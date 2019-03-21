@@ -3,6 +3,7 @@
 typedef struct decl_attribution {
   Type *type;
   bool sp_extern;
+  bool sp_static;
   bool sp_noreturn;
 } DeclAttribution;
 
@@ -24,10 +25,26 @@ void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
     error(symbol->token, "duplicated declaration: %s.", symbol->identifier);
   }
 
-  symbol->link = global ? LN_EXTERNAL : LN_NONE;
-  symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
-  if (attr && attr->sp_extern) {
-    symbol->definition = false;
+  if (global) {
+    if (attr && attr->sp_extern) {
+      symbol->link = LN_EXTERNAL;
+      symbol->definition = false;
+    } else if (attr && attr->sp_static) {
+      symbol->link = LN_INTERNAL;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    } else {
+      symbol->link = LN_EXTERNAL;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    }
+  } else {
+    if (attr && attr->sp_extern) {
+      error(symbol->token, "'extern' specifier for local variable is not supported.");
+    } else if (attr && attr->sp_static) {
+      error(symbol->token, "'static' specifier for local variable is not supported.");
+    } else {
+      symbol->link = LN_NONE;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    }
   }
 
   if (!global) {
@@ -846,6 +863,7 @@ void sema_decl(Decl *decl, bool global) {
 DeclAttribution *sema_specs(Vector *specs, Token *token) {
   int sp_storage = 0;
   bool sp_extern = false;
+  bool sp_static = false;
 
   int sp_type = 0;
   int sp_void = 0;
@@ -869,6 +887,9 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     } else if (spec->sp_type == SP_EXTERN) {
       sp_storage++;
       sp_extern = true;
+    } else if (spec->sp_type == SP_STATIC) {
+      sp_storage++;
+      sp_static = true;
     } else if (spec->sp_type == SP_VOID) {
       sp_type++;
       sp_void++;
@@ -981,6 +1002,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   DeclAttribution *attr = calloc(1, sizeof(DeclAttribution));
   attr->type = type;
   attr->sp_extern = sp_extern;
+  attr->sp_static = sp_static;
   attr->sp_noreturn = sp_noreturn;
   return attr;
 }

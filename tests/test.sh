@@ -942,11 +942,21 @@ int main() {
 }
 EOS
 
-expect_return "42" <<-EOS
+expect_return 42 <<-EOS
 typedef long long intptr_t;
 int main() {
   void *p = (void *) (intptr_t) 42;
   return (int) (intptr_t) p;
+}
+EOS
+
+expect_return 62 <<-EOS
+static int x = 62;
+static int func() {
+  return x;
+}
+int main() {
+ return func();
 }
 EOS
 

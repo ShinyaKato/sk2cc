@@ -124,6 +124,7 @@ typedef enum token_type {
   // keywords for declarations
   TK_TYPEDEF,
   TK_EXTERN,
+  TK_STATIC,
   TK_VOID,
   TK_CHAR,
   TK_SHORT,
@@ -427,6 +428,7 @@ typedef enum specifier_type {
   // storage-class-specifier
   SP_TYPEDEF,
   SP_EXTERN,
+  SP_STATIC,
 
   // type-specifier
   SP_VOID,
@@ -569,6 +571,7 @@ typedef enum symbol_type {
 // SymbolLink
 typedef enum symbol_link {
   LN_EXTERNAL, // global variable
+  LN_INTERNAL, // static variable
   LN_NONE,     // local variable
 } SymbolLink;
 

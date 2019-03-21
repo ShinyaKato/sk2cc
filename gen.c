@@ -55,7 +55,7 @@ void gen_expr(Expr *node);
 void gen_lvalue(Expr *node) {
   if (node->nd_type == ND_IDENTIFIER) {
     Symbol *symbol = node->symbol;
-    if (symbol->link == LN_EXTERNAL) {
+    if (symbol->link == LN_EXTERNAL || symbol->link == LN_INTERNAL) {
       printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
     } else if (symbol->link == LN_NONE) {
       printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
@@ -921,7 +921,9 @@ void gen_decl_global(Decl *node) {
     if (!symbol->definition) continue;
 
     printf("  .data\n");
-    printf("  .global %s\n", symbol->identifier);
+    if (symbol->link == LN_EXTERNAL) {
+      printf("  .global %s\n", symbol->identifier);
+    }
     printf("%s:\n", symbol->identifier);
 
     if (symbol->init) {
@@ -949,7 +951,9 @@ void gen_func(Func *node) {
   }
 
   printf("  .text\n");
-  printf("  .global %s\n", symbol->identifier);
+  if (symbol->link == LN_EXTERNAL) {
+    printf("  .global %s\n", symbol->identifier);
+  }
   printf("%s:\n", symbol->identifier);
 
   gen_push("rbp");

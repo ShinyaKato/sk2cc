@@ -31,6 +31,7 @@ Symbol *lookup_symbol(char *identifier) {
 bool check_storage_class_specifier() {
   if (check_token(TK_TYPEDEF)) return true;
   if (check_token(TK_EXTERN)) return true;
+  if (check_token(TK_STATIC)) return true;
 
   return false;
 }
@@ -609,6 +610,8 @@ Specifier *storage_class_specifier() {
     return specifier_new(SP_TYPEDEF, token);
   if (read_token(TK_EXTERN))
     return specifier_new(SP_EXTERN, token);
+  if (read_token(TK_STATIC))
+    return specifier_new(SP_STATIC, token);
 
   // unreachable
   internal_error("invalid storage-class-specifier.");

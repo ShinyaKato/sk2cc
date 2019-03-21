@@ -43,6 +43,7 @@ char *tk_names[] = {
   // keywords for declarations
   "typedef",
   "extern",
+  "static",
   "void",
   "char",
   "short",
