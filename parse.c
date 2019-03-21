@@ -91,6 +91,26 @@ Expr *primary_expression() {
   Token *token = peek_token();
 
   if (!check_typedef_name() && read_token(TK_IDENTIFIER)) {
+    if (strcmp(token->identifier, "__builtin_va_start") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(',');
+      char *macro_arg = expect_token(TK_IDENTIFIER)->identifier;
+      expect_token(')');
+      return expr_va_start(macro_ap, macro_arg, token);
+    }
+    if (strcmp(token->identifier, "__builtin_va_arg") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(',');
+      TypeName *macro_type = type_name();
+      expect_token(')');
+      return expr_va_arg(macro_ap, macro_type, token);
+    }
+    if (strcmp(token->identifier, "__builtin_va_end") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(')');
+      return expr_va_end(macro_ap, token);
+    }
+
     Symbol *symbol = lookup_symbol(token->identifier);
     if (symbol && symbol->sy_type == SY_CONST) {
       return expr_enum_const(token->identifier, symbol, token);

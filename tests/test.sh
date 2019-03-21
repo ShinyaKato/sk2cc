@@ -960,6 +960,92 @@ int main() {
 }
 EOS
 
+expect_stdout "a: 1\nb: 2\narg: 3\narg: 4\n" <<-EOS
+#define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
+#define va_end __builtin_va_end
+
+typedef __builtin_va_list va_list;
+
+int printf(char *format, ...);
+
+void test(int a, int b, ...) {
+  printf("a: %d\n", a);
+  printf("b: %d\n", b);
+
+  va_list ap;
+  va_start(ap, b);
+  for (int i = 0; i < 2; i++) {
+    printf("arg: %d\n", va_arg(ap, int));
+  }
+  va_end(ap);
+}
+
+int main() {
+  test(1, 2, 3, 4);
+  return 0;
+}
+EOS
+
+expect_stdout "a: 1\nb: 2\narg: 3\narg: 4\narg: 5\narg: 6\narg: 7\n" <<-EOS
+#define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
+#define va_end __builtin_va_end
+
+typedef __builtin_va_list va_list;
+
+int printf(char *format, ...);
+
+void test(int a, int b, ...) {
+  printf("a: %d\n", a);
+  printf("b: %d\n", b);
+
+  va_list ap;
+  va_start(ap, b);
+  for (int i = 0; i < 5; i++) {
+    printf("arg: %d\n", va_arg(ap, int));
+  }
+  va_end(ap);
+}
+
+int main() {
+  test(1, 2, 3, 4, 5, 6, 7);
+  return 0;
+}
+EOS
+
+expect_stdout "a: 1\nb: 2\nc: 3\nd: 4\ne: 5\nf: 6\ng: 7\narg: 8\narg: 9\n" <<-EOS
+#define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
+#define va_end __builtin_va_end
+
+typedef __builtin_va_list va_list;
+
+int printf(char *format, ...);
+
+void test(int a, int b, int c, int d, int e, int f, int g, ...) {
+  printf("a: %d\n", a);
+  printf("b: %d\n", b);
+  printf("c: %d\n", c);
+  printf("d: %d\n", d);
+  printf("e: %d\n", e);
+  printf("f: %d\n", f);
+  printf("g: %d\n", g);
+
+  va_list ap;
+  va_start(ap, g);
+  for (int i = 0; i < 2; i++) {
+    printf("arg: %d\n", va_arg(ap, int));
+  }
+  va_end(ap);
+}
+
+int main() {
+  test(1, 2, 3, 4, 5, 6, 7, 8, 9);
+  return 0;
+}
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"

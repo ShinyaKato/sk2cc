@@ -13,6 +13,7 @@ typedef unsigned long long size_t;
 
 // stdarg.h
 #define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
 #define va_end __builtin_va_end
 
 typedef __builtin_va_list va_list;
@@ -224,6 +225,11 @@ struct scanner {
 
 // NodeType
 typedef enum node_type {
+  // built-in macros
+  ND_VA_START,
+  ND_VA_ARG,
+  ND_VA_END,
+
   // expression
   ND_IDENTIFIER,
   ND_INTEGER,
@@ -308,6 +314,11 @@ struct node {
 struct expr {
   NodeType nd_type;
   Type *type;
+
+  // built-in macros
+  Expr *macro_ap;
+  char *macro_arg;
+  TypeName *macro_type;
 
   // child expression node
   Expr *expr;      // for unary expr, postfix expr, cast expr
@@ -630,6 +641,9 @@ extern Symbol *symbol_type(char *identifier, Token *token);
 extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
 
 // node.c
+extern Expr *expr_va_start(Expr *macro_ap, char *macro_arg, Token *token);
+extern Expr *expr_va_arg(Expr *macro_ap, TypeName *macro_type, Token *token);
+extern Expr *expr_va_end(Expr *macro_ap, Token *token);
 extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Expr *expr_integer(unsigned long long int_value, bool int_decimal, bool int_u, bool int_l, bool int_ll, Token *token);
 extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);

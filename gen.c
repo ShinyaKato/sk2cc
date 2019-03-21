@@ -8,6 +8,7 @@ Map *labels;
 Vector *continue_labels, *break_labels;
 
 int gp_offset;
+int overflow_arg_area;
 int stack_depth;
 
 void begin_switch_gen(int *label_break) {
@@ -30,7 +31,11 @@ void end_loop_gen() {
 
 void gen_push(char *reg) {
   stack_depth += 8;
-  printf("  pushq %%%s\n", reg);
+  if (reg) {
+    printf("  pushq %%%s\n", reg);
+  } else {
+    printf("  subq $8, %%rsp\n");
+  }
 }
 
 void gen_pop(char *reg) {
@@ -120,6 +125,53 @@ void gen_operands(Expr *lhs, Expr *rhs, char *reg_lhs, char *reg_rhs) {
   gen_pop(reg_lhs);
 }
 
+void gen_va_start(Expr *node) {
+  gen_lvalue(node->macro_ap);
+  gen_pop("rax");
+
+  printf("  movl $%d, (%%rax)\n", gp_offset);
+  printf("  movl $48, 4(%%rax)\n");
+  printf("  leaq %d(%%rbp), %%rcx\n", overflow_arg_area + 16);
+  printf("  movq %%rcx, 8(%%rax)\n");
+  printf("  leaq -176(%%rbp), %%rcx\n");
+  printf("  movq %%rcx, 16(%%rax)\n");
+
+  gen_push(NULL);
+}
+
+void gen_va_arg(Expr *node) {
+  gen_lvalue(node->macro_ap);
+  gen_pop("rax");
+
+  int label_overflow = label_no++;
+  int label_load = label_no++;
+
+  printf("  movl (%%rax), %%ecx\n");
+  printf("  cmpl $48, %%ecx\n");
+  gen_jump("je", label_overflow);
+
+  printf("  movl %%ecx, %%edx\n");
+  printf("  addl $8, %%edx\n");
+  printf("  movl %%edx, (%%rax)\n");
+  printf("  movq 16(%%rax), %%rdx\n");
+  printf("  addq %%rdx, %%rcx\n");
+  gen_jump("jmp", label_load);
+
+  gen_label(label_overflow);
+  printf("  movq 8(%%rax), %%rcx\n");
+  printf("  movq %%rcx, %%rdx\n");
+  printf("  addq $8, %%rdx\n");
+  printf("  movq %%rdx, 8(%%rax)\n");
+
+  gen_label(label_load);
+  printf("  movq (%%rcx), %%rax\n");
+  gen_push("rax");
+}
+
+void gen_va_end(Expr *node) {
+  gen_push(NULL);
+}
+
 void gen_identifier(Expr *node) {
   gen_lvalue(node);
   gen_load(node->type);
@@ -140,26 +192,6 @@ void gen_string(Expr *node) {
 }
 
 void gen_call(Expr *node) {
-  if (strcmp(node->expr->identifier, "__builtin_va_start") == 0) {
-    Expr *list = node->args->buffer[0];
-    gen_lvalue(list);
-    gen_pop("rdx");
-    printf("  movl $%d, (%%rdx)\n", gp_offset);
-    printf("  movl $48, 4(%%rdx)\n");
-    printf("  leaq 16(%%rbp), %%rcx\n");
-    printf("  movq %%rcx, 8(%%rdx)\n");
-    printf("  leaq -176(%%rbp), %%rcx\n");
-    printf("  movq %%rcx, 16(%%rdx)\n");
-    printf("  movl $0, %%eax\n");
-    gen_push("rax");
-    return;
-  }
-  if (strcmp(node->expr->identifier, "__builtin_va_end") == 0) {
-    printf("  movl $0, %%eax\n");
-    gen_push("rax");
-    return;
-  }
-
   // In the System V ABI, up to 6 arguments are stored in a register.
   // The remaining arguments are placed on the stack.
   //
@@ -602,9 +634,15 @@ void gen_comma(Expr *node) {
 }
 
 void gen_expr(Expr *node) {
-  if (node->nd_type == ND_IDENTIFIER) {
-    gen_identifier(node); }
-  else if (node->nd_type == ND_INTEGER) {
+  if (node->nd_type == ND_VA_START) {
+    gen_va_start(node);
+  } else if (node->nd_type == ND_VA_ARG) {
+    gen_va_arg(node);
+  } else if (node->nd_type == ND_VA_END) {
+    gen_va_end(node);
+  } else if (node->nd_type == ND_IDENTIFIER) {
+    gen_identifier(node);
+  } else if (node->nd_type == ND_INTEGER) {
     gen_integer(node);
   } else if (node->nd_type == ND_STRING) {
     gen_string(node);
@@ -938,7 +976,13 @@ void gen_func(Func *node) {
   Symbol *symbol = node->symbol;
   Type *type = symbol->type;
 
-  gp_offset = type->params->length * 8;
+  if (type->params->length <= 6) {
+    gp_offset = type->params->length * 8;
+    overflow_arg_area = 0;
+  } else {
+    gp_offset = 48;
+    overflow_arg_area = (type->params->length - 6) * 8;
+  }
   stack_depth = 8;
   return_label = label_no++;
 

@@ -206,6 +206,39 @@ Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return sema_expr(assign);
 }
 
+Expr *sema_va_start(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    error(expr->macro_ap->token, "invalid argument of 'va_start'.");
+  }
+
+  expr->type = type_void();
+
+  return expr;
+}
+
+Expr *sema_va_arg(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    error(expr->macro_ap->token, "invalid argument of 'va_arg'.");
+  }
+
+  expr->type = sema_type_name(expr->macro_type);
+
+  return expr;
+}
+
+Expr *sema_va_end(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    error(expr->macro_ap->token, "invalid argument of 'va_end'.");
+  }
+
+  expr->type = type_void();
+
+  return expr;
+}
+
 Expr *sema_identifier(Expr *expr) {
   if (expr->symbol) {
     expr->type = expr->symbol->type;
@@ -721,7 +754,13 @@ Expr *sema_expr(Expr *expr) {
     return expr;
   }
 
-  if (expr->nd_type == ND_IDENTIFIER) {
+  if (expr->nd_type == ND_VA_START) {
+    expr = sema_va_start(expr);
+  } else if (expr->nd_type == ND_VA_ARG) {
+    expr = sema_va_arg(expr);
+  } else if (expr->nd_type == ND_VA_END) {
+    expr = sema_va_end(expr);
+  } else if (expr->nd_type == ND_IDENTIFIER) {
     expr = sema_identifier(expr);
   } else if (expr->nd_type == ND_INTEGER) {
     expr = sema_integer(expr);
