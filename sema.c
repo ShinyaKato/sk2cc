@@ -1399,7 +1399,7 @@ void sema_func(Func *func) {
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
     Symbol *param = func->symbol->type->params->buffer[i];
-    put_variable(attr, param, false);
+    put_variable(NULL, param, false);
   }
 
   vector_push(tag_scopes, map_new());
