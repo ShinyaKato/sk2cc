@@ -46,7 +46,7 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status);
 
-// strcmp.h
+// string.h
 int strcmp(char *s1, char *s2);
 
 // ctype.h

@@ -1,49 +1,89 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
+#include <assert.h>
 
-int external_obj = 35;
+int stub_arg1(int a) {
+  assert(a == 1);
 
-int func_arg1(int a) {
   return a * a;
 }
 
-int func_arg2(int a, int b) {
+int stub_arg2(int a, int b) {
+  assert(a == 1);
+  assert(b == 2);
+
   return a * a + b * b;
 }
 
-int func_arg3(int a, int b, int c) {
+int stub_arg3(int a, int b, int c) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+
   return a * a + b * b + c * c;
 }
 
-int func_arg4(int a, int b, int c, int d) {
+int stub_arg4(int a, int b, int c, int d) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+  assert(d == 4);
+
   return a * a + b * b + c * c + d * d;
 }
 
-int func_arg5(int a, int b, int c, int d, int e) {
+int stub_arg5(int a, int b, int c, int d, int e) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+  assert(d == 4);
+  assert(e == 5);
+
   return a * a + b * b + c * c + d * d + e * e;
 }
 
-int func_arg6(int a, int b, int c, int d, int e, int f) {
+int stub_arg6(int a, int b, int c, int d, int e, int f) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+  assert(d == 4);
+  assert(e == 5);
+  assert(f == 6);
+
   return a * a + b * b + c * c + d * d + e * e + f * f;
 }
 
-int func_arg7(int a, int b, int c, int d, int e, int f, int g) {
+int stub_arg7(int a, int b, int c, int d, int e, int f, int g) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+  assert(d == 4);
+  assert(e == 5);
+  assert(f == 6);
+  assert(g == 7);
+
   return a * a + b * b + c * c + d * d + e * e + f * f + g * g;
 }
 
-int func_arg8(int a, int b, int c, int d, int e, int f, int g, int h) {
+int stub_arg8(int a, int b, int c, int d, int e, int f, int g, int h) {
+  assert(a == 1);
+  assert(b == 2);
+  assert(c == 3);
+  assert(d == 4);
+  assert(e == 5);
+  assert(f == 6);
+  assert(g == 7);
+  assert(h == 8);
+
   return a * a + b * b + c * c + d * d + e * e + f * f + g * g + h * h;
 }
 
-int* alloc() {
-  int *p = (int *) calloc(3, sizeof(int));
-  p[0] = 53;
-  p[1] = 29;
-  p[2] = 64;
-  return p;
+bool stub_bool(int b) {
+  return b;
 }
 
-struct test_struct {
+struct stub_struct {
   char c;
   int n;
   int a[4];
@@ -52,16 +92,16 @@ struct test_struct {
   } v;
 };
 
-int test_struct(struct test_struct *s) {
-  if (s->c != 'A') return 1;
-  if (s->n != 45) return 1;
-  if (s->a[0] != 5) return 1;
-  if (s->a[1] != 3) return 1;
-  if (s->a[2] != 8) return 1;
-  if (s->a[3] != 7) return 1;
-  if (s->v.x != 67) return 1;
-  if (s->v.y != 1) return 1;
-  if (s->v.z != -41) return 1;
+void stub_struct(struct stub_struct *s) {
+  assert(s->c == 'A');
+  assert(s->n == 45);
+  assert(s->a[0] == 5);
+  assert(s->a[1] == 3);
+  assert(s->a[2] == 8);
+  assert(s->a[3] == 7);
+  assert(s->v.x == 67);
+  assert(s->v.y == 1);
+  assert(s->v.z == -41);
 
   s->c = 'Z';
   s->n = 82;
@@ -72,14 +112,4 @@ int test_struct(struct test_struct *s) {
   s->v.x = 98;
   s->v.y = 12;
   s->v.z = 1;
-
-  return 0;
-}
-
-_Bool bool_ret(int b) {
-  return b;
-}
-
-double test_double(double a) {
-  return a * 2;
 }

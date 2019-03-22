@@ -1,381 +1,317 @@
-int printf(char *format, ...);
+#define bool _Bool
 
-struct test_struct {
-  char c;
-  int n;
-  int a[4];
-  struct {
-    int x, y, z;
-  } v;
-};
+#define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
+#define va_end __builtin_va_end
+typedef __builtin_va_list va_list;
 
-int func_arg1(int a);
-int func_arg2(int a, int b);
-int func_arg3(int a, int b, int c);
-int func_arg4(int a, int b, int c, int d);
-int func_arg5(int a, int b, int c, int d, int e);
-int func_arg6(int a, int b, int c, int d, int e, int f);
-int func_arg7(int a, int b, int c, int d, int e, int f, int g);
-int func_arg8(int a, int b, int c, int d, int e, int f, int g, int h);
-int *alloc();
-int test_struct(struct test_struct *s);
-_Bool bool_ret(int b);
+typedef long long intptr_t;
 
-#define test(expr, expected) \
+typedef struct _IO_FILE FILE;
+extern FILE *stderr;
+
+int fprintf(FILE *stream, char *format, ...);
+int strcmp(char *s1, char *s2);
+void exit(int status);
+
+#define expect(expr, expected) \
   do { \
     int actual = (expr); \
     if (actual != (expected)) { \
-      printf("%d: \"%s\" should be %d, but got %d.\n", __LINE__, #expr, (expected), actual); \
-      return 1; \
+      fprintf(stderr, "%s:%d: \"%s\" should be %d, but got %d.\n", __FILE__, __LINE__, #expr, (expected), actual); \
+      exit(1); \
     } \
   } while (0)
 
-int main() {
-  test(2 + 3, 5);
-  test(123 + 43 + 1 + 21, 188);
+void test_expression() {
+  // character-constant
+  expect('A', 65);
+  expect('\n', 10);
+  expect('\'', 39);
 
-  test(11 - 7, 4);
-  test(123 - 20 - 3, 100);
-  test(123 + 20 - 3 + 50 - 81, 109);
-
-  test(3 * 5, 15);
-  test(3 * 5 + 7 * 8 - 3 * 4, 59);
-
-  test((3 - 5) * 3 + 7, 1);
-  test((((123))), 123);
-
-  test(6 / 2, 3);
-  test(6 / (2 - 3) + 7, 1);
-  test(123 % 31, 30);
-  test(32 / 4 + 5 * (8 - 5) + 5 % 2, 24);
-
-  test(3 * 5 == 7 + 8, 1);
-  test(3 * 5 == 123, 0);
-  test(3 * 5 != 7 + 8, 0);
-  test(3 * 5 != 123, 1);
-
-  test(5 * 7 < 36, 1);
-  test(5 * 7 < 35, 0);
-  test(5 * 7 > 35, 0);
-  test(5 * 7 > 34, 1);
-
-  test(5 * 7 <= 35, 1);
-  test(5 * 7 <= 34, 0);
-  test(5 * 7 >= 36, 0);
-  test(5 * 7 >= 35, 1);
-  test(12 > -1, 1);
-
-  test(1 && 1, 1);
-  test(0 && 1, 0);
-  test(1 && 0, 0);
-  test(0 && 0, 0);
-  test(3 * 7 > 20 && 5 < 10 && 6 + 2 <= 3 * 3 && 5 * 2 % 3 == 1, 1);
-  test(3 * 7 > 20 && 5 < 10 && 6 + 2 >= 3 * 3 && 5 * 2 % 3 == 1, 0);
-
-  test(1 || 1, 1);
-  test(0 || 1, 1);
-  test(1 || 0, 1);
-  test(0 || 0, 0);
-  test(8 * 7 < 50 || 10 > 2 * 5 || 3 % 2 == 1 || 5 * 7 < 32, 1);
-  test(8 * 7 < 50 || 10 > 2 * 5 || 3 % 2 != 1 || 5 * 7 < 32, 0);
-  test(3 * 7 > 20 && 2 * 4 <= 7 || 8 % 2 == 0 && 5 / 2 >= 2, 1);
-
-  test(+5, 5);
-  test(5 + (-5), 0);
-  test(3 - + - + - + - 2, 5);
-
-  test(!0, 1);
-  test(!1, 0);
-  test(!!0, 0);
-  test(!(2 * 3 <= 2 + 3), 1);
-
-  test(3 > 2 ? 13 : 31, 13);
-  test(3 < 2 ? 13 : 31, 31);
-  test(1 ? 1 ? 6 : 7 : 1 ? 8 : 9, 6);
-  test(1 ? 0 ? 6 : 7 : 1 ? 8 : 9, 7);
-  test(0 ? 1 ? 6 : 7 : 1 ? 8 : 9, 8);
-  test(0 ? 1 ? 6 : 7 : 0 ? 8 : 9, 9);
-
-  test(1 << 6, 64);
-  test(64 >> 6, 1);
-  test(64 >> 8, 0);
-  test(41 << 2, 164);
-  test(41 >> 3, 5);
-
-  test(183 & 109, 37);
-  test(183 | 109, 255);
-  test(183 ^ 109, 218);
-
-  test(~183 & 255, 72);
-
-  { int x = 123; test(100 <= x && x < 200, 1); }
-  { int x = 3; x = x * x + 1; test(x + 3, 13); }
-  { int x; test(x = 2 * 3 * 4, 24); }
-  { int x = 2, y = x + 5; test(y, 7); }
-  { int x, y, z; test(x = y = z = 3, 3); }
-  { int x, y, z; x = (y = (z = 1) + 2) + 3; test(x, 6); }
-  { int x, y, z; x = (y = (z = 1) + 2) + 3; test(y, 3); }
-  { int x, y, z; x = (y = (z = 1) + 2) + 3; test(z, 1); }
-
-  test(func_arg1(1), 1);
-  test(func_arg2(1, 2), 5);
-  test(func_arg3(1, 2, 3), 14);
-  test(func_arg4(1, 2, 3, 4), 30);
-  test(func_arg5(1, 2, 3, 4, 5), 55);
-  test(func_arg6(1, 2, 3, 4, 5, 6), 91);
-  test(func_arg7(1, 2, 3, 4, 5, 6, 7), 140);
-  test(func_arg8(1, 2, 3, 4, 5, 6, 7, 8), 204);
-
-  { int x = 5; if (3 * 4 > 10) { x = 7; } test(x, 7); }
-  { int x = 5; if (3 * 4 < 10) { x = 7; } test(x, 5); }
-  { int x = 5; if (3 * 4 > 10) if (0) x = 7; test(x, 5); }
-  { int x; if (3 * 4 > 10) x = 3; else x = 4; test(x, 3); }
-  { int x; if (3 * 4 < 10) x = 3; else x = 4; test(x, 4); }
-  { int x; if (0) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; test(x, 0); }
-  { int x; if (0) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; test(x, 1); }
-  { int x; if (0) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; test(x, 0); }
-  { int x; if (0) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; test(x, 1); }
-  { int x; if (1) if (0) x = 3; else x = 2; else if (0) x = 1; else x = 0; test(x, 2); }
-  { int x; if (1) if (0) x = 3; else x = 2; else if (1) x = 1; else x = 0; test(x, 2); }
-  { int x; if (1) if (1) x = 3; else x = 2; else if (0) x = 1; else x = 0; test(x, 3); }
-  { int x; if (1) if (1) x = 3; else x = 2; else if (1) x = 1; else x = 0; test(x, 3); }
-
-  { int x = 1, s = 0; while (x <= 0) { s += x; x++; } test(s, 0); }
-  { int x = 1, s = 0; while (x <= 1) { s += x; x++; } test(s, 1); }
-  { int x = 1, s = 0; while (x <= 10) { s += x; x++; } test(s, 55); }
-  { int x = 1, s = 0; while (x <= 10) { s += x; x++; } test(s, 55); }
-  { int x = 1, s = 0; while (x <= 10) { if (x % 2 == 0) s += x; x++; } test(s, 30); }
-  { int x = 1, s = 0; while (x <= 10) { if (x % 2 == 1) s += x; x++; } test(s, 25); }
-
-  { int i = 0, s = 0; do { s += i; i++; } while (i < 10); test(s, 45); }
-  { int i = 10, s = 0; do { s += i; i++; } while (i < 10); test(s, 10); }
-
-  { int s = 0, i = 0; for (; i < 10;) { s = s + i; i++; } test(s, 45); }
-  { int s = 0, i = 0; for (; i < 10; i++) { s = s + i; } test(s, 45); }
-  { int s = 0, i; for (i = 0; i < 10;) { s = s + i; i++; } test(s, 45); }
-  { int s = 0, i; for (i = 0; i < 10; i++) { s = s + i; } test(s, 45); }
-
-  { int i; i = 0; for (;; i++) { if (i < 100) continue; break; } test(i, 100); }
-  { int i; i = 0; do { i++; if (i < 100) continue; break; } while (1); test(i, 100); }
-  { int i; i = 0; do { i++; if (i < 100) continue; } while (i < 50); test(i, 50); }
-  { int i; i = 0; while (1) { i++; if (i < 100) continue; break; } test(i, 100); }
-
-  { int *x = alloc(); test(*x, 53); }
-  { int *x = alloc(); test(*(x + 1), 29); }
-  { int *x = alloc(); test(*(x + 2), 64); }
-  { int *x = alloc(); *(x + 1) = 5; test(*(x + 1), 5); }
-  { int *x = alloc(); *(x + 1) = *(x + 2); test(*(x + 1), 64); }
-  { int *x = alloc(); int *y; y = x + 2; test(*(y - 1), 29); }
-
-  { int x = 7; test(*&x, 7); }
-  { int x = 7, y = 5; test(*&x * *&y, 35); }
-  { int x = 123, *y = &x; test(*y, 123); }
-  { int x = 123, *y = &x, **z = &y; test(**z, 123); }
-  { int x = 123, *y = &x; *y = 231; test(x, 231); }
-  { int x1 = 123, x2 = 231, *y = &x1, **z = &y; *z = &x2; *y = 12; test(x2, 12); }
-
-  { int t, x = 2, *y = &t; *y = x + 3; test(*y + 4, 9); }
-  { int x[5]; for (int i = 0; i < 5; i++) { *(x + i) = i * i; } test(*(x + 0), 0); }
-  { int x[5]; for (int i = 0; i < 5; i++) { *(x + i) = i * i; } test(*(x + 2), 4); }
-  { int x[5]; for (int i = 0; i < 5; i++) { *(x + i) = i * i; } test(*(x + 4), 16); }
-  { int a = 2, *x[4]; *(x + 3) = &a; test(**(x + 3), 2); }
-  { int x[3][4]; **x = 5; test(**x, 5); }
-  { int x[3][4]; *(*(x + 2) + 3) = 5; test(*(*(x + 2) + 3), 5); }
-  { int x[3][3]; for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) *(*(x + i) + j) = i * j; test(*(*(x + 2) + 1), 2); }
-
-  { int x; x = 1; test(x++, 1); }
-  { int x; x = 1; test(++x, 2); }
-  { int x; x = 1; x++; test(x, 2); }
-  { int x; x = 1; ++x; test(x, 2); }
-  { int x; x = 1; test(x--, 1); }
-  { int x; x = 1; test(--x, 0); }
-  { int x; x = 1; x--; test(x, 0); }
-  { int x; x = 1; --x; test(x, 0); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; test(*(p++), 92); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; test(*(++p), 93); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; p++; test(*p, 93); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; ++p; test(*p, 93); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; test(*(p--), 92); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; test(*(--p), 91); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; p--; test(*p, 91); }
-  { int *p, a[3]; a[0] = 91; a[1] = 92; a[2] = 93; p = a + 1; --p; test(*p, 91); }
-
-  test(sizeof(123), 4);
-  test(sizeof 123, 4);
-  test(sizeof 123 + 13, 17);
-  { char x; test(sizeof(x), 1); }
-  { int x; test(sizeof(x), 4); }
-  { int *x; test(sizeof(x), 8); }
-  { int **x; test(sizeof(x), 8); }
-  { int x[4]; test(sizeof(x), 16); }
-  { int x[4][5]; test(sizeof(x), 80); }
-  { int *x[4][5]; test(sizeof(x), 160); }
-  { int x[4][5]; test(sizeof(x[0]), 20); }
-  { char x; test(sizeof("abc"), 4); }
-  { char x; test(sizeof("abc\n"), 5); }
-  { char x; test(sizeof("abc\0abc\n"), 9); }
-  { char *x; x = "abc"; test(sizeof(x), 8); }
-  test(sizeof(char), 1);
-  test(sizeof(int), 4);
-  test(sizeof(void *), 8);
-  test(sizeof(char *), 8);
-  test(sizeof(int *), 8);
-  test(sizeof(int **), 8);
-  test(sizeof(struct { char c1, c2; }), 2);
-  test(sizeof(struct { char c1; int n; char c2; }), 12);
-  test(sizeof(struct { char c1, c2; int n; }), 8);
-  test(sizeof(struct { char c1, c2; int *p, n; }), 24);
-  test(sizeof(struct { char c1, c2; int n, *p; }), 16);
-
-  test(_Alignof(char), 1);
-  test(_Alignof(int), 4);
-  test(_Alignof(void *), 8);
-  test(_Alignof(char *), 8);
-  test(_Alignof(int *), 8);
-  test(_Alignof(int **), 8);
-  test(_Alignof(struct { char c1, c2; }), 1);
-  test(_Alignof(struct { char c1; int n; char c2; }), 4);
-  test(_Alignof(struct { char c1, c2; int n; }), 4);
-  test(_Alignof(struct { char c1, c2; int *p, n; }), 8);
-  test(_Alignof(struct { char c1, c2; int n, *p; }), 8);
-
-  { int x = 5; test(x, 5); }
-  { int x = 5, y = x + 3; test(y, 8); }
-  { int x = 5; int y = x + 3; test(y, 8); }
-  { int x = 3, y = 5, z = x + y * 8; test(z, 43); }
-  { int x = 42, *y = &x; test(*y, 42); }
-
-  { int x = 2; x += 3; test(x, 5); }
-  { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p = A; p += 2; test(*p, 32); }
-  { int x = 5; x -= 3; test(x, 2); }
-  { int A[3]; A[0] = 30; A[1] = 31; A[2] = 32; int *p = A + 2; p -= 2; test(*p, 30); }
-
-  test('A', 65);
-  test('\n', 10);
-  test('\'', 39);
-
-  { int a, b, *p = &a, *q = &b; test(p == q, 0); }
-  { int a, b, *p = &a, *q = &b; test(p != q, 1); }
-  { int a, *p = &a, *q = &a; test(p == q, 1); }
-  { int a, *p = &a, *q = &a; test(p != q, 0); }
-
-  { int a[3], *p = a + 1, *q = a + 0; test(p < q, 0); }
-  { int a[3], *p = a + 1, *q = a + 1; test(p < q, 0); }
-  { int a[3], *p = a + 1, *q = a + 2; test(p < q, 1); }
-  { int a[3], *p = a + 1, *q = a + 0; test(p > q, 1); }
-  { int a[3], *p = a + 1, *q = a + 1; test(p < q, 0); }
-  { int a[3], *p = a + 1, *q = a + 2; test(p > q, 0); }
-  { int a[3], *p = a + 1, *q = a + 0; test(p <= q, 0); }
-  { int a[3], *p = a + 1, *q = a + 1; test(p <= q, 1); }
-  { int a[3], *p = a + 1, *q = a + 2; test(p <= q, 1); }
-  { int a[3], *p = a + 1, *q = a + 0; test(p >= q, 1); }
-  { int a[3], *p = a + 1, *q = a + 1; test(p >= q, 1); }
-  { int a[3], *p = a + 1, *q = a + 2; test(p >= q, 0); }
-
-  { int a = 34, b = 58, *p = &a, *q = &b; test(*(1 ? p : q), 34); }
-  { int a = 34, b = 58, *p = &a, *q = &b; test(*(0 ? p : q), 58); }
-
-  { int a, *p = &a; test(p ? 123 : 231, 123); }
-  { int *p = 0; test(p ? 123 : 231, 231); }
-  { int x, a, *p = &a; if (p) x = 123; else x = 231; test(x, 123); }
-  { int x, *p = 0; if (p) x = 123; else x = 231; test(x, 231); }
-  { int x = 231, a, *p = &a; while (p) { x = 123; break; } test(x, 123); }
-  { int x = 231, *p = 0; while (p) { x = 123; break; } test(x, 231); }
-  { int x = 231, a, *p = &a; for (; p;) { x = 123; break; } test(x, 123); }
-  { int x = 231, *p = 0; for (; p;) { x = 123; break; } test(x, 231); }
-
-  { int a[3]; a[0] = 0; a[1] = 1; a[2] = 2; test(1[a], 1); }
-
-  { int a, *p = &a; test(!p, 0); }
-  { int *p = 0; test(!p, 1); }
-
-  test(100 > -1, 1);
-  test(-1 < 100, 1);
-  test(100 >= -1, 1);
-  test(-1 <= 100, 1);
-
+  // array subscription
   {
-    struct test_struct s;
-    s.c = 'A';
-    s.n = 45;
-    s.a[0] = 5;
-    s.a[1] = 3;
-    s.a[2] = 8;
-    s.a[3] = 7;
-    s.v.x = 67;
-    s.v.y = 1;
-    s.v.z = -41;
-
-    test(test_struct(&s), 0);
-
-    test(s.c, 'Z');
-    test(s.n, 82);
-    test(s.a[0], 4);
-    test(s.a[1], 4);
-    test(s.a[2], 1234);
-    test(s.a[3], -571);
-    test(s.v.x, 98);
-    test(s.v.y, 12);
-    test(s.v.z, 1);
+    int x[5]; for (int i = 0; i < 5; i++) {
+      x[i] = i * i;
+    }
+    expect(*(x + 0), 0);
+    expect(*(x + 2), 4);
+    expect(*(x + 4), 16);
   }
-  { struct { int x, y; } a, *p; p = &a; p->x = 12; a.y = 7; test(a.x == 12 && p->y == 7, 1); }
-
-  { test(bool_ret(0), 0); }
-  { test(bool_ret(1048576), 1); }
-  { test(bool_ret(1048577), 1); }
-  { _Bool b = 0; test(b, 0); }
-  { _Bool b = 1; test(b, 1); }
-  { _Bool b = 8; test(b, 1); }
-  { _Bool b1 = 0, b2 = !b1; test(b2, 1); }
-  { _Bool b1 = 1, b2 = !b1; test(b2, 0); }
-  { _Bool b1 = 0, b2 = b1 + 50; test(b2, 1); }
-
-  { enum { U, L, D, R }; test(U, 0); }
-  { enum { U, L, D, R }; test(L, 1); }
-  { enum { U, L, D, R }; test(D, 2); }
-  { enum { U, L, D, R }; test(R, 3); }
-  { enum { U, L, D, R, } d; d = U; test(d, 0); }
-  { enum { U, L, D, R, } d; d = L; test(d, 1); }
-  { enum { U, L, D, R, } d; d = D; test(d, 2); }
-  { enum { U, L, D, R, } d; d = R; test(d, 3); }
-
-  { enum { U, L = 13, D, R }; test(U, 0); }
-  { enum { U, L = 13, D, R }; test(L, 13); }
-  { enum { U, L = 13, D, R }; test(D, 14); }
-  { enum { U, L = 13, D, R }; test(R, 15); }
-
-  { char c = 5; c *= 13; test(c, 65); }
-  { int x = 5; x *= 8; test(x, 40); }
-
-  { int a[4] = { 5, 6, 7 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); }
-  { int a[4] = { 5, 6, 7, 8 }; test(a[0], 5); test(a[1], 6); test(a[2], 7); test(a[3], 8); }
-
-  { int a = 10, *p = &a; test(*&*&*p, 10); }
-  { struct { int x, y; } t; t.x = 10; test(*&*&t.x, 10); }
-  { struct { int x, y; } t, *p; p = &t; t.x = 10; test(*&*&p->x, 10); }
-
-  { int i = 0; for (; i < 5; i++); test(i, 5); }
-  { ; }
-
-  { int x = 41, *p = &x; (*p)++; test(x, 42); }
-
-  { unsigned int x = 12; test(x, 12); }
-  { unsigned int x = 12, y = 34; test(x + y, 46); }
-  { unsigned int x = 12, y = 34; test(x * y, 408); }
-
-  { short x = 12, y = x + 1; test(x * y, 156); }
-  { unsigned short x = 12, y = x + 1; test(x * y, 156); }
-
   {
-    { typedef int a, b; a x = 12; b y = 34; test(x * y, 408); }
-    int a = 12, b = 34; test(a * b, 408);
+    int x[3][3];
+    for (int i = 0; i < 3; i++) {
+      for (int j = 0; j < 3; j++) {
+        x[i][j] = i * j;
+      }
+    }
+    expect(*(*(x + 2) + 1), 2);
+    expect(*(*(x + 2) + 2), 4);
   }
 
-  {
-    { enum { X, Y, Z } t = Y; test(t, 1); }
-    int Z = 123; test(Z, 123);
-  }
 
+  // postfix increment / decrement
+  { int x = 1; expect(x++, 1); expect(x, 2); }
+  { int x = 1; expect(x--, 1); expect(x, 0); }
+
+  { int *p, a[3] = { 1, 2, 3 }; p = &a[1]; expect(*(p++), 2); expect(*p, 3); }
+  { int *p, a[3] = { 1, 2, 3 }; p = &a[1]; expect(*(p--), 2); expect(*p, 1); }
+
+  // prefix increment / decrement
+  { int x = 1; expect(++x, 2); expect(x, 2); }
+  { int x = 1; expect(--x, 0); expect(x, 0); }
+
+  { int *p, a[3] = { 1, 2, 3 }; p = &a[1]; expect(*(++p), 3); expect(*p, 3); }
+  { int *p, a[3] = { 1, 2, 3 }; p = &a[1]; expect(*(--p), 1); expect(*p, 1); }
+
+  // unary & / unary *
+  { int x = 7; expect(*&x, 7); }
+  { int x = 7, y = 5; expect(*&x * *&y, 35); }
+  { int x = 123, *y = &x; expect(*y, 123); }
+  { int x = 123, *y = &x, **z = &y; expect(**z, 123); }
+  { int x = 123, *y = &x; *y = 231; expect(x, 231); }
+  { int x1 = 123, x2 = 231, *y = &x1, **z = &y; *z = &x2; *y = 12; expect(x2, 12); }
+
+  // unary +
+  expect(+5, 5);
+
+  // unary -
+  expect(-5, 0 - 5);
+
+  // unary !
+  expect(!0, 1);
+  expect(!1, 0);
+  expect(!!0, 0);
+
+  { int a, *p = &a; expect(!p, 0); }
+  { int *p = 0; expect(!p, 1); }
+
+  // unary ~
+  expect(~183, -184);
+
+  // sizeof
+  expect(sizeof(123), 4);
+  expect(sizeof 123, 4);
+  expect(sizeof 123 + 13, 17);
+
+  { char x; expect(sizeof(x), 1); }
+  { int x; expect(sizeof(x), 4); }
+  { int *x; expect(sizeof(x), 8); }
+  { int **x; expect(sizeof(x), 8); }
+  { int x[4]; expect(sizeof(x), 16); }
+  { int x[4][5]; expect(sizeof(x), 80); }
+  { int *x[4][5]; expect(sizeof(x), 160); }
+  { int x[4][5]; expect(sizeof(x[0]), 20); }
+  { char *x = "abc"; expect(sizeof(x), 8); }
+
+  expect(sizeof("abc"), 4);
+  expect(sizeof("abc\n"), 5);
+  expect(sizeof("abc\0abc\n"), 9);
+
+  expect(sizeof(char), 1);
+  expect(sizeof(int), 4);
+  expect(sizeof(void *), 8);
+  expect(sizeof(char *), 8);
+  expect(sizeof(int *), 8);
+  expect(sizeof(int **), 8);
+  expect(sizeof(struct { char c1, c2; }), 2);
+  expect(sizeof(struct { char c1; int n; char c2; }), 12);
+  expect(sizeof(struct { char c1, c2; int n; }), 8);
+  expect(sizeof(struct { char c1, c2; int *p, n; }), 24);
+  expect(sizeof(struct { char c1, c2; int n, *p; }), 16);
+
+  // alignof
+  expect(_Alignof(char), 1);
+  expect(_Alignof(int), 4);
+  expect(_Alignof(void *), 8);
+  expect(_Alignof(char *), 8);
+  expect(_Alignof(int *), 8);
+  expect(_Alignof(int **), 8);
+  expect(_Alignof(struct { char c1, c2; }), 1);
+  expect(_Alignof(struct { char c1; int n; char c2; }), 4);
+  expect(_Alignof(struct { char c1, c2; int n; }), 4);
+  expect(_Alignof(struct { char c1, c2; int *p, n; }), 8);
+  expect(_Alignof(struct { char c1, c2; int n, *p; }), 8);
+
+  // cast operator
+  { signed long x = (signed long) 200000 * 200000; expect(x == 40000000000l, 1); }
+  { unsigned long x = (unsigned long) 200000 * 200000; expect(x == 40000000000ul, 1); }
+
+  { void *p = (void *) (intptr_t) 42; expect((int) (intptr_t) p, 42); }
+
+  // multiplicative operator
+  expect(3 * 5, 15);
+  expect(6 / 2, 3);
+  expect(123 % 31, 30);
+
+  // additive operator
+  expect(2 + 3, 5);
+  expect(11 - 7, 4);
+
+  // shift operator
+  expect(1 << 6, 64);
+  expect(64 >> 6, 1);
+  expect(64 >> 8, 0);
+  expect(41 << 2, 164);
+  expect(41 >> 3, 5);
+
+  // relational operator
+  expect(35 < 36, 1);
+  expect(35 < 35, 0);
+  expect(35 > 35, 0);
+  expect(35 > 34, 1);
+  expect(35 <= 35, 1);
+  expect(35 <= 34, 0);
+  expect(35 >= 36, 0);
+  expect(35 >= 35, 1);
+
+  expect(100 > -1, 1);
+  expect(-1 < 100, 1);
+  expect(100 >= -1, 1);
+  expect(-1 <= 100, 1);
+
+  { int a[3], *p = &a[1], *q = &a[0]; expect(p < q, 0); }
+  { int a[3], *p = &a[1], *q = &a[1]; expect(p < q, 0); }
+  { int a[3], *p = &a[1], *q = &a[2]; expect(p < q, 1); }
+  { int a[3], *p = &a[1], *q = &a[0]; expect(p > q, 1); }
+  { int a[3], *p = &a[1], *q = &a[1]; expect(p < q, 0); }
+  { int a[3], *p = &a[1], *q = &a[2]; expect(p > q, 0); }
+  { int a[3], *p = &a[1], *q = &a[0]; expect(p <= q, 0); }
+  { int a[3], *p = &a[1], *q = &a[1]; expect(p <= q, 1); }
+  { int a[3], *p = &a[1], *q = &a[2]; expect(p <= q, 1); }
+  { int a[3], *p = &a[1], *q = &a[0]; expect(p >= q, 1); }
+  { int a[3], *p = &a[1], *q = &a[1]; expect(p >= q, 1); }
+  { int a[3], *p = &a[1], *q = &a[2]; expect(p >= q, 0); }
+
+  // equality operator
+  expect(15 == 15, 1);
+  expect(15 == 19, 0);
+
+  expect(15 != 15, 0);
+  expect(15 != 19, 1);
+
+  { int a, b, *p = &a, *q = &b; expect(p == q, 0); }
+  { int a, b, *p = &a, *q = &b; expect(p != q, 1); }
+  { int a, *p = &a, *q = &a; expect(p == q, 1); }
+  { int a, *p = &a, *q = &a; expect(p != q, 0); }
+
+  // bitwise operator
+  expect(183 & 109, 37);
+
+  expect(183 | 109, 255);
+
+  expect(183 ^ 109, 218);
+
+  // logical operator
+  expect(1 && 1, 1);
+  expect(0 && 1, 0);
+  expect(1 && 0, 0);
+  expect(0 && 0, 0);
+
+  expect(1 || 1, 1);
+  expect(0 || 1, 1);
+  expect(1 || 0, 1);
+  expect(0 || 0, 0);
+
+  // assignment operator
+  { int x; x = 123; expect(x, 123); }
+  { int x; x = 3; x = x * x + 1; expect(x, 10); }
+  { int x; expect(x = 2 * 3 * 4, 24); }
+  { int x, y; x = 2; y = x + 5; expect(y, 7); }
+  { int x, y, z; expect(x = y = z = 3, 3); }
+  { int x, y, z; x = (y = (z = 1) + 2) + 3; expect(x, 6); expect(y, 3); expect(z, 1); }
+  { int x = 19; expect(x *= 3, 57); expect(x, 57); }
+  { int x = 19; expect(x /= 3, 6); expect(x, 6); }
+  { int x = 19; expect(x %= 3, 1); expect(x, 1); }
+  { int x = 19; expect(x += 3, 22); expect(x, 22); }
+  { int x = 19; expect(x -= 3, 16); expect(x, 16); }
+
+  // conditional operator
+  expect(3 > 2 ? 13 : 31, 13);
+  expect(3 < 2 ? 13 : 31, 31);
+  expect(1 ? 1 ? 6 : 7 : 1 ? 8 : 9, 6);
+  expect(1 ? 0 ? 6 : 7 : 1 ? 8 : 9, 7);
+  expect(0 ? 1 ? 6 : 7 : 1 ? 8 : 9, 8);
+  expect(0 ? 1 ? 6 : 7 : 0 ? 8 : 9, 9);
+
+  { int a = 1, b = 2, *p = &a, *q = &b; expect(*(1 ? p : q), 1); }
+  { int a = 1, b = 2, *p = &a, *q = &b; expect(*(0 ? p : q), 2); }
+
+  { int a, *p = &a; expect(p ? 1 : 2, 1); }
+  { int *p = 0; expect(p ? 1 : 2, 2); }
+
+  // test expression
+  expect((((123))), 123);
+  expect((3 - 5) * 3 + 7, 1);
+  expect(6 / (2 - 3) + 7, 1);
+  expect(32 / 4 + 5 * (8 - 5) + 5 % 2, 24);
+  expect(3 * 5 + 7 * 8 - 3 * 4, 59);
+  expect(123 + 43 + 1 + 21, 188);
+  expect(123 - 20 - 3, 100);
+  expect(123 + 20 - 3 + 50 - 81, 109);
+  expect(!(2 * 3 <= 2 + 3), 1);
+  expect(3 * 7 > 20 && 5 < 10 && 6 + 2 <= 3 * 3 && 5 * 2 % 3 == 1, 1);
+  expect(3 * 7 > 20 && 5 < 10 && 6 + 2 >= 3 * 3 && 5 * 2 % 3 == 1, 0);
+  expect(8 * 7 < 50 || 10 > 2 * 5 || 3 % 2 == 1 || 5 * 7 < 32, 1);
+  expect(8 * 7 < 50 || 10 > 2 * 5 || 3 % 2 != 1 || 5 * 7 < 32, 0);
+  expect(3 * 7 > 20 && 2 * 4 <= 7 || 8 % 2 == 0 && 5 / 2 >= 2, 1);
+}
+
+void test_declaration() {
+  // boolean
+  { _Bool b = 0; expect(b, 0); }
+  { _Bool b = 1; expect(b, 1); }
+  { _Bool b = 8; expect(b, 1); }
+  { _Bool b1 = 0, b2 = !b1; expect(b2, 1); }
+  { _Bool b1 = 1, b2 = !b1; expect(b2, 0); }
+  { _Bool b1 = 0, b2 = b1 + 50; expect(b2, 1); }
+
+  // struct
+  { struct { int x, y; } a, *p; p = &a; p->x = 12; a.y = 7; expect(a.x == 12 && p->y == 7, 1); }
+  { struct { int x, y; } t; t.x = 10; expect(*&*&t.x, 10); }
+  { struct { int x, y; } t, *p; p = &t; t.x = 10; expect(*&*&p->x, 10); }
+
+  // enumeration
+  { enum { U, L, D, R }; expect(U, 0); }
+  { enum { U, L, D, R }; expect(L, 1); }
+  { enum { U, L, D, R }; expect(D, 2); }
+  { enum { U, L, D, R }; expect(R, 3); }
+  { enum { U, L, D, R, } d; d = U; expect(d, 0); }
+  { enum { U, L, D, R, } d; d = L; expect(d, 1); }
+  { enum { U, L, D, R, } d; d = D; expect(d, 2); }
+  { enum { U, L, D, R, } d; d = R; expect(d, 3); }
+  { enum { U, L = 13, D, R }; expect(U, 0); }
+  { enum { U, L = 13, D, R }; expect(L, 13); }
+  { enum { U, L = 13, D, R }; expect(D, 14); }
+  { enum { U, L = 13, D, R }; expect(R, 15); }
+
+  // unsigned
+  { unsigned int x = 12; expect(x, 12); }
+  { unsigned int x = 12, y = 34; expect(x + y, 46); }
+  { unsigned int x = 12, y = 34; expect(x * y, 408); }
+
+  // initializer list
+  {
+    int a[4] = { 1, 2, 3 };
+    expect(a[0], 1);
+    expect(a[1], 2);
+    expect(a[2], 3);
+  }
+  {
+    int a[4] = { 1, 2, 3, 4, };
+    expect(a[0], 1);
+    expect(a[1], 2);
+    expect(a[2], 3);
+    expect(a[3], 4);
+  }
+  {
+    int a[] = { 1, 2, 3, 4 };
+    expect(a[0], 1);
+    expect(a[1], 2);
+    expect(a[2], 3);
+    expect(a[3], 4);
+    expect(sizeof(a), 16);
+  }
   {
     int a[4][4] = {
       { 0, 1, 2, 3 },
@@ -383,25 +319,345 @@ int main() {
       { 8, 9, 10, 11 },
       { 12, 13, 14, 15 }
     };
-    test(a[0][0], 0);
-    test(a[1][1], 5);
-    test(a[2][2], 10);
-    test(a[3][3], 15);
+    expect(a[0][0], 0);
+    expect(a[1][1], 5);
+    expect(a[2][2], 10);
+    expect(a[3][3], 15);
   }
-
   {
     char *s[2][2] = {
       { "ab", "cd" },
       { "ef", "gh" }
     };
-    test(s[0][0][0], 'a');
-    test(s[1][1][1], 'h');
+    expect(strcmp(s[0][0], "ab"), 0);
+    expect(strcmp(s[1][1], "gh"), 0);
+  }
+  {
+    char *reg[] = {
+      "rdi",
+      "rsi",
+      "rdx",
+      "rcx",
+      "r8",
+      "r9"
+    };
+    expect(strcmp(reg[0], "rdi"), 0);
+    expect(strcmp(reg[1], "rsi"), 0);
+    expect(strcmp(reg[2], "rdx"), 0);
+    expect(strcmp(reg[3], "rcx"), 0);
+    expect(strcmp(reg[4], "r8"), 0);
+    expect(strcmp(reg[5], "r9"), 0);
+  }
+}
+
+void test_statement() {
+  // if-statement
+  { int x = 0; if (1) { x = 1; } expect(x, 1); }
+  { int x = 0; if (0) { x = 1; } expect(x, 0); }
+
+  { int x = 0; if (1) { x = 1; } else { x = 2; } expect(x, 1); }
+  { int x = 0; if (0) { x = 1; } else { x = 2; } expect(x, 2); }
+
+  { int x; if (0) { if (0) { x = 1; } else { x = 2; } } else { if (0) { x = 3; } else { x = 4; } } expect(x, 4); }
+  { int x; if (0) { if (0) { x = 1; } else { x = 2; } } else { if (1) { x = 3; } else { x = 4; } } expect(x, 3); }
+  { int x; if (0) { if (1) { x = 1; } else { x = 2; } } else { if (0) { x = 3; } else { x = 4; } } expect(x, 4); }
+  { int x; if (0) { if (1) { x = 1; } else { x = 2; } } else { if (1) { x = 3; } else { x = 4; } } expect(x, 3); }
+  { int x; if (1) { if (0) { x = 1; } else { x = 2; } } else { if (0) { x = 3; } else { x = 4; } } expect(x, 2); }
+  { int x; if (1) { if (0) { x = 1; } else { x = 2; } } else { if (1) { x = 3; } else { x = 4; } } expect(x, 2); }
+  { int x; if (1) { if (1) { x = 1; } else { x = 2; } } else { if (0) { x = 3; } else { x = 4; } } expect(x, 1); }
+  { int x; if (1) { if (1) { x = 1; } else { x = 2; } } else { if (1) { x = 3; } else { x = 4; } } expect(x, 1); }
+
+  { int x = 0, a, *p = &a; if (p) x = 1; else x = 2; expect(x, 1); }
+  { int x = 0, *p = 0; if (p) x = 1; else x = 2; expect(x, 2); }
+
+  // switch-statement
+  {
+    int x = 0, y = 0, z = 0, w = 0;
+    switch (2) {
+      case 1: x = 1;
+      case 2: y = 1;
+      case 3: z = 1;
+      default: w = 1;
+    }
+    expect(x, 0);
+    expect(y, 1);
+    expect(z, 1);
+    expect(w, 1);
+  }
+  {
+    int x = 0, y = 0, z = 0, w = 0;
+    switch (7) {
+      case 1: x = 1;
+      case 2: y = 1;
+      case 3: z = 1;
+      default: w = 1;
+    }
+    expect(x, 0);
+    expect(y, 0);
+    expect(z, 0);
+    expect(w, 1);
   }
 
-  { int x = 19; test(x /= 3, 6); test(x, 6); }
-  { int x = 19; test(x %= 3, 1); test(x, 1); }
+  // while-statement
+  { int x = 15; while (x < 10) { x++; } expect(x, 15); }
+  { int x = 15; while (x < 15) { x++; } expect(x, 15); }
+  { int x = 15; while (x < 20) { x++; } expect(x, 20); }
 
-  { int x[4] = { 1, 2, 3, 4, }; test(x[3], 4); }
+  { int x = 0, a, *p = &a; while (p) { x = 1; break; } expect(x, 1); }
+  { int x = 0, *p = 0; while (p) { x = 1; break; } expect(x, 0); }
+
+  // do-statement
+  { int x = 15; do { x++; } while (x < 10); expect(x, 16); }
+  { int x = 15; do { x++; } while (x < 15); expect(x, 16); }
+  { int x = 15; do { x++; } while (x < 20); expect(x, 20); }
+
+  // for-statement
+  { int x; for (x = 15; x < 10; x++); expect(x, 15); }
+  { int x; for (x = 15; x < 15; x++); expect(x, 15); }
+  { int x; for (x = 15; x < 20; x++); expect(x, 20); }
+
+  { int x = 0; for (; x < 10; x++); expect(x, 10); }
+  { int x = 0; for (; x < 10;) x++; expect(x, 10); }
+
+  { int x = 0; for (int i = 0; i < 10; i++) x = i; expect(x, 9); }
+
+  { int x = 0, a, *p = &a; for (; p;) { x = 1; break; } expect(x, 1); }
+  { int x = 0, *p = 0; for (; p;) { x = 1; break; } expect(x, 0); }
+
+  // goto-statement
+  {
+    int x = 10;
+lbl1:
+    x--;
+    if (x > 0) goto lbl1;
+    expect(x, 0);
+  }
+  {
+    int x = 0, y = 0;
+    goto lbl2;
+    x = 1;
+lbl2:
+    y = 1;
+    expect(x, 0);
+    expect(y, 1);
+  }
+
+  // continue-statement
+  {
+    int x = 0, sum = 0;
+    while (x++ < 10) {
+      if (x % 2 == 0) continue;
+      sum += x;
+    }
+    expect(sum, 25);
+  }
+  {
+    int x = 0, sum = 0;
+    do {
+      if (x % 2 == 0) continue;
+      sum += x;
+    } while (x++ < 10);
+    expect(sum, 25);
+  }
+  {
+    int x = 0, sum = 0;
+    for (; x++ < 10;) {
+      if (x % 2 == 0) continue;
+      sum += x;
+    }
+    expect(sum, 25);
+  }
+
+  {
+    int x = 0, sum = 0;
+    for (; x < 10; x++) {
+      continue;
+      sum += x;
+    }
+    expect(sum, 0);
+  }
+
+  // break-statement
+  {
+    int x = 0;
+    while (x < 10) {
+      if (x == 5) break;
+      x++;
+    }
+    expect(x, 5);
+  }
+  {
+    int x = 0;
+    do {
+      if (x == 5) break;
+      x++;
+    } while (x < 10);
+    expect(x, 5);
+  }
+  {
+    int x = 0;
+    for (; x < 10;) {
+      if (x == 5) break;
+      x++;
+    }
+    expect(x, 5);
+  }
+
+  {
+    int x = 0;
+    while (x < 10) {
+      for (int i = 0; i < 10; i++) {
+        if (i == 5) break;
+      }
+      x++;
+    }
+    expect(x, 10);
+  }
+
+  {
+    int x = 0;
+    switch (2) {
+      case 1: x = 1; break;
+      case 2: x = 2; break;
+      case 3: x = 3; break;
+      default: x = 4;
+    }
+    expect(x, 2);
+  }
+}
+
+void test_call_abi() {
+  int stub_arg1(int a);
+  int stub_arg2(int a, int b);
+  int stub_arg3(int a, int b, int c);
+  int stub_arg4(int a, int b, int c, int d);
+  int stub_arg5(int a, int b, int c, int d, int e);
+  int stub_arg6(int a, int b, int c, int d, int e, int f);
+  int stub_arg7(int a, int b, int c, int d, int e, int f, int g);
+  int stub_arg8(int a, int b, int c, int d, int e, int f, int g, int h);
+
+  expect(stub_arg1(1), 1);
+  expect(stub_arg2(1, 2), 5);
+  expect(stub_arg3(1, 2, 3), 14);
+  expect(stub_arg4(1, 2, 3, 4), 30);
+  expect(stub_arg5(1, 2, 3, 4, 5), 55);
+  expect(stub_arg6(1, 2, 3, 4, 5, 6), 91);
+  expect(stub_arg7(1, 2, 3, 4, 5, 6, 7), 140);
+  expect(stub_arg8(1, 2, 3, 4, 5, 6, 7, 8), 204);
+}
+
+void test_bool_abi() {
+  bool stub_bool(int b);
+
+  expect(stub_bool(0), 0);
+  expect(stub_bool(1048576), 1);
+  expect(stub_bool(1048577), 1);
+}
+
+void test_struct_abi() {
+  struct stub_struct {
+    char c;
+    int n;
+    int a[4];
+    struct {
+      int x, y, z;
+    } v;
+  };
+
+  void stub_struct(struct stub_struct *s);
+
+  struct stub_struct s;
+  s.c = 'A';
+  s.n = 45;
+  s.a[0] = 5;
+  s.a[1] = 3;
+  s.a[2] = 8;
+  s.a[3] = 7;
+  s.v.x = 67;
+  s.v.y = 1;
+  s.v.z = -41;
+
+  stub_struct(&s);
+
+  expect(s.c, 'Z');
+  expect(s.n, 82);
+  expect(s.a[0], 4);
+  expect(s.a[1], 4);
+  expect(s.a[2], 1234);
+  expect(s.a[3], -571);
+  expect(s.v.x, 98);
+  expect(s.v.y, 12);
+  expect(s.v.z, 1);
+}
+
+void test_va_list1(int a, int b, ...) {
+  va_list ap;
+  va_start(ap, b);
+
+  int c = va_arg(ap, int);
+  int d = va_arg(ap, int);
+
+  va_end(ap);
+
+  expect(a, 1);
+  expect(b, 2);
+  expect(c, 3);
+  expect(d, 4);
+}
+
+void test_va_list2(int a, int b, ...) {
+  va_list ap;
+  va_start(ap, b);
+
+  int c = va_arg(ap, int);
+  int d = va_arg(ap, int);
+  int e = va_arg(ap, int);
+  int f = va_arg(ap, int);
+  int g = va_arg(ap, int);
+
+  va_end(ap);
+
+  expect(a, 1);
+  expect(b, 2);
+  expect(c, 3);
+  expect(d, 4);
+  expect(e, 5);
+  expect(f, 6);
+  expect(g, 7);
+}
+
+void test_va_list3(int a, int b, int c, int d, int e, int f, int g, ...) {
+  va_list ap;
+  va_start(ap, b);
+
+  int h = va_arg(ap, int);
+  int i = va_arg(ap, int);
+
+  va_end(ap);
+
+  expect(a, 1);
+  expect(b, 2);
+  expect(c, 3);
+  expect(d, 4);
+  expect(e, 5);
+  expect(f, 6);
+  expect(g, 7);
+  expect(h, 8);
+  expect(i, 9);
+}
+
+int main() {
+  test_expression();
+  test_declaration();
+  test_statement();
+
+  test_call_abi();
+  test_bool_abi();
+  test_struct_abi();
+
+  test_va_list1(1, 2, 3, 4);
+  test_va_list2(1, 2, 3, 4, 5, 6, 7);
+  test_va_list3(1, 2, 3, 4, 5, 6, 7, 8, 9);
 
   return 0;
 }
