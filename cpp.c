@@ -14,6 +14,8 @@ typedef struct macro {
 
 Map *macros;
 
+Vector *preprocessing_unit();
+
 bool check_object_macro(Token *token) {
   if (token->tk_type != TK_IDENTIFIER) return false;
 
@@ -125,8 +127,6 @@ Vector *replace_macro(Vector *tokens) {
   return result;
 }
 
-Vector *preprocessing_unit();
-
 void define_directive() {
   char *identifier = expect_token(TK_IDENTIFIER)->identifier;
 
@@ -179,6 +179,7 @@ Vector *include_directive() {
   expect_token(TK_NEWLINE);
 
   Vector *pp_tokens = tokenize(filename);
+  vector_pop(pp_tokens);
 
   Scanner *prev = scanner_preserve(pp_tokens);
   Vector *tokens = preprocessing_unit();
@@ -190,7 +191,7 @@ Vector *include_directive() {
 Vector *text_line() {
   Vector *text_tokens = vector_new();
 
-  while (!check_token(TK_EOF)) {
+  while (has_next_token()) {
     Token *token = get_token();
     vector_push(text_tokens, token);
 
@@ -205,9 +206,14 @@ Vector *text_line() {
 Vector *group() {
   Vector *tokens = vector_new();
 
-  while (!check_token(TK_EOF)) {
-    if (read_token('#')) {
+  while (has_next_token()) {
+    Token *token = read_token('#');
+
+    if (token) {
       read_token(TK_SPACE);
+
+      // null directive
+      if (read_token(TK_NEWLINE)) continue;
 
       char *directive = expect_token(TK_IDENTIFIER)->identifier;
       read_token(TK_SPACE);
@@ -215,14 +221,12 @@ Vector *group() {
       if (strcmp(directive, "define") == 0) {
         define_directive();
       } else if (strcmp(directive, "include") == 0) {
-        Vector *include_tokens = include_directive();
-        vector_merge(tokens, include_tokens);
+        vector_merge(tokens, include_directive());
       } else {
-        error(peek_token(), "invalid preprocessing directive.");
+        error(token, "invalid preprocessing directive.");
       }
     } else {
-      Vector *text_tokens = text_line();
-      vector_merge(tokens, text_tokens);
+      vector_merge(tokens, text_line());
     }
   }
 
@@ -230,17 +234,19 @@ Vector *group() {
 }
 
 Vector *preprocessing_unit() {
-  Vector *tokens = group();
-  return tokens;
+  return group();
 }
+
+// preprocess
 
 Vector *preprocess(Vector *pp_tokens) {
   macros = map_new();
 
+  Token *eof = vector_pop(pp_tokens);
   scanner_init(pp_tokens);
 
   Vector *tokens = preprocessing_unit();
-  vector_push(tokens, pp_tokens->buffer[pp_tokens->length - 1]);
+  vector_push(tokens, eof);
 
   return tokens;
 }
