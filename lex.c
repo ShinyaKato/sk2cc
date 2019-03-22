@@ -313,12 +313,14 @@ Vector *tokenize(char *filename) {
 
     // concat consecutive white spaces
     if (token->tk_type == TK_SPACE) {
-      token->text = " ";
-      vector_push(pp_tokens, token);
-
+      Token *space = token;
+      String *text = string_new();
       while (token->tk_type == TK_SPACE) {
+        string_write(text, token->text);
         token = next_token();
       }
+      space->text = text->buffer;
+      vector_push(pp_tokens, space);
     }
 
     vector_push(pp_tokens, token);

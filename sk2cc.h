@@ -66,6 +66,7 @@ typedef struct string {
 
 extern String *string_new();
 extern void string_push(String *string, char c);
+extern void string_write(String *string, char *s);
 
 // vector.c
 typedef struct vector {
@@ -88,8 +89,8 @@ typedef struct map {
 extern Map *map_new();
 extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
-bool map_puti(Map *map, char *key, int value);
-int map_lookupi(Map *map, char *key);
+extern bool map_puti(Map *map, char *key, int value);
+extern int map_lookupi(Map *map, char *key);
 
 // struct declaration
 typedef struct token Token;

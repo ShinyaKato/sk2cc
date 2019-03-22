@@ -22,3 +22,9 @@ void string_push(String *string, char c) {
 
   string->buffer[string->length] = '\0';
 }
+
+void string_write(String *string, char *s) {
+  for (int i = 0; s[i]; i++) {
+    string_push(string, s[i]);
+  }
+}
