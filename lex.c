@@ -13,6 +13,8 @@ char *lex_line_ptr;
 int lex_lineno;
 int lex_column;
 
+Map *keywords;
+
 String *read_file(char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) {
@@ -101,6 +103,41 @@ bool read_char(char c) {
   return false;
 }
 
+Map *create_keywords() {
+  Map *map = map_new();
+
+  map_puti(map, "sizeof", TK_SIZEOF);
+  map_puti(map, "_Alignof", TK_ALIGNOF);
+  map_puti(map, "typedef", TK_TYPEDEF);
+  map_puti(map, "extern", TK_EXTERN);
+  map_puti(map, "static", TK_STATIC);
+  map_puti(map, "void", TK_VOID);
+  map_puti(map, "char", TK_CHAR);
+  map_puti(map, "short", TK_SHORT);
+  map_puti(map, "int", TK_INT);
+  map_puti(map, "long", TK_LONG);
+  map_puti(map, "signed", TK_SIGNED);
+  map_puti(map, "unsigned", TK_UNSIGNED);
+  map_puti(map, "_Bool", TK_BOOL);
+  map_puti(map, "struct", TK_STRUCT);
+  map_puti(map, "enum", TK_ENUM);
+  map_puti(map, "_Noreturn", TK_NORETURN);
+  map_puti(map, "case", TK_CASE);
+  map_puti(map, "default", TK_DEFAULT);
+  map_puti(map, "if", TK_IF);
+  map_puti(map, "else", TK_ELSE);
+  map_puti(map, "switch", TK_SWITCH);
+  map_puti(map, "while", TK_WHILE);
+  map_puti(map, "do", TK_DO);
+  map_puti(map, "for", TK_FOR);
+  map_puti(map, "goto", TK_GOTO);
+  map_puti(map, "continue", TK_CONTINUE);
+  map_puti(map, "break", TK_BREAK);
+  map_puti(map, "return", TK_RETURN);
+
+  return map;
+}
+
 char get_escape_sequence() {
   if (read_char('\'')) return '\'';
   if (read_char('"')) return '"';
@@ -169,63 +206,8 @@ Token *next_token() {
       string_push(string, get_char());
     }
 
-    // check keywords
-    if (strcmp(string->buffer, "sizeof") == 0)
-      return create_token(TK_SIZEOF);
-    if (strcmp(string->buffer, "_Alignof") == 0)
-      return create_token(TK_ALIGNOF);
-    if (strcmp(string->buffer, "typedef") == 0)
-      return create_token(TK_TYPEDEF);
-    if (strcmp(string->buffer, "extern") == 0)
-      return create_token(TK_EXTERN);
-    if (strcmp(string->buffer, "static") == 0)
-      return create_token(TK_STATIC);
-    if (strcmp(string->buffer, "void") == 0)
-      return create_token(TK_VOID);
-    if (strcmp(string->buffer, "char") == 0)
-      return create_token(TK_CHAR);
-    if (strcmp(string->buffer, "short") == 0)
-      return create_token(TK_SHORT);
-    if (strcmp(string->buffer, "int") == 0)
-      return create_token(TK_INT);
-    if (strcmp(string->buffer, "long") == 0)
-      return create_token(TK_LONG);
-    if (strcmp(string->buffer, "signed") == 0)
-      return create_token(TK_SIGNED);
-    if (strcmp(string->buffer, "unsigned") == 0)
-      return create_token(TK_UNSIGNED);
-    if (strcmp(string->buffer, "_Bool") == 0)
-      return create_token(TK_BOOL);
-    if (strcmp(string->buffer, "struct") == 0)
-      return create_token(TK_STRUCT);
-    if (strcmp(string->buffer, "enum") == 0)
-      return create_token(TK_ENUM);
-    if (strcmp(string->buffer, "_Noreturn") == 0)
-      return create_token(TK_NORETURN);
-    if (strcmp(string->buffer, "case") == 0)
-      return create_token(TK_CASE);
-    if (strcmp(string->buffer, "default") == 0)
-      return create_token(TK_DEFAULT);
-    if (strcmp(string->buffer, "if") == 0)
-      return create_token(TK_IF);
-    if (strcmp(string->buffer, "else") == 0)
-      return create_token(TK_ELSE);
-    if (strcmp(string->buffer, "switch") == 0)
-      return create_token(TK_SWITCH);
-    if (strcmp(string->buffer, "while") == 0)
-      return create_token(TK_WHILE);
-    if (strcmp(string->buffer, "do") == 0)
-      return create_token(TK_DO);
-    if (strcmp(string->buffer, "for") == 0)
-      return create_token(TK_FOR);
-    if (strcmp(string->buffer, "goto") == 0)
-      return create_token(TK_GOTO);
-    if (strcmp(string->buffer, "continue") == 0)
-      return create_token(TK_CONTINUE);
-    if (strcmp(string->buffer, "break") == 0)
-      return create_token(TK_BREAK);
-    if (strcmp(string->buffer, "return") == 0)
-      return create_token(TK_RETURN);
+    TokenType tk_type = map_lookupi(keywords, string->buffer);
+    if (tk_type) return create_token(tk_type);
 
     Token *token = create_token(TK_IDENTIFIER);
     token->identifier = string->buffer;
@@ -319,6 +301,10 @@ Vector *tokenize(char *filename) {
   column = 1;
 
   lex_filename = filename;
+
+  if (!keywords) {
+    keywords = create_keywords();
+  }
 
   // tokenize
   Vector *pp_tokens = vector_new();

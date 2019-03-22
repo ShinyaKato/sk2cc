@@ -18,6 +18,10 @@ typedef unsigned long long size_t;
 
 typedef __builtin_va_list va_list;
 
+// stdint.h
+typedef signed long long intptr_t;
+typedef unsigned long long uintptr_t;
+
 // stdio.h
 #define EOF (-1)
 #define NULL ((void *) 0)
@@ -84,6 +88,8 @@ typedef struct map {
 extern Map *map_new();
 extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
+bool map_puti(Map *map, char *key, int value);
+int map_lookupi(Map *map, char *key);
 
 // struct declaration
 typedef struct token Token;
