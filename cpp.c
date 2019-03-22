@@ -15,8 +15,24 @@ typedef struct macro {
 
 Map *macros;
 
-Vector *replace_macro(Vector *tokens);
+Vector *replace_macro(Vector *tokens, char *filename, int lineno);
 Vector *preprocessing_unit();
+
+bool check_file_macro(Token *token) {
+  if (token->tk_type == TK_IDENTIFIER) {
+    return strcmp(token->identifier, "__FILE__") == 0;
+  }
+
+  return false;
+}
+
+bool check_line_macro(Token *token) {
+  if (token->tk_type == TK_IDENTIFIER) {
+    return strcmp(token->identifier, "__LINE__") == 0;
+  }
+
+  return false;
+}
 
 bool check_object_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
@@ -36,17 +52,70 @@ bool check_function_macro(Token *token) {
   return false;
 }
 
-Vector *expand_object_macro(Token *token) {
+Token *expand_file_macro(Token *token, char *filename) {
+  if (!filename) {
+    filename = token->loc->filename;
+  }
+
+  String *text = string_new();
+  string_push(text, '"');
+  string_write(text, filename);
+  string_push(text, '"');
+
+  String *literal = string_new();
+  string_write(literal, filename);
+  string_push(literal, '\0');
+
+  Token *str = token_new(TK_STRING_LITERAL, text->buffer, token->loc);
+  str->string_literal = literal;
+  return str;
+}
+
+Token *expand_line_macro(Token *token, int lineno) {
+  if (!lineno) {
+    lineno = token->loc->lineno;
+  }
+
+  String *text = string_new();
+  for (int n = lineno; n > 0; n /= 10) {
+    string_push(text, '0' + (n % 10));
+  }
+  for (int i = 0, j = text->length - 1; i < j; i++, j--) {
+    char c = text->buffer[i];
+    text->buffer[i] = text->buffer[j];
+    text->buffer[j] = c;
+  }
+
+  Token *num = token_new(TK_PP_NUMBER, text->buffer, token->loc);
+  num->pp_number = text->buffer;
+  return num;
+}
+
+Vector *expand_object_macro(Token *token, char *filename, int lineno) {
+  if (!filename) {
+    filename = token->loc->filename;
+  }
+  if (!lineno) {
+    lineno = token->loc->lineno;
+  }
+
   Macro *macro = map_lookup(macros, token->identifier);
 
   macro->expanded = true;
-  Vector *tokens = replace_macro(macro->replace);
+  Vector *tokens = replace_macro(macro->replace, filename, lineno);
   macro->expanded = false;
 
   return tokens;
 }
 
-Vector *expand_function_macro(Token *token) {
+Vector *expand_function_macro(Token *token, char *filename, int lineno) {
+  if (!filename) {
+    filename = token->loc->filename;
+  }
+  if (!lineno) {
+    lineno = token->loc->lineno;
+  }
+
   Macro *macro = map_lookup(macros, token->identifier);
   Map *args = map_new();
 
@@ -116,22 +185,26 @@ Vector *expand_function_macro(Token *token) {
   scanner_restore(prev);
 
   macro->expanded = true;
-  tokens = replace_macro(tokens);
+  tokens = replace_macro(tokens, filename, lineno);
   macro->expanded = false;
 
   return tokens;
 }
 
-Vector *replace_macro(Vector *tokens) {
+Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
   Scanner *prev = scanner_preserve(tokens);
 
   Vector *result = vector_new();
   while (has_next_token()) {
     Token *token = get_token();
-    if (check_object_macro(token)) {
-      vector_merge(result, expand_object_macro(token));
+    if (check_file_macro(token)) {
+      vector_push(result, expand_file_macro(token, filename));
+    } else if (check_line_macro(token)) {
+      vector_push(result, expand_line_macro(token, lineno));
+    } else if (check_object_macro(token)) {
+      vector_merge(result, expand_object_macro(token, filename, lineno));
     } else if (check_function_macro(token)) {
-      vector_merge(result, expand_function_macro(token));
+      vector_merge(result, expand_function_macro(token, filename, lineno));
     } else {
       vector_push(result, token);
     }
@@ -215,7 +288,7 @@ Vector *text_line() {
     }
   }
 
-  return replace_macro(text_tokens);
+  return replace_macro(text_tokens, NULL, 0);
 }
 
 Vector *group() {

@@ -307,6 +307,11 @@ expect_return 0 <<-EOS
     return 0; \\
   } while (0)
 
+#define file __FILE__
+#define line __LINE__
+
+int strcmp(char *s1, char *s2);
+
 int main() {
   if (true != 1) return 1;
   if (false != 0) return 1;
@@ -325,6 +330,11 @@ int main() {
   empty6(1, 2);
 
   test(1 + 2, 3);
+
+  if (strcmp(__FILE__, "tmp/cc_test.c") != 0) return 1;
+  if (strcmp(file, "tmp/cc_test.c") != 0) return 1;
+  if (__LINE__ != 44) return 1;
+  if (line != 45) return 1;
 
   return 0;
 }
