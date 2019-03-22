@@ -93,6 +93,7 @@ extern bool map_puti(Map *map, char *key, int value);
 extern int map_lookupi(Map *map, char *key);
 
 // struct declaration
+typedef struct location Location;
 typedef struct token Token;
 
 typedef struct scanner Scanner;
@@ -114,6 +115,14 @@ typedef struct type Type;
 typedef struct member Member;
 
 typedef struct symbol Symbol;
+
+// Location
+struct location {
+  char *filename; // source file name
+  char *line_ptr; // pointer to the line head
+  int lineno;     // 1-indexed
+  int column;     // 1-indexed
+};
 
 // TokenType
 // A one-character token is represented by it's ascii code.
@@ -218,10 +227,7 @@ struct token {
   char *text;
 
   // location information
-  char *filename; // source file name
-  char *line_ptr; // pointer to the line head
-  int lineno;     // 1-indexed
-  int column;     // 1-indexed
+  Location *loc;
 };
 
 // Scanner (token scanner)
@@ -615,13 +621,17 @@ struct symbol {
 };
 
 // error.c
-extern noreturn void error(Token *token, char *format, ...);
+#define ERROR(token, ...) \
+  error((token)->loc, __VA_ARGS__)
+
+extern noreturn void error(Location *loc, char *format, ...);
 extern noreturn void internal_error(char *format, ...);
 
 // token.c
 extern bool check_char_token(char c);
 extern char *token_name(TokenType tk_type);
-extern Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column);
+extern Location *location_new(char *filename, char *line_ptr, int lineno, int column);
+extern Token *token_new(TokenType tk_type, char *text, Location *loc);
 extern Token *inspect_pp_number(Token *token);
 
 // lex.c

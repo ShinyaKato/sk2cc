@@ -124,15 +124,21 @@ char *token_name(TokenType tk_type) {
   internal_error("unknown token type: %d\n", tk_type);
 }
 
-Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column) {
+Location *location_new(char *filename, char *line_ptr, int lineno, int column) {
+  Location *loc = calloc(1, sizeof(Location));
+  loc->filename = filename;
+  loc->line_ptr = line_ptr;
+  loc->lineno = lineno;
+  loc->column = column;
+  return loc;
+}
+
+Token *token_new(TokenType tk_type, char *text, Location *loc) {
   Token *token = calloc(1, sizeof(Token));
   token->tk_type = tk_type;
   token->tk_name = token_name(tk_type);
   token->text = text;
-  token->filename = filename;
-  token->line_ptr = line_ptr;
-  token->lineno = lineno;
-  token->column = column;
+  token->loc = loc;
   return token;
 }
 
@@ -193,10 +199,10 @@ Token *inspect_pp_number(Token *token) {
   }
 
   if (pp_number[pos] != '\0') {
-    error(token, "invalid preprocessing number.");
+    ERROR(token, "invalid preprocessing number.");
   }
 
-  Token *new_token = token_new(TK_INTEGER_CONST, token->text, token->filename, token->line_ptr, token->column, token->lineno);
+  Token *new_token = token_new(TK_INTEGER_CONST, token->text, token->loc);
   new_token->int_value = int_value;
   new_token->int_decimal = int_decimal;
   new_token->int_u = int_u;

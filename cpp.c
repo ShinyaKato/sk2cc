@@ -223,7 +223,7 @@ Vector *group() {
       } else if (strcmp(directive, "include") == 0) {
         vector_merge(tokens, include_directive());
       } else {
-        error(token, "invalid preprocessing directive.");
+        ERROR(token, "invalid preprocessing directive.");
       }
     } else {
       vector_merge(tokens, text_line());

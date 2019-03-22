@@ -57,5 +57,5 @@ Token *expect_token(TokenType tk_type) {
   Token *token = peek_token();
   char *expected = token_name(tk_type);
   char *actual = token->tk_name;
-  error(token, "%s is expected, but got %s.", expected, actual);
+  ERROR(token, "%s is expected, but got %s.", expected, actual);
 }

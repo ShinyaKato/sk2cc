@@ -1,10 +1,10 @@
 #include "sk2cc.h"
 
-noreturn void error(Token *token, char *format, ...) {
-  char *filename = token->filename;
-  char *line_ptr = token->line_ptr;
-  int lineno = token->lineno;
-  int column = token->column;
+noreturn void error(Location *loc, char *format, ...) {
+  char *filename = loc->filename;
+  char *line_ptr = loc->line_ptr;
+  int lineno = loc->lineno;
+  int column = loc->column;
 
   // replace '\n' with '\0' for displaying location
   for (int i = 0; line_ptr[i]; i++) {
