@@ -10,29 +10,40 @@ typedef struct macro {
   Vector *params;
   bool ellipsis;
   Vector *replace;
+  bool expanded;
 } Macro;
 
 Map *macros;
 
+Vector *replace_macro(Vector *tokens);
 Vector *preprocessing_unit();
 
 bool check_object_macro(Token *token) {
-  if (token->tk_type != TK_IDENTIFIER) return false;
+  if (token->tk_type == TK_IDENTIFIER) {
+    Macro *macro = map_lookup(macros, token->identifier);
+    return macro && !macro->expanded && macro->mc_type == OBJECT_MACRO;
+  }
 
-  Macro *macro = map_lookup(macros, token->identifier);
-  return macro && macro->mc_type == OBJECT_MACRO;
+  return false;
 }
 
 bool check_function_macro(Token *token) {
-  if (token->tk_type != TK_IDENTIFIER) return false;
+  if (token->tk_type == TK_IDENTIFIER && has_next_token() && check_token('(')) {
+    Macro *macro = map_lookup(macros, token->identifier);
+    return macro && !macro->expanded && macro->mc_type == FUNCTION_MACRO;
+  }
 
-  Macro *macro = map_lookup(macros, token->identifier);
-  return macro && macro->mc_type == FUNCTION_MACRO && check_token('(');
+  return false;
 }
 
 Vector *expand_object_macro(Token *token) {
   Macro *macro = map_lookup(macros, token->identifier);
-  return macro->replace;
+
+  macro->expanded = true;
+  Vector *tokens = replace_macro(macro->replace);
+  macro->expanded = false;
+
+  return tokens;
 }
 
 Vector *expand_function_macro(Token *token) {
@@ -91,20 +102,24 @@ Vector *expand_function_macro(Token *token) {
 
   Scanner *prev = scanner_preserve(macro->replace);
 
-  Vector *result = vector_new();
+  Vector *tokens = vector_new();
   while (has_next_token()) {
     Token *token = get_token();
     if (token->tk_type == TK_IDENTIFIER && map_lookup(args, token->identifier)) {
       Vector *arg = map_lookup(args, token->identifier);
-      vector_merge(result, arg);
+      vector_merge(tokens, arg);
       continue;
     }
-    vector_push(result, token);
+    vector_push(tokens, token);
   }
 
   scanner_restore(prev);
 
-  return result;
+  macro->expanded = true;
+  tokens = replace_macro(tokens);
+  macro->expanded = false;
+
+  return tokens;
 }
 
 Vector *replace_macro(Vector *tokens) {
