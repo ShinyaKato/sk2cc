@@ -7,6 +7,26 @@ Expr *expr_new(NodeType nd_type, Token *token) {
   return node;
 }
 
+Expr *expr_va_start(Expr *macro_ap, char *macro_arg, Token *token) {
+  Expr *node = expr_new(ND_VA_START, token);
+  node->macro_ap = macro_ap;
+  node->macro_arg = macro_arg;
+  return node;
+}
+
+Expr *expr_va_arg(Expr *macro_ap, TypeName *macro_type, Token *token) {
+  Expr *node = expr_new(ND_VA_ARG, token);
+  node->macro_ap = macro_ap;
+  node->macro_type = macro_type;
+  return node;
+}
+
+Expr *expr_va_end(Expr *macro_ap, Token *token) {
+  Expr *node = expr_new(ND_VA_END, token);
+  node->macro_ap = macro_ap;
+  return node;
+}
+
 Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token) {
   Expr *node = expr_new(ND_IDENTIFIER, token);
   node->identifier = identifier;

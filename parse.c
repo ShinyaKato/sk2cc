@@ -10,7 +10,7 @@ void put_symbol(char *identifier, Symbol *symbol) {
 
   symbol->prev = map_lookup(map, identifier);
   if (symbol->prev && symbol->prev->sy_type != symbol->sy_type) {
-    error(symbol->token, "invalid redeclaration: %s.", identifier);
+    ERROR(symbol->token, "invalid redeclaration: %s.", identifier);
   }
 
   map_put(map, identifier, symbol);
@@ -31,6 +31,7 @@ Symbol *lookup_symbol(char *identifier) {
 bool check_storage_class_specifier() {
   if (check_token(TK_TYPEDEF)) return true;
   if (check_token(TK_EXTERN)) return true;
+  if (check_token(TK_STATIC)) return true;
 
   return false;
 }
@@ -90,6 +91,26 @@ Expr *primary_expression() {
   Token *token = peek_token();
 
   if (!check_typedef_name() && read_token(TK_IDENTIFIER)) {
+    if (strcmp(token->identifier, "__builtin_va_start") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(',');
+      char *macro_arg = expect_token(TK_IDENTIFIER)->identifier;
+      expect_token(')');
+      return expr_va_start(macro_ap, macro_arg, token);
+    }
+    if (strcmp(token->identifier, "__builtin_va_arg") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(',');
+      TypeName *macro_type = type_name();
+      expect_token(')');
+      return expr_va_arg(macro_ap, macro_type, token);
+    }
+    if (strcmp(token->identifier, "__builtin_va_end") == 0 && read_token('(')) {
+      Expr *macro_ap = assignment_expression();
+      expect_token(')');
+      return expr_va_end(macro_ap, token);
+    }
+
     Symbol *symbol = lookup_symbol(token->identifier);
     if (symbol && symbol->sy_type == SY_CONST) {
       return expr_enum_const(token->identifier, symbol, token);
@@ -118,7 +139,7 @@ Expr *primary_expression() {
     return expr;
   }
 
-  error(token, "invalid primary expression.");
+  ERROR(token, "invalid primary expression.");
 }
 
 // postfix-expression :
@@ -515,7 +536,7 @@ bool check_typedef(Vector *specs) {
     Specifier *spec = specs->buffer[i];
     if (spec->sp_type == SP_TYPEDEF) {
       if (sp_typedef) {
-        error(spec->token, "duplicated typedef.");
+        ERROR(spec->token, "duplicated typedef.");
       }
       sp_typedef = true;
     }
@@ -609,6 +630,8 @@ Specifier *storage_class_specifier() {
     return specifier_new(SP_TYPEDEF, token);
   if (read_token(TK_EXTERN))
     return specifier_new(SP_EXTERN, token);
+  if (read_token(TK_STATIC))
+    return specifier_new(SP_STATIC, token);
 
   // unreachable
   internal_error("invalid storage-class-specifier.");
@@ -706,7 +729,8 @@ Decl *struct_declaration() {
 }
 
 // enum-specifier :
-//   'enum' identifier? '{' (enumerator (',' enumerator)*) '}'
+//   'enum' identifier? '{' enumerator (',' enumerator)* '}'
+//   'enum' identifier? '{' enumerator (',' enumerator)* ',' '}'
 //   'enum' identifier
 Specifier *enum_specifier() {
   Token *token = expect_token(TK_ENUM);
@@ -720,7 +744,7 @@ Specifier *enum_specifier() {
         Symbol *symbol = enumerator();
         vector_push(enums, symbol);
         put_symbol(symbol->identifier, symbol);
-      } while (read_token(','));
+      } while (read_token(',') && !check_token('}'));
       expect_token('}');
 
       return specifier_enum(tag, enums, token);
@@ -735,7 +759,7 @@ Specifier *enum_specifier() {
     Symbol *symbol = enumerator();
     vector_push(enums, symbol);
     put_symbol(symbol->identifier, symbol);
-  } while (read_token(','));
+  } while (read_token(',') && !check_token('}'));
   expect_token('}');
 
   return specifier_enum(NULL, enums, token);
@@ -894,6 +918,7 @@ Declarator *abstract_declarator(Declarator *decl) {
 // initializer :
 //   assignment-expression
 //   '{' initializer (',' initializer)* '}'
+//   '{' initializer (',' initializer)* ',' '}'
 Initializer *initializer() {
   Token *token = peek_token();
 
@@ -902,7 +927,7 @@ Initializer *initializer() {
     if (!check_token('}')) {
       do {
         vector_push(list, initializer());
-      } while (read_token(','));
+      } while (read_token(',') && !check_token('}'));
     }
     expect_token('}');
 
@@ -1064,7 +1089,7 @@ Stmt *for_statement() {
   if (check_declaration_specifier()) {
     Decl *decl = declaration();
     if (check_typedef(decl->specs)) {
-      error(decl->token, "typedef is not allowed in for-statement.");
+      ERROR(decl->token, "typedef is not allowed in for-statement.");
     }
     for_init = (Node *) decl;
   } else {
@@ -1221,10 +1246,10 @@ Node *external_declaration() {
 
   // Otherwise, this is function definition.
   if (sp_typedef) {
-    error(token, "typedef is not allowed in function definition.");
+    ERROR(token, "typedef is not allowed in function definition.");
   }
   if (!symbol->decl || symbol->decl->decl_type != DECL_FUNCTION) {
-    error(symbol->token, "function definition should have function type.");
+    ERROR(symbol->token, "function definition should have function type.");
   }
 
   put_symbol(symbol->identifier, symbol);

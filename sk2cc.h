@@ -13,9 +13,14 @@ typedef unsigned long long size_t;
 
 // stdarg.h
 #define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
 #define va_end __builtin_va_end
 
 typedef __builtin_va_list va_list;
+
+// stdint.h
+typedef signed long long intptr_t;
+typedef unsigned long long uintptr_t;
 
 // stdio.h
 #define EOF (-1)
@@ -41,7 +46,7 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 void exit(int status);
 
-// strcmp.h
+// string.h
 int strcmp(char *s1, char *s2);
 
 // ctype.h
@@ -61,6 +66,7 @@ typedef struct string {
 
 extern String *string_new();
 extern void string_push(String *string, char c);
+extern void string_write(String *string, char *s);
 
 // vector.c
 typedef struct vector {
@@ -83,8 +89,11 @@ typedef struct map {
 extern Map *map_new();
 extern bool map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
+extern bool map_puti(Map *map, char *key, int value);
+extern int map_lookupi(Map *map, char *key);
 
 // struct declaration
+typedef struct location Location;
 typedef struct token Token;
 
 typedef struct scanner Scanner;
@@ -107,6 +116,14 @@ typedef struct member Member;
 
 typedef struct symbol Symbol;
 
+// Location
+struct location {
+  char *filename; // source file name
+  char *line_ptr; // pointer to the line head
+  int lineno;     // 1-indexed
+  int column;     // 1-indexed
+};
+
 // TokenType
 // A one-character token is represented by it's ascii code.
 typedef enum token_type {
@@ -124,6 +141,7 @@ typedef enum token_type {
   // keywords for declarations
   TK_TYPEDEF,
   TK_EXTERN,
+  TK_STATIC,
   TK_VOID,
   TK_CHAR,
   TK_SHORT,
@@ -176,7 +194,7 @@ typedef enum token_type {
   TK_ELLIPSIS,   // ...
 
   // EOF (the end of the input source file)
-  TK_EOF
+  TK_EOF,
 } TokenType;
 
 // Token
@@ -209,10 +227,7 @@ struct token {
   char *text;
 
   // location information
-  char *filename; // source file name
-  char *line_ptr; // pointer to the line head
-  int lineno;     // 1-indexed
-  int column;     // 1-indexed
+  Location *loc;
 };
 
 // Scanner (token scanner)
@@ -223,6 +238,11 @@ struct scanner {
 
 // NodeType
 typedef enum node_type {
+  // built-in macros
+  ND_VA_START,
+  ND_VA_ARG,
+  ND_VA_END,
+
   // expression
   ND_IDENTIFIER,
   ND_INTEGER,
@@ -292,7 +312,7 @@ typedef enum node_type {
   ND_RETURN,
 
   // function definition
-  ND_FUNC
+  ND_FUNC,
 } NodeType;
 
 // Node (AST node)
@@ -307,6 +327,11 @@ struct node {
 struct expr {
   NodeType nd_type;
   Type *type;
+
+  // built-in macros
+  Expr *macro_ap;
+  char *macro_arg;
+  TypeName *macro_type;
 
   // child expression node
   Expr *expr;      // for unary expr, postfix expr, cast expr
@@ -427,6 +452,7 @@ typedef enum specifier_type {
   // storage-class-specifier
   SP_TYPEDEF,
   SP_EXTERN,
+  SP_STATIC,
 
   // type-specifier
   SP_VOID,
@@ -442,7 +468,7 @@ typedef enum specifier_type {
   SP_TYPEDEF_NAME,
 
   // function-specifier
-  SP_NORETURN
+  SP_NORETURN,
 } SpecifierType;
 
 // Specifier
@@ -468,7 +494,7 @@ struct specifier {
 typedef enum declarator_type {
   DECL_POINTER,
   DECL_ARRAY,
-  DECL_FUNCTION
+  DECL_FUNCTION,
 } DeclaratorType;
 
 // Declarator
@@ -523,7 +549,7 @@ typedef enum type_type {
   TY_POINTER,
   TY_ARRAY,
   TY_FUNCTION,
-  TY_STRUCT
+  TY_STRUCT,
 } TypeType;
 
 // Type
@@ -563,13 +589,14 @@ struct member {
 typedef enum symbol_type {
   SY_VARIABLE, // variable
   SY_TYPE,     // typedef-name
-  SY_CONST     // enumeration-constant
+  SY_CONST,    // enumeration-constant
 } SymbolType;
 
 // SymbolLink
 typedef enum symbol_link {
   LN_EXTERNAL, // global variable
-  LN_NONE      // local variable
+  LN_INTERNAL, // static variable
+  LN_NONE,     // local variable
 } SymbolLink;
 
 // Symbol
@@ -594,13 +621,17 @@ struct symbol {
 };
 
 // error.c
-extern noreturn void error(Token *token, char *format, ...);
+#define ERROR(token, ...) \
+  error((token)->loc, __VA_ARGS__)
+
+extern noreturn void error(Location *loc, char *format, ...);
 extern noreturn void internal_error(char *format, ...);
 
 // token.c
 extern bool check_char_token(char c);
 extern char *token_name(TokenType tk_type);
-extern Token *token_new(TokenType tk_type, char *text, char *filename, char *line_ptr, int lineno, int column);
+extern Location *location_new(char *filename, char *line_ptr, int lineno, int column);
+extern Token *token_new(TokenType tk_type, char *text, Location *loc);
 extern Token *inspect_pp_number(Token *token);
 
 // lex.c
@@ -627,6 +658,9 @@ extern Symbol *symbol_type(char *identifier, Token *token);
 extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
 
 // node.c
+extern Expr *expr_va_start(Expr *macro_ap, char *macro_arg, Token *token);
+extern Expr *expr_va_arg(Expr *macro_ap, TypeName *macro_type, Token *token);
+extern Expr *expr_va_end(Expr *macro_ap, Token *token);
 extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
 extern Expr *expr_integer(unsigned long long int_value, bool int_decimal, bool int_u, bool int_l, bool int_ll, Token *token);
 extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);

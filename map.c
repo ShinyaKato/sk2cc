@@ -35,6 +35,10 @@ void *map_lookup(Map *map, char *key) {
   return NULL;
 }
 
-void map_clear(Map *map) {
-  map->count = 0;
+bool map_puti(Map *map, char *key, int value) {
+  return map_put(map, key, (void *) (intptr_t) value);
+}
+
+int map_lookupi(Map *map, char *key) {
+  return (int) (intptr_t) map_lookup(map, key);
 }

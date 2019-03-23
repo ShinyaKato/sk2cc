@@ -92,395 +92,118 @@ gcc -std=c11 -Wall -P -E tests/test.c > tmp/test.c
 expect_return 0 < tmp/test.c
 
 expect_return 0 <<-EOS
-int main() {
-  int x;
-  x = 0;
-  return x;
-  x = 1;
-  return x;
-}
-EOS
-
-expect_return 42 <<-EOS
-int main() {
-  for (int i = 0; i < 100; i++)
-    if (i == 42)
-      return i;
-  return 123;
-}
-EOS
-
-expect_return 6 <<-EOS
-int f() {
-  return 2;
-}
-int g() {
-  return 3;
-}
-int main() {
-  return f() * g();
-}
-EOS
-
-expect_return 24 <<-EOS
-int f() {
-  int x = 2;
-  int y = 3;
-  return x + 2 * y;
-}
-int main() {
-  int t = f();
-  return t * 3;
-}
-EOS
-
-expect_return 16 <<-EOS
-int f() {
-  int x = 2;
-  return x * x;
-}
-int main() {
-  int t = f();
-  return t * f();
-}
-EOS
-
-expect_return 14 <<-EOS
-int f(int x) {
-  return x * x;
-}
-int main() {
-  return f(1) + f(2) + f(3);
-}
-EOS
-
-expect_return 10 <<-EOS
-int f(int x, int y, int z) {
-  x = x * y;
-  y = x + z;
-  return x + y + z;
-}
-int main() {
-  return f(1, 2, 3);
-}
-EOS
-
-expect_return 32 <<-EOS
-int *f(int *p) {
-  return p;
-}
-int main() {
-  int x = 32;
-  int *y = f(&x);
-  return *y;
-}
-EOS
-
-expect_return 54 <<-EOS
-int *f(int *p) {
-  *p = 54;
-  return p;
-}
-int main() {
-  int x = 87;
-  int *y = f(&x);
-  return *y;
-}
-EOS
-
-expect_return 0 <<-EOS
 int x;
-int main() {
-  return 0;
-}
-EOS
+int y[20];
+int *p;
 
-expect_return 0 <<-EOS
-int x, y[20];
-int main() {
-  return 0;
-}
-EOS
-
-expect_return 8 <<-EOS
-int x;
-int func() {
+void func1() {
   x = 8;
 }
-int main() {
-  func();
-  return x;
-}
-EOS
 
-expect_return 3 <<-EOS
-int y[20];
-int func() {
+void func2() {
   y[5] = 3;
 }
-int main() {
-  func();
-  return y[5];
-}
-EOS
 
-expect_return 29 <<-EOS
-int x;
-int func(int *p) {
+void func3(int *p) {
   *p = 29;
 }
-int main() {
-  func(&x);
-  return x;
-}
-EOS
 
-expect_return 6 <<-EOS
-int x, *y;
-int func() {
-  *y = 6;
+void func4() {
+  *p = 6;
 }
+
 int main() {
-  y = &x;
-  func();
-  return x;
+  func1();
+  if (x != 8) return 1;
+
+  func2();
+  if (y[5] != 3) return 1;
+
+  func3(&x);
+  if (x != 29) return 1;
+
+  p = &x;
+  func4();
+  if (x != 6) return 1;
+
+  return 0;
 }
 EOS
 
 expect_return 0 <<-EOS
 int x;
-int func() {
-  int x = 123;
-}
-int main() {
-  func();
-  return x;
-}
-EOS
 
-expect_return 0 <<-EOS
-char c, s[20];
-int main() {
-  return 0;
-}
-EOS
-
-expect_return 0 <<-EOS
-int main() {
-  char c, s[20];
-  return 0;
-}
-EOS
-
-expect_return 78 <<-EOS
-int main() {
-  char c1 = 13, c2 = 65;
-  char c3 = c1 + c2;
-  return c3;
-}
-EOS
-
-expect_return 65 <<-EOS
-char f(char c) {
-  return c;
-}
-int main() {
-  return f('A');
-}
-EOS
-
-expect_stdout "ABC\n" <<-EOS
-int puts(char *s);
-int main() {
-  char s[4];
-  s[0] = 65;
-  s[1] = 66;
-  s[2] = 67;
-  s[3] = 0;
-  puts(s);
-  return 0;
-}
-EOS
-
-expect_stdout "ABCDEFG\n" <<-EOS
-int puts(char *s);
-char s[8];
-int main() {
-  for (int i = 0; i < 7; i++) s[i] = i + 65;
-  s[7] = 0;
-  puts(s);
-  return 0;
-}
-EOS
-
-expect_stdout "hello world\n" <<-EOS
-int puts(char *s);
-int main() {
-  puts("hello world");
-  return 0;
-}
-EOS
-
-expect_stdout "hello world\n" <<-EOS
-int puts(char *s);
-int main() {
-  char *s = "hello world";
-  puts(s);
-  return 0;
-}
-EOS
-
-expect_stdout "w\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  char *s = "hello world";
-  printf("%c\n", s[6]);
-  return 0;
-}
-EOS
-
-expect_return 12 <<-EOS
-int main() {
+int func1() {
   int x = 12;
-  if (1) {
-    int x = 34;
-  }
-  return x;
-}
-EOS
+  { int x = 34; }
+  if (x != 12) return 1;
 
-expect_return 12 <<-EOS
-int main() {
-  int x = 12, y = 14;
-  if (1) {
-    int *x = &y;
-  }
-  return x;
+  return 0;
 }
-EOS
 
-expect_stdout "3\n1\n" <<-EOS
-int printf(char *format, ...);
-int x = 0;
-int main() {
+int func2() {
   int x = 1;
   {
     int x = 2;
     { x = 3; }
     { int x = 4; }
-    printf("%d\n", x);
+    if (x != 3) return 1;
   }
-  printf("%d\n", x);
-}
-EOS
+  if (x != 1) return 1;
 
-expect_stdout "0\n1\n2\n3\n4\n123\n" <<-EOS
-int printf(char *format, ...);
+  return 0;
+}
+
 int main() {
-  int i = 123;
-  for (int i = 0; i < 5; i++) {
-    printf("%d\n", i);
-    int i = 42;
-  }
-  printf("%d\n", i);
+  if (func1() != 0) return 1;
+  if (func2() != 0) return 1;
+  if (x != 0) return 1;
+
   return 0;
 }
 EOS
 
-expect_return 56 <<-EOS
-struct object {
-  int x, y;
-};
+expect_return 0 <<-EOS
+typedef int MyInt1;
+
 int main() {
-  struct object p;
-  p.x = 56;
-  return p.x;
+  MyInt1 x = 55;
+  if (x != 55) return 1;
+
+  {
+    typedef int MyInt2;
+    MyInt2 x = 55;
+    if (x != 55) return 1;
+  }
+
+  return 0;
 }
 EOS
 
-expect_return 56 <<-EOS
-int main() {
-  struct object {
-    int x, y;
-  };
-  struct object p;
-  p.x = 56;
-  return p.x;
-}
-EOS
-
-expect_return 56 <<-EOS
-struct object {
-  int x, y;
-} q;
-int main() {
-  struct object p;
-  p.x = 56;
-  q.y = 97;
-  return p.x;
-}
-EOS
-
-expect_return 56 <<-EOS
-int main() {
-  struct object {
-    int x, y;
-  } q;
-  struct object p;
-  p.x = 56;
-  q.y = 97;
-  return p.x;
-}
-EOS
-
-expect_return 55 <<-EOS
-typedef int MyInt;
-int main() {
-  MyInt x = 55;
-  return x;
-}
-EOS
-
-expect_return 55 <<-EOS
-int main() {
-  typedef int MyInt;
-  MyInt x = 55;
-  return x;
-}
-EOS
-
-expect_return 15 <<-EOS
+expect_return 0 <<-EOS
 typedef struct {
   int x, y;
 } Vector2;
-int main() {
-  Vector2 p;
-  p.x = 5;
-  p.y = 3;
-  return p.x * p.y;
-}
-EOS
 
-expect_return 18 <<-EOS
 struct abc {
   struct abc *p;
   int v;
 };
+
 int main() {
+  Vector2 p;
+  p.x = 5;
+  p.y = 3;
+  if (p.x != 5) return 1;
+  if (p.y != 3) return 1;
+
   struct abc x, y;
   x.p = &y;
-  y.v = 18;
-  return x.p->v;
-}
-EOS
+  x.v = 18;
+  if (x.p != &y) return 1;
+  if (x.v != 18) return 1;
 
-expect_return 68 <<-EOS
-char f(char c, int a);
-int main() {
-  return f('A', 3);
-}
-char f(char c, int a) {
-  return c + a;
+  return 0;
 }
 EOS
 
@@ -497,148 +220,20 @@ int g(int x) {
 }
 EOS
 
-expect_stdout "123abc\n" <<-EOS
-int puts(char *s);
-int main() {
-  puts("123abc");
-}
-EOS
-
 expect_return 0 <<-EOS
 enum { U, L, D, R };
-int main() {
-  return U;
-}
-EOS
+enum { E, F, G, H } d;
 
-expect_return 1 <<-EOS
-enum { U, L, D, R };
 int main() {
-  return L;
-}
-EOS
-
-expect_return 2 <<-EOS
-enum { U, L, D, R };
-int main() {
-  return D;
-}
-EOS
-
-expect_return 3 <<-EOS
-enum { U, L, D, R };
-int main() {
-  return R;
-}
-EOS
-
-expect_return 0 <<-EOS
-enum { U, L, D, R } d;
-int main() {
-  d = U;
-  return d;
-}
-EOS
-
-expect_return 1 <<-EOS
-enum { U, L, D, R } d;
-int main() {
-  d = L;
-  return d;
-}
-EOS
-
-expect_return 2 <<-EOS
-enum { U, L, D, R } d;
-int main() {
-  d = D;
-  return d;
-}
-EOS
-
-expect_return 3 <<-EOS
-enum { U, L, D, R } d;
-int main() {
-  d = R;
-  return d;
-}
-EOS
-
-expect_return 2 <<-EOS
-typedef enum {
-  U, L, D, R
-} Dir;
-Dir d;
-int main() {
-  d = D;
-  return d;
-}
-EOS
-
-expect_return 3 <<-EOS
-typedef enum node_type {
-  CONST, MUL, DIV, ADD, SUB
-} NodeType;
-int main() {
-  NodeType type = ADD;
-  return type;
-}
-EOS
-
-expect_return 35 <<-EOS
-extern int external_obj;
-int main() {
-  return external_obj;
-}
-EOS
-
-expect_stdout "abcd 1234\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  printf("%s %d\n", "abcd", 1234);
-}
-EOS
-
-expect_return 0 <<-EOS
-extern _Noreturn void error(char *format, ...);
-int main() {
+  if (U != 0) return 1;
+  if (L != 1) return 1;
+  if (D != 2) return 1;
+  if (R != 3) return 1;
+  d = E; if (d != 0) return 1;
+  d = F; if (d != 1) return 1;
+  d = G; if (d != 2) return 1;
+  d = H; if (d != 3) return 1;
   return 0;
-}
-EOS
-
-expect_stdout "16\n" <<-EOS
-int printf(char *format, ...);
-typedef struct string {
-  int capacity;
-  int length;
-  char *buffer;
-} String;
-int main() {
-  return printf("%d\n", sizeof(String));
-}
-EOS
-
-expect_stdout "16\n" <<-EOS
-int printf(char *format, ...);
-typedef struct vector {
-  int capacity;
-  int length;
-  void **buffer;
-} Vector;
-int main() {
-  return printf("%d\n", sizeof(Vector));
-}
-EOS
-
-expect_stdout "16392\n" <<-EOS
-int printf(char *format, ...);
-typedef struct map {
-  int count;
-  char *keys[1024];
-  void *values[1024];
-} Map;
-int main() {
-  return printf("%d\n", sizeof(Map));
 }
 EOS
 
@@ -651,7 +246,6 @@ typedef __builtin_va_list va_list;
 typedef struct _IO_FILE FILE;
 extern FILE *stdout;
 
-int fprintf(FILE *stream, char *format, ...);
 int vfprintf(FILE *s, char *format, va_list arg);
 
 void print(char *format, ...) {
@@ -663,187 +257,47 @@ void print(char *format, ...) {
 
 int main() {
   print("%s %d\n", "abc", 123);
+  return 0;
 }
 EOS
 
-expect_return 40 <<-EOS
+expect_return 0 <<-EOS
 int x = 40;
-int main() {
-  return x;
-}
-EOS
-
-expect_stdout "abcde\n" <<-EOS
-int printf(char *format, ...);
-char *s = "abcde";
-int main() {
-  printf("%s\n", s);
-}
-EOS
-
-expect_return 1 <<-EOS
 int a[] = { 1, 2, 55, 91 };
 int main() {
-  return a[0];
-}
-EOS
-
-expect_return 2 <<-EOS
-int a[] = { 1, 2, 55, 91 };
-int main() {
-  return a[1];
-}
-EOS
-
-expect_return 55 <<-EOS
-int a[] = { 1, 2, 55, 91 };
-int main() {
-  return a[2];
-}
-EOS
-
-expect_return 91 <<-EOS
-int a[] = { 1, 2, 55, 91 };
-int main() {
-  return a[3];
-}
-EOS
-
-expect_return 1 <<-EOS
-int main() {
-  int a[] = { 1, 2, 55, 91 };
-  return a[0];
-}
-EOS
-
-expect_return 2 <<-EOS
-int main() {
-  int a[] = { 1, 2, 55, 91 };
-  return a[1];
-}
-EOS
-
-expect_return 55 <<-EOS
-int main() {
-  int a[] = { 1, 2, 55, 91 };
-  return a[2];
-}
-EOS
-
-expect_return 91 <<-EOS
-int main() {
-  int a[] = { 1, 2, 55, 91 };
-  return a[3];
-}
-EOS
-
-expect_stdout "rdi\nrsi\nrdx\nrcx\nr8\nr9\n" <<-EOS
-int printf(char *format, ...);
-char *reg[] = {
-  "rdi",
-  "rsi",
-  "rdx",
-  "rcx",
-  "r8",
-  "r9"
-};
-int main() {
-  for (int i = 0; i < 6; i++)
-    printf("%s\n", reg[i]);
+  if (x != 40) return 1;
+  if (a[0] != 1) return 1;
+  if (a[1] != 2) return 1;
+  if (a[2] != 55) return 1;
+  if (a[3] != 91) return 1;
   return 0;
-}
-EOS
-
-expect_return 1 <<-EOS
-#define bool _Bool
-#define true 1
-#define false 0
-int main() {
-  bool b = true;
-  return b;
-}
-EOS
-
-expect_return 1 <<-EOS
-#define NULL ((void *) 0)
-int main() {
-  int *p = NULL;
-  return !p;
-}
-EOS
-
-expect_return 5 <<-EOS
-#define xxx 5
-int main() {
-  return xxx;
-}
-EOS
-
-expect_return 60 <<-EOS
-#define xxx 5
-int yyy = 2;
-#define zzz 6
-int main() {
-  return xxx * yyy * zzz;
-}
-EOS
-
-expect_return 0 <<-EOS
-int main() {
-  /* this is comment */
-  return 0;
-}
-EOS
-
-expect_return 0 <<-EOS
-int main() {
-  return /* this is comment */ 0;
 }
 EOS
 
 expect_return 0 <<-EOS
 int main() {
   // this is comment.
-  return 0;
-}
-EOS
-
-expect_return 5 <<-EOS
-#define func() (a + b)
-int main() {
-  int a = 2, b = 3;
-  return func();
-}
-EOS
-
-expect_return 13 <<-EOS
-#define func(a, b) ((a) * (b) + 1)
-int main() {
-  return func(3, 4);
-}
-EOS
-
-expect_return 10 <<-EOS
-#define func(a, b) ((a) + (b))
-int f(int x, int y) {
-  return x * y;
-}
-int main() {
-  return func(f(2, 3), 4);
+  /* this is comment */
+  return /* this is comment */ 0;
 }
 EOS
 
 expect_return 0 <<-EOS
+#define true 1
+#define false 0
+
+#define NULL ((void *) 0)
+
+#define func1(a, b) ((a) * (b) + 1)
+#define func2(a, b) ((a) + (b))
+
 #define empty1
 #define empty2 
 #define empty3  
 #define empty4(a, b)
 #define empty5(a, b) 
 #define empty6(a, b)  
-int main() { empty1; empty2; empty3; empty4(1, 2); empty5(1, 2); empty6(1, 2); return 0; }
-EOS
 
-expect_return 0 <<-EOS
 #define test(expr, expected) \\
   do { \\
     int actual = (expr); \\
@@ -853,8 +307,36 @@ expect_return 0 <<-EOS
     return 0; \\
   } while (0)
 
+#define file __FILE__
+#define line __LINE__
+
+int strcmp(char *s1, char *s2);
+
 int main() {
+  if (true != 1) return 1;
+  if (false != 0) return 1;
+
+  int *p = NULL;
+  if (p) return 1;
+
+  if (func1(2, 3) != 7) return 1;
+  if (func2(2, 3) != 5) return 1;
+
+  empty1;
+  empty2;
+  empty3;
+  empty4(1, 2);
+  empty5(1, 2);
+  empty6(1, 2);
+
   test(1 + 2, 3);
+
+  if (strcmp(__FILE__, "tmp/cc_test.c") != 0) return 1;
+  if (strcmp(file, "tmp/cc_test.c") != 0) return 1;
+  if (__LINE__ != 44) return 1;
+  if (line != 45) return 1;
+
+  return 0;
 }
 EOS
 
@@ -871,74 +353,13 @@ d\n", 4\\
 urn 0; }
 EOS
 
-expect_stdout "40000000000\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  long x = (long) 200000 * 200000;
-  printf("%ld\n", x);
-}
-EOS
-
-expect_stdout "40000000000\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  unsigned long x = (unsigned long) 200000 * 200000;
-  printf("%lu\n", x);
-}
-EOS
-
-expect_stdout "18446744073709551615\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  printf("%llu\n", 18446744073709551615ull);
-}
-EOS
-
-expect_return 0 <<-EOS
-int main() {
-  int x = 100;
-label:
-  --x;
-  if (x > 0) goto label;
+expect_return 62 <<-EOS
+static int x = 62;
+static int func() {
   return x;
 }
-EOS
-
-expect_return 0 <<-EOS
 int main() {
-  goto label;
-  return 1;
-label:
-  return 0;
-}
-EOS
-
-expect_stdout "x == 0\nx == 1\nother\nx == 3\nother\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  for (int x = 0; x < 5; x++) {
-    switch (x) {
-      case 0: printf("x == 0\n"); break;
-      case 1: printf("x == 1\n"); break;
-      case 3: printf("x == 3\n"); break;
-      default: printf("other\n");
-    }
-  }
-  return 0;
-}
-EOS
-
-expect_stdout "1\n2\ndefault\n" <<-EOS
-int printf(char *format, ...);
-int main() {
-  int x = 1;
-  switch (x) {
-    case 0: printf("0\n");
-    case 1: printf("1\n");
-    case 2: printf("2\n");
-    default: printf("default\n");
-  }
-  return 0;
+ return func();
 }
 EOS
 
@@ -949,7 +370,6 @@ test_error "int main() { 5 }"
 test_error "int main() { 5 (4); }"
 test_error "int main() { 1 ? 2; }"
 test_error "int main() { 1 = 2 + 3; }"
-test_error "int main() { func_call(1, 2, 3, 4, 5, 6, 7); }"
 test_error "int main() { func_call(1, 2, 3; }"
 test_error "int main()"
 test_error "int main() { 2;"
@@ -958,7 +378,6 @@ test_error "int f() { 1; } int f() { 2; } int main() { 1; }"
 test_error "int main(int abc"
 test_error "int main(int 123) { 0; }"
 test_error "int main(int x, int x) { 0; }"
-test_error "int main(int a, int b, int c, int d, int e, int f, int g) { 0; }"
 test_error "int main(x) { return x; }"
 test_error "int main() { x; }"
 test_error "int main() { continue; }"

@@ -1,19 +1,20 @@
 #include "sk2cc.h"
 
-char *src;
-int pos;
+static char *filename;
 
-char *line_ptr;
-int lineno;
-int column;
+static char *src;
+static int pos;
 
-String *lex_text;
-char *lex_filename;
-char *lex_line_ptr;
-int lex_lineno;
-int lex_column;
+static char *line_ptr;
+static int lineno;
+static int column;
 
-String *read_file(char *filename) {
+static String *text;
+static Location *loc;
+
+static Map *keywords;
+
+static String *read_file(char *filename) {
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror(filename);
@@ -36,7 +37,7 @@ String *read_file(char *filename) {
 }
 
 // replace '\r\n' with '\n'
-String *replace_newline(String *file) {
+static String *replace_newline(String *file) {
   String *src = string_new();
   for (int i = 0; i < file->length; i++) {
     char c = file->buffer[i];
@@ -50,8 +51,8 @@ String *replace_newline(String *file) {
   return src;
 }
 
-Token *create_token(TokenType tk_type) {
-  return token_new(tk_type, lex_text->buffer, lex_filename, lex_line_ptr, lex_lineno, lex_column);
+static Token *create_token(TokenType tk_type) {
+  return token_new(tk_type, text->buffer, loc);
 }
 
 void next_line() {
@@ -61,24 +62,24 @@ void next_line() {
 }
 
 // skip '\' '\n' and concat previous and next lines
-void skip_backslash_newline() {
+static void skip_backslash_newline() {
   while (src[pos] == '\\' && src[pos + 1] == '\n') {
     pos += 2;
     next_line();
   }
 }
 
-char peek_char() {
+static char peek_char() {
   skip_backslash_newline();
   return src[pos];
 }
 
-char get_char() {
+static char get_char() {
   skip_backslash_newline();
 
   // read the character and add it to the token text
   char c = src[pos++];
-  string_push(lex_text, c);
+  string_push(text, c);
 
   column++;
   if (c == '\n') next_line();
@@ -86,14 +87,14 @@ char get_char() {
   return c;
 }
 
-char expect_char(char c) {
+static char expect_char(char c) {
   if (peek_char() != c) {
-    error(create_token(-1), "%c is expected.", c);
+    error(loc, "%c is expected.", c);
   }
   return get_char();
 }
 
-bool read_char(char c) {
+static bool read_char(char c) {
   if (peek_char() == c) {
     get_char();
     return true;
@@ -101,7 +102,42 @@ bool read_char(char c) {
   return false;
 }
 
-char get_escape_sequence() {
+static Map *create_keywords() {
+  Map *map = map_new();
+
+  map_puti(map, "sizeof", TK_SIZEOF);
+  map_puti(map, "_Alignof", TK_ALIGNOF);
+  map_puti(map, "typedef", TK_TYPEDEF);
+  map_puti(map, "extern", TK_EXTERN);
+  map_puti(map, "static", TK_STATIC);
+  map_puti(map, "void", TK_VOID);
+  map_puti(map, "char", TK_CHAR);
+  map_puti(map, "short", TK_SHORT);
+  map_puti(map, "int", TK_INT);
+  map_puti(map, "long", TK_LONG);
+  map_puti(map, "signed", TK_SIGNED);
+  map_puti(map, "unsigned", TK_UNSIGNED);
+  map_puti(map, "_Bool", TK_BOOL);
+  map_puti(map, "struct", TK_STRUCT);
+  map_puti(map, "enum", TK_ENUM);
+  map_puti(map, "_Noreturn", TK_NORETURN);
+  map_puti(map, "case", TK_CASE);
+  map_puti(map, "default", TK_DEFAULT);
+  map_puti(map, "if", TK_IF);
+  map_puti(map, "else", TK_ELSE);
+  map_puti(map, "switch", TK_SWITCH);
+  map_puti(map, "while", TK_WHILE);
+  map_puti(map, "do", TK_DO);
+  map_puti(map, "for", TK_FOR);
+  map_puti(map, "goto", TK_GOTO);
+  map_puti(map, "continue", TK_CONTINUE);
+  map_puti(map, "break", TK_BREAK);
+  map_puti(map, "return", TK_RETURN);
+
+  return map;
+}
+
+static char get_escape_sequence() {
   if (read_char('\'')) return '\'';
   if (read_char('"')) return '"';
   if (read_char('?')) return '?';
@@ -115,17 +151,15 @@ char get_escape_sequence() {
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
 
-  error(create_token(-1), "invalid escape sequence.");
+  error(loc, "invalid escape sequence.");
 }
 
-Token *next_token() {
+static Token *next_token() {
   skip_backslash_newline();
 
   // store the start position of the next token.
-  lex_text = string_new();
-  lex_line_ptr = line_ptr;
-  lex_lineno = lineno;
-  lex_column = column;
+  text = string_new();
+  loc = location_new(filename, line_ptr, lineno, column);
 
   // check EOF
   if (peek_char() == '\0') {
@@ -169,61 +203,8 @@ Token *next_token() {
       string_push(string, get_char());
     }
 
-    // check keywords
-    if (strcmp(string->buffer, "sizeof") == 0)
-      return create_token(TK_SIZEOF);
-    if (strcmp(string->buffer, "_Alignof") == 0)
-      return create_token(TK_ALIGNOF);
-    if (strcmp(string->buffer, "typedef") == 0)
-      return create_token(TK_TYPEDEF);
-    if (strcmp(string->buffer, "extern") == 0)
-      return create_token(TK_EXTERN);
-    if (strcmp(string->buffer, "void") == 0)
-      return create_token(TK_VOID);
-    if (strcmp(string->buffer, "char") == 0)
-      return create_token(TK_CHAR);
-    if (strcmp(string->buffer, "short") == 0)
-      return create_token(TK_SHORT);
-    if (strcmp(string->buffer, "int") == 0)
-      return create_token(TK_INT);
-    if (strcmp(string->buffer, "long") == 0)
-      return create_token(TK_LONG);
-    if (strcmp(string->buffer, "signed") == 0)
-      return create_token(TK_SIGNED);
-    if (strcmp(string->buffer, "unsigned") == 0)
-      return create_token(TK_UNSIGNED);
-    if (strcmp(string->buffer, "_Bool") == 0)
-      return create_token(TK_BOOL);
-    if (strcmp(string->buffer, "struct") == 0)
-      return create_token(TK_STRUCT);
-    if (strcmp(string->buffer, "enum") == 0)
-      return create_token(TK_ENUM);
-    if (strcmp(string->buffer, "_Noreturn") == 0)
-      return create_token(TK_NORETURN);
-    if (strcmp(string->buffer, "case") == 0)
-      return create_token(TK_CASE);
-    if (strcmp(string->buffer, "default") == 0)
-      return create_token(TK_DEFAULT);
-    if (strcmp(string->buffer, "if") == 0)
-      return create_token(TK_IF);
-    if (strcmp(string->buffer, "else") == 0)
-      return create_token(TK_ELSE);
-    if (strcmp(string->buffer, "switch") == 0)
-      return create_token(TK_SWITCH);
-    if (strcmp(string->buffer, "while") == 0)
-      return create_token(TK_WHILE);
-    if (strcmp(string->buffer, "do") == 0)
-      return create_token(TK_DO);
-    if (strcmp(string->buffer, "for") == 0)
-      return create_token(TK_FOR);
-    if (strcmp(string->buffer, "goto") == 0)
-      return create_token(TK_GOTO);
-    if (strcmp(string->buffer, "continue") == 0)
-      return create_token(TK_CONTINUE);
-    if (strcmp(string->buffer, "break") == 0)
-      return create_token(TK_BREAK);
-    if (strcmp(string->buffer, "return") == 0)
-      return create_token(TK_RETURN);
+    TokenType tk_type = map_lookupi(keywords, string->buffer);
+    if (tk_type) return create_token(tk_type);
 
     Token *token = create_token(TK_IDENTIFIER);
     token->identifier = string->buffer;
@@ -301,10 +282,12 @@ Token *next_token() {
     return create_token(c);
   }
 
-  error(create_token(-1), "failed to tokenize.");
+  error(loc, "failed to tokenize.");
 }
 
-Vector *tokenize(char *filename) {
+Vector *tokenize(char *_filename) {
+  filename = _filename;
+
   // read the input file
   String *file = read_file(filename);
 
@@ -316,7 +299,9 @@ Vector *tokenize(char *filename) {
   lineno = 1;
   column = 1;
 
-  lex_filename = filename;
+  if (!keywords) {
+    keywords = create_keywords();
+  }
 
   // tokenize
   Vector *pp_tokens = vector_new();
@@ -325,12 +310,14 @@ Vector *tokenize(char *filename) {
 
     // concat consecutive white spaces
     if (token->tk_type == TK_SPACE) {
-      token->text = " ";
-      vector_push(pp_tokens, token);
-
+      Token *space = token;
+      String *text = string_new();
       while (token->tk_type == TK_SPACE) {
+        string_write(text, token->text);
         token = next_token();
       }
+      space->text = text->buffer;
+      vector_push(pp_tokens, space);
     }
 
     vector_push(pp_tokens, token);

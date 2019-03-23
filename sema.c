@@ -3,6 +3,7 @@
 typedef struct decl_attribution {
   Type *type;
   bool sp_extern;
+  bool sp_static;
   bool sp_noreturn;
 } DeclAttribution;
 
@@ -21,13 +22,29 @@ int break_level;
 
 void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   if (symbol->prev && symbol->prev->definition) {
-    error(symbol->token, "duplicated declaration: %s.", symbol->identifier);
+    ERROR(symbol->token, "duplicated declaration: %s.", symbol->identifier);
   }
 
-  symbol->link = global ? LN_EXTERNAL : LN_NONE;
-  symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
-  if (attr && attr->sp_extern) {
-    symbol->definition = false;
+  if (global) {
+    if (attr && attr->sp_extern) {
+      symbol->link = LN_EXTERNAL;
+      symbol->definition = false;
+    } else if (attr && attr->sp_static) {
+      symbol->link = LN_INTERNAL;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    } else {
+      symbol->link = LN_EXTERNAL;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    }
+  } else {
+    if (attr && attr->sp_extern) {
+      ERROR(symbol->token, "'extern' specifier for local variable is not supported.");
+    } else if (attr && attr->sp_static) {
+      ERROR(symbol->token, "'static' specifier for local variable is not supported.");
+    } else {
+      symbol->link = LN_NONE;
+      symbol->definition = symbol->sy_type == SY_VARIABLE && symbol->type->ty_type != TY_FUNCTION;
+    }
   }
 
   if (!global) {
@@ -84,6 +101,18 @@ bool check_cast(Type *type, Expr *expr) {
     }
   }
 
+  // conversion between pointer and integer
+  if (check_pointer(type)) {
+    if (expr->type->ty_type == TY_LONG || expr->type->ty_type == TY_ULONG) {
+      return true;
+    }
+  }
+  if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
+    if (check_pointer(expr->type)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -92,7 +121,7 @@ Expr *insert_cast(Type *type, Expr *expr, Token *token) {
   cast->type = type;
 
   if (!check_cast(cast->type, expr)) {
-    error(token, "invalid casting.");
+    ERROR(token, "invalid casting.");
   }
 
   return cast;
@@ -177,11 +206,44 @@ Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return sema_expr(assign);
 }
 
+Expr *sema_va_start(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    ERROR(expr->macro_ap->token, "invalid argument of 'va_start'.");
+  }
+
+  expr->type = type_void();
+
+  return expr;
+}
+
+Expr *sema_va_arg(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    ERROR(expr->macro_ap->token, "invalid argument of 'va_arg'.");
+  }
+
+  expr->type = sema_type_name(expr->macro_type);
+
+  return expr;
+}
+
+Expr *sema_va_end(Expr *expr) {
+  expr->macro_ap = sema_expr(expr->macro_ap);
+  if (expr->macro_ap->type->ty_type != TY_POINTER) {
+    ERROR(expr->macro_ap->token, "invalid argument of 'va_end'.");
+  }
+
+  expr->type = type_void();
+
+  return expr;
+}
+
 Expr *sema_identifier(Expr *expr) {
   if (expr->symbol) {
     expr->type = expr->symbol->type;
   } else {
-    error(expr->token, "undefined variable: %s.", expr->identifier);
+    ERROR(expr->token, "undefined variable: %s.", expr->identifier);
   }
 
   return expr;
@@ -226,13 +288,13 @@ Expr *sema_integer(Expr *expr) {
         } else if (expr->int_value <= 0x7fffffffffffffff) {
           expr->type = type_long();
         } else {
-          error(expr->token, "can not represents integer-constant.");
+          ERROR(expr->token, "can not represents integer-constant.");
         }
       } else {
         if (expr->int_value <= 0x7fffffffffffffff) {
           expr->type = type_long();
         } else {
-          error(expr->token, "can not represents integer-constant.");
+          ERROR(expr->token, "can not represents integer-constant.");
         }
       }
     } else {
@@ -279,15 +341,11 @@ Expr *sema_call(Expr *expr) {
       expr->expr = sema_expr(expr->expr);
     }
   } else {
-    error(expr->token, "invalid function call.");
+    ERROR(expr->token, "invalid function call.");
   }
 
-  if (expr->args->length <= 6) {
-    for (int i = 0; i < expr->args->length; i++) {
-      expr->args->buffer[i] = sema_expr(expr->args->buffer[i]);
-    }
-  } else {
-    error(expr->token, "too many arguments.");
+  for (int i = 0; i < expr->args->length; i++) {
+    expr->args->buffer[i] = sema_expr(expr->args->buffer[i]);
   }
 
   if (expr->expr->symbol) {
@@ -296,11 +354,11 @@ Expr *sema_call(Expr *expr) {
 
     if (!expr->expr->symbol->type->ellipsis) {
       if (args->length != params->length) {
-        error(expr->token, "number of parameters should be %d, but got %d.", params->length, args->length);
+        ERROR(expr->token, "number of parameters should be %d, but got %d.", params->length, args->length);
       }
     } else {
       if (args->length < params->length) {
-        error(expr->token, "number of parameters should be %d or more, bug got %d.", params->length, args->length);
+        ERROR(expr->token, "number of parameters should be %d or more, bug got %d.", params->length, args->length);
       }
     }
 
@@ -315,7 +373,7 @@ Expr *sema_call(Expr *expr) {
 
   if (expr->expr->symbol) {
     if (expr->expr->type->ty_type != TY_FUNCTION) {
-      error(expr->token, "operand should have function type.");
+      ERROR(expr->token, "operand should have function type.");
     }
     expr->type = expr->expr->type->returning;
   } else {
@@ -329,12 +387,12 @@ Expr *sema_dot(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (expr->expr->type->ty_type != TY_STRUCT) {
-    error(expr->token, "operand should have struct type.");
+    ERROR(expr->token, "operand should have struct type.");
   }
 
   Member *member = map_lookup(expr->expr->type->members, expr->member);
   if (!member) {
-    error(expr->token, "undefined struct member: %s.", expr->member);
+    ERROR(expr->token, "undefined struct member: %s.", expr->member);
   }
 
   expr->type = member->type;
@@ -379,7 +437,7 @@ Expr *sema_address(Expr *expr) {
   if (check_lvalue(expr->expr)) {
     expr->type = type_pointer(expr->expr->type);
   } else {
-    error(expr->token, "operand should be lvalue.");
+    ERROR(expr->token, "operand should be lvalue.");
   }
 
   return expr;
@@ -391,7 +449,7 @@ Expr *sema_indirect(Expr *expr) {
   if (check_pointer(expr->expr->type)) {
     expr->type = expr->expr->type->pointer_to;
   } else {
-    error(expr->token, "operand should have pointer type.");
+    ERROR(expr->token, "operand should have pointer type.");
   }
 
   return expr;
@@ -403,7 +461,7 @@ Expr *sema_uplus(Expr *expr) {
   if (check_arithmetic(expr->expr->type)) {
     promote_integer(&expr->expr);
   } else {
-    error(expr->token, "operand should have arithmetic type.");
+    ERROR(expr->token, "operand should have arithmetic type.");
   }
 
   // we can remove node of unary + before code generation.
@@ -416,7 +474,7 @@ Expr *sema_uminus(Expr *expr) {
   if (check_arithmetic(expr->expr->type)) {
     expr->type = promote_integer(&expr->expr);
   } else {
-    error(expr->token, "operand should have arithmetic type.");
+    ERROR(expr->token, "operand should have arithmetic type.");
   }
 
   return expr;
@@ -428,7 +486,7 @@ Expr *sema_not(Expr *expr) {
   if (check_integer(expr->expr->type)) {
     expr->type = promote_integer(&expr->expr);
   } else {
-    error(expr->token, "operand should have integer type.");
+    ERROR(expr->token, "operand should have integer type.");
   }
 
   return expr;
@@ -441,7 +499,7 @@ Expr *sema_lnot(Expr *expr) {
     promote_integer(&expr->expr);
     expr->type = type_int();
   } else {
-    error(expr->token, "operand should have scalar type.");
+    ERROR(expr->token, "operand should have scalar type.");
   }
 
   return expr;
@@ -469,7 +527,7 @@ Expr *sema_cast(Expr *expr) {
   expr->type = sema_type_name(expr->type_name);
 
   if (!check_cast(expr->type, expr->expr)) {
-    error(expr->token, "invalid casting.");
+    ERROR(expr->token, "invalid casting.");
   }
 
   return expr;
@@ -482,7 +540,7 @@ Expr *sema_mul(Expr *expr) {
   if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
-    error(expr->token, "operands should have intger type.");
+    ERROR(expr->token, "operands should have intger type.");
   }
 
   return expr;
@@ -495,7 +553,7 @@ Expr *sema_mod(Expr *expr) {
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
-    error(expr->token, "operands should have intger type.");
+    ERROR(expr->token, "operands should have intger type.");
   }
 
   return expr;
@@ -517,7 +575,7 @@ Expr *sema_add(Expr *expr) {
     promote_integer(&expr->rhs);
     expr->type = expr->lhs->type;
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -533,7 +591,7 @@ Expr *sema_sub(Expr *expr) {
     promote_integer(&expr->rhs);
     expr->type = expr->lhs->type;
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -546,7 +604,7 @@ Expr *sema_shift(Expr *expr) {
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -562,7 +620,7 @@ Expr *sema_relational(Expr *expr) {
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = type_int();
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   // convert '<' to '>', '<=' to '>='
@@ -592,7 +650,7 @@ Expr *sema_equality(Expr *expr) {
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = type_int();
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -605,7 +663,7 @@ Expr *sema_bitwise(Expr *expr) {
   if (check_integer(expr->lhs->type) && check_integer(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -620,7 +678,7 @@ Expr *sema_logical(Expr *expr) {
     promote_integer(&expr->rhs);
     expr->type = type_int();
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -634,7 +692,7 @@ Expr *sema_condition(Expr *expr) {
   if (check_scalar(expr->cond->type)) {
     promote_integer(&expr->cond);
   } else {
-    error(expr->token, "control expression should have scalar type.");
+    ERROR(expr->token, "control expression should have scalar type.");
   }
 
   if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
@@ -642,7 +700,7 @@ Expr *sema_condition(Expr *expr) {
   } else if (check_pointer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     expr->type = expr->lhs->type;
   } else {
-    error(expr->token, "invalid operand types.");
+    ERROR(expr->token, "invalid operand types.");
   }
 
   return expr;
@@ -656,7 +714,7 @@ Expr *sema_assign(Expr *expr) {
     expr->rhs = insert_cast(expr->lhs->type, expr->rhs, expr->token);
     expr->type = expr->lhs->type;
   } else {
-    error(expr->token, "invalid operands.");
+    ERROR(expr->token, "invalid operands.");
   }
 
   return expr;
@@ -696,7 +754,13 @@ Expr *sema_expr(Expr *expr) {
     return expr;
   }
 
-  if (expr->nd_type == ND_IDENTIFIER) {
+  if (expr->nd_type == ND_VA_START) {
+    expr = sema_va_start(expr);
+  } else if (expr->nd_type == ND_VA_ARG) {
+    expr = sema_va_arg(expr);
+  } else if (expr->nd_type == ND_VA_END) {
+    expr = sema_va_end(expr);
+  } else if (expr->nd_type == ND_IDENTIFIER) {
     expr = sema_identifier(expr);
   } else if (expr->nd_type == ND_INTEGER) {
     expr = sema_integer(expr);
@@ -791,7 +855,7 @@ Expr *sema_const_expr(Expr *expr) {
   expr = sema_expr(expr);
 
   if (expr->nd_type != ND_INTEGER) {
-    error(expr->token, "invalid integer constant expression.");
+    ERROR(expr->token, "invalid integer constant expression.");
   }
 
   return expr;
@@ -821,7 +885,7 @@ void sema_decl(Decl *decl, bool global) {
       if (symbol->type->ty_type == TY_ARRAY) {
         if (symbol->type->complete) {
           if (symbol->type->length < symbol->init->list->length) {
-            error(symbol->token, "too many initializer items.");
+            ERROR(symbol->token, "too many initializer items.");
           }
         } else {
           type_array(symbol->type, symbol->init->list->length);
@@ -838,6 +902,7 @@ void sema_decl(Decl *decl, bool global) {
 DeclAttribution *sema_specs(Vector *specs, Token *token) {
   int sp_storage = 0;
   bool sp_extern = false;
+  bool sp_static = false;
 
   int sp_type = 0;
   int sp_void = 0;
@@ -861,6 +926,9 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
     } else if (spec->sp_type == SP_EXTERN) {
       sp_storage++;
       sp_extern = true;
+    } else if (spec->sp_type == SP_STATIC) {
+      sp_storage++;
+      sp_static = true;
     } else if (spec->sp_type == SP_VOID) {
       sp_type++;
       sp_void++;
@@ -900,7 +968,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   }
 
   if (sp_storage > 1) {
-    error(token, "too many storage-class-specifiers.");
+    ERROR(token, "too many storage-class-specifiers.");
   }
 
   Type *type;
@@ -967,12 +1035,13 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   } else if (sp_type == 1 && sp_typedef->length == 1) {
     type = sp_typedef->buffer[0];
   } else {
-    error(token, "invalid type-specifiers.");
+    ERROR(token, "invalid type-specifiers.");
   }
 
   DeclAttribution *attr = calloc(1, sizeof(DeclAttribution));
   attr->type = type;
   attr->sp_extern = sp_extern;
+  attr->sp_static = sp_static;
   attr->sp_noreturn = sp_noreturn;
   return attr;
 }
@@ -1000,7 +1069,7 @@ Type *sema_struct(Specifier *spec) {
         symbol->type = sema_declarator(symbol->decl, attr->type);
 
         if (!symbol->type->complete) {
-          error(symbol->token, "declaration of struct member with incomplete type.");
+          ERROR(symbol->token, "declaration of struct member with incomplete type.");
         }
 
         vector_push(symbols, symbol);
@@ -1032,7 +1101,7 @@ Type *sema_enum(Specifier *spec) {
 
     if (spec->enum_tag) {
       if (lookup_tag(spec->enum_tag)) {
-        error(spec->token, "redeclaration of enum tag.");
+        ERROR(spec->token, "redeclaration of enum tag.");
       }
 
       Type *type = type_int();
@@ -1045,7 +1114,7 @@ Type *sema_enum(Specifier *spec) {
 
   Type *type = lookup_tag(spec->enum_tag);
   if (!type) {
-    error(spec->token, "undefined enum tag.");
+    ERROR(spec->token, "undefined enum tag.");
   }
   return type;
 }
@@ -1071,7 +1140,7 @@ Type *sema_declarator(Declarator *decl, Type *type) {
     Type *type = type_array_incomplete(array_of);
     if (decl->size) {
       if (decl->size->nd_type != ND_INTEGER) {
-        error(decl->size->token, "only integer constant is supported for array size.");
+        ERROR(decl->size->token, "only integer constant is supported for array size.");
       }
       type = type_array(type, decl->size->int_value);
     }
@@ -1112,7 +1181,7 @@ void sema_initializer(Initializer *init, Type *type, bool global) {
   } else {
     if (global) {
       if (init->expr->nd_type != ND_INTEGER && init->expr->nd_type != ND_STRING) {
-        error(init->expr->token, "initializer expression should be integer constant or string literal.");
+        ERROR(init->expr->token, "initializer expression should be integer constant or string literal.");
       }
     }
     init->expr = sema_expr(init->expr);
@@ -1148,7 +1217,7 @@ void sema_label(Stmt *stmt) {
   for (int i = 0; i < label_names->length; i++) {
     char *label_name = label_names->buffer[i];
     if (strcmp(stmt->label_name, label_name) == 0) {
-      error(stmt->token, "duplicated label declaration: %s.", stmt->label_name);
+      ERROR(stmt->token, "duplicated label declaration: %s.", stmt->label_name);
     }
   }
   vector_push(label_names, stmt->label_name);
@@ -1160,7 +1229,7 @@ void sema_case(Stmt *stmt) {
   if (switch_cases->length > 0) {
     vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
   } else {
-    error(stmt->token, "'case' should be in switch statement.");
+    ERROR(stmt->token, "'case' should be in switch statement.");
   }
 
   stmt->case_const = sema_expr(stmt->case_const);
@@ -1172,7 +1241,7 @@ void sema_default(Stmt *stmt) {
   if (switch_cases->length > 0) {
     vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
   } else {
-    error(stmt->token, "'default' should be in switch statement.");
+    ERROR(stmt->token, "'default' should be in switch statement.");
   }
 
   sema_stmt(stmt->default_stmt);
@@ -1183,7 +1252,7 @@ void sema_if(Stmt *stmt) {
   if (check_scalar(stmt->if_cond->type)) {
     promote_integer(&stmt->if_cond);
   } else {
-    error(stmt->token, "control expression should have scalar type.");
+    ERROR(stmt->token, "control expression should have scalar type.");
   }
 
   sema_stmt(stmt->then_body);
@@ -1200,7 +1269,7 @@ void sema_switch(Stmt *stmt) {
   if (check_scalar(stmt->switch_cond->type)) {
     promote_integer(&stmt->switch_cond);
   } else {
-    error(stmt->token, "control expression should have scalar type.");
+    ERROR(stmt->token, "control expression should have scalar type.");
   }
 
   sema_stmt(stmt->switch_body);
@@ -1217,7 +1286,7 @@ void sema_while(Stmt *stmt) {
   if (check_scalar(stmt->while_cond->type)) {
     promote_integer(&stmt->while_cond);
   } else {
-    error(stmt->token, "control expression should have scalar type.");
+    ERROR(stmt->token, "control expression should have scalar type.");
   }
 
   sema_stmt(stmt->while_body);
@@ -1232,7 +1301,7 @@ void sema_do(Stmt *stmt) {
   if (check_scalar(stmt->do_cond->type)) {
     promote_integer(&stmt->do_cond);
   } else {
-    error(stmt->token, "control expression should have scalar type.");
+    ERROR(stmt->token, "control expression should have scalar type.");
   }
 
   sema_stmt(stmt->do_body);
@@ -1258,7 +1327,7 @@ void sema_for(Stmt *stmt) {
     if (check_scalar(stmt->for_cond->type)) {
       promote_integer(&stmt->for_cond);
     } else {
-      error(stmt->token, "control expression should have scalar type.");
+      ERROR(stmt->token, "control expression should have scalar type.");
     }
   }
 
@@ -1278,13 +1347,13 @@ void sema_goto(Stmt *stmt) {
 
 void sema_continue(Stmt *stmt) {
   if (continue_level == 0) {
-    error(stmt->token, "continue statement should appear in loops.");
+    ERROR(stmt->token, "continue statement should appear in loops.");
   }
 }
 
 void sema_break(Stmt *stmt) {
   if (break_level == 0) {
-    error(stmt->token, "break statement should appear in loops.");
+    ERROR(stmt->token, "break statement should appear in loops.");
   }
 }
 
@@ -1294,11 +1363,11 @@ void sema_return(Stmt *stmt) {
     if (stmt->ret) {
       stmt->ret = insert_cast(type, sema_expr(stmt->ret), stmt->token);
     } else {
-      error(stmt->token, "'return' without expression in function returning non-void.");
+      ERROR(stmt->token, "'return' without expression in function returning non-void.");
     }
   } else {
     if (stmt->ret) {
-      error(stmt->token, "'return' with an expression in function returning void.");
+      ERROR(stmt->token, "'return' with an expression in function returning void.");
     }
   }
 }
@@ -1353,16 +1422,13 @@ void sema_func(Func *func) {
 
   func->symbol->type = sema_declarator(func->symbol->decl, attr->type);
 
-  if (func->symbol->type->params->length > 6) {
-    error(func->symbol->token, "too many parameters.");
-  }
   if (func->symbol->type->returning->ty_type == TY_ARRAY) {
-    error(func->symbol->token, "definition of function returning array.");
+    ERROR(func->symbol->token, "definition of function returning array.");
   }
 
   func->symbol->definition = true;
   if (func->symbol->prev && func->symbol->prev->definition) {
-    error(func->symbol->token, "duplicated function definition: %s.", func->symbol->identifier);
+    ERROR(func->symbol->token, "duplicated function definition: %s.", func->symbol->identifier);
   }
 
   func_symbol = func->symbol;
@@ -1372,7 +1438,7 @@ void sema_func(Func *func) {
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
     Symbol *param = func->symbol->type->params->buffer[i];
-    put_variable(attr, param, false);
+    put_variable(NULL, param, false);
   }
 
   vector_push(tag_scopes, map_new());
@@ -1390,7 +1456,7 @@ void sema_func(Func *func) {
       }
     }
     if (!found) {
-      error(stmt->token, "label: %s is not found.", stmt->goto_label);
+      ERROR(stmt->token, "label: %s is not found.", stmt->goto_label);
     }
   }
 
