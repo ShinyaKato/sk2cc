@@ -1432,7 +1432,7 @@ TransUnit *encode(Vector *stmts) {
   current = TEXT;
 
   for (int i = 0; i < stmts->length; i++) {
-    Stmt *stmt = stmts->array[i];
+    Stmt *stmt = stmts->buffer[i];
     switch (stmt->type) {
       case STMT_LABEL: gen_label(stmt->label); break;
       case STMT_DIR: gen_dir(stmt->dir); break;

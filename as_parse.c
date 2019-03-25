@@ -258,7 +258,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG || op->regtype != REG64) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
@@ -269,7 +269,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG || op->regtype != REG64) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
@@ -280,7 +280,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -300,7 +300,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -320,7 +320,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -340,7 +340,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -360,7 +360,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -377,7 +377,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -394,7 +394,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -411,7 +411,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -428,7 +428,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -445,7 +445,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -462,7 +462,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -479,7 +479,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -496,7 +496,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -513,7 +513,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -530,7 +530,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
@@ -547,7 +547,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_MEM) {
       ERROR(src->token, "first operand should be memory operand.");
     }
@@ -564,7 +564,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -578,7 +578,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -592,7 +592,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -606,7 +606,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -620,7 +620,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -640,7 +640,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -660,7 +660,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -680,7 +680,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -700,7 +700,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -714,7 +714,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -728,7 +728,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -742,7 +742,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -756,7 +756,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -770,7 +770,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -784,7 +784,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -798,7 +798,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -812,7 +812,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -832,7 +832,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -852,7 +852,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -872,7 +872,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -892,7 +892,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -912,7 +912,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -932,7 +932,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
@@ -949,7 +949,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
@@ -966,7 +966,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
@@ -983,7 +983,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
@@ -1000,7 +1000,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -1020,7 +1020,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -1040,7 +1040,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -1061,7 +1061,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 2) {
       ERROR(inst, "'%s' expects 2 operands.", inst->ident);
     }
-    Op *src = ops->array[0], *dest = ops->array[1];
+    Op *src = ops->buffer[0], *dest = ops->buffer[1];
     if (dest->type == OP_IMM) {
       ERROR(dest->token, "destination cannot be an immediate.");
     }
@@ -1081,7 +1081,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1095,7 +1095,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1109,7 +1109,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1123,7 +1123,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1137,7 +1137,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1151,7 +1151,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
@@ -1165,7 +1165,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
@@ -1176,7 +1176,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
@@ -1187,7 +1187,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
@@ -1198,7 +1198,7 @@ static Inst *parse_inst(Token **token) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
-    Op *op = ops->array[0];
+    Op *op = ops->buffer[0];
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
@@ -1226,8 +1226,8 @@ Vector *parse(Vector *lines) {
   Vector *stmts = vector_new();
 
   for (int i = 0; i < lines->length; i++) {
-    Vector *line = lines->array[i];
-    Token **token = (Token **) line->array;
+    Vector *line = lines->buffer[i];
+    Token **token = (Token **) line->buffer;
 
     if (line->length == 0) continue;
     EXPECT(token[0], TOK_IDENT, "identifier is expected.");

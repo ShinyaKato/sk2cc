@@ -156,47 +156,11 @@ typedef struct {
   Elf64_Sxword r_addend;
 } Elf64_Rela;
 
-// as_string.c
-typedef struct string {
-  int size, length;
-  char *buffer;
-} String;
-
-extern String *string_new();
-extern void string_push(String *string, char c);
-extern void string_write(String *string, char *buffer);
-
-// as_vector.c
-typedef struct vector {
-  int size, length;
-  void **array;
-} Vector;
-
-extern Vector *vector_new();
-extern void vector_push(Vector *vector, void *value);
-
-// as_map.c
-typedef struct map {
-  int count;
-  char *keys[1024];
-  void *values[1024];
-} Map;
-
-extern Map *map_new();
-extern bool map_put(Map *map, char *key, void *value);
-extern void *map_lookup(Map *map, char *key);
-
-// as_binary.c
-typedef unsigned char Byte;
-typedef struct {
-  int length, capacity;
-  Byte *buffer;
-} Binary;
-
-extern Binary *binary_new();
-extern void binary_push(Binary *binary, Byte byte);
-extern void binary_append(Binary *binary, int size, ...);
-extern void binary_write(Binary *binary, void *buffer, int size);
+// string, vector, map, binary
+#include "string.h"
+#include "vector.h"
+#include "map.h"
+#include "binary.h"
 
 // struct and enum declaration
 

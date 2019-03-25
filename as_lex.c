@@ -51,7 +51,7 @@ Vector *tokenize(char *file, Vector *source) {
 
   for (int lineno = 0; lineno < source->length; lineno++) {
     Vector *tokens = vector_new();
-    char *line = source->array[lineno];
+    char *line = source->buffer[lineno];
 
     for (int column = 0; line[column] != '\0';) {
       while (line[column] == ' ' || line[column] == '\t') column++;

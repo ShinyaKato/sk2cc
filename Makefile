@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -std=c11 --pedantic-errors -Wall -g
 
-HEADERS = sk2cc.h
+HEADERS = sk2cc.h string.h vector.h map.h
 SRCS = vector.c string.c map.c error.c token.c lex.c scan.c cpp.c node.c symbol.c type.c parse.c sema.c gen.c main.c
 
 DIR = tmp
@@ -90,8 +90,8 @@ test:
 	make test_diff
 
 # assembler
-as: as.h as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c
-	$(CC) $(CFLAGS) as_string.c as_vector.c as_map.c as_binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c -o as
+as: as.h string.h string.c vector.h vector.c map.h map.c binary.h binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c
+	$(CC) $(CFLAGS) string.c vector.c map.c binary.c as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c -o as
 
 .PHONY: test_as
 test_as: tmp as

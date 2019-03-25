@@ -58,39 +58,10 @@ int isspace(int c);
 int isxdigit(int c);
 int tolower(int c);
 
-// string.c
-typedef struct string {
-  int capacity, length;
-  char *buffer;
-} String;
-
-extern String *string_new();
-extern void string_push(String *string, char c);
-extern void string_write(String *string, char *s);
-
-// vector.c
-typedef struct vector {
-  int capacity, length;
-  void **buffer;
-} Vector;
-
-extern Vector *vector_new();
-extern void vector_push(Vector *vector, void *value);
-extern void *vector_pop(Vector *vector);
-extern void vector_merge(Vector *dest, Vector *src);
-
-// map.c
-typedef struct map {
-  int count;
-  char *keys[1024];
-  void *values[1024];
-} Map;
-
-extern Map *map_new();
-extern bool map_put(Map *map, char *key, void *value);
-extern void *map_lookup(Map *map, char *key);
-extern bool map_puti(Map *map, char *key, int value);
-extern int map_lookupi(Map *map, char *key);
+// string, vector, map
+#include "string.h"
+#include "vector.h"
+#include "map.h"
 
 // struct declaration
 typedef struct location Location;

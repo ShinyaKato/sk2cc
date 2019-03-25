@@ -1,10 +1,18 @@
-#include "as.h"
+#define va_start __builtin_va_start
+#define va_arg __builtin_va_arg
+#define va_end __builtin_va_end
+typedef __builtin_va_list va_list;
+typedef unsigned long long size_t;
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+
+#include "binary.h"
 
 Binary *binary_new() {
-  int capacity = 0x100;
-  Binary *binary = (Binary *) calloc(1, sizeof(Binary));
+  int capacity = 256;
+  Binary *binary = calloc(1, sizeof(Binary));
   binary->capacity = capacity;
-  binary->buffer = (Byte *) calloc(capacity, sizeof(Byte));
+  binary->buffer = calloc(capacity, sizeof(Byte));
   return binary;
 }
 

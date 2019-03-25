@@ -1,12 +1,17 @@
-#include "sk2cc.h"
+#define NULL ((void *) 0)
+typedef unsigned long long size_t;
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+
+#include "vector.h"
 
 Vector *vector_new() {
-  Vector *vector = (Vector *) calloc(1, sizeof(Vector));
+  Vector *vector = calloc(1, sizeof(Vector));
 
   int capacity = 64;
   vector->capacity = capacity;
   vector->length = 0;
-  vector->buffer = (void **) calloc(capacity, sizeof(void *));
+  vector->buffer = calloc(capacity, sizeof(void *));
   vector->buffer[0] = NULL;
 
   return vector;
@@ -17,7 +22,7 @@ void vector_push(Vector *vector, void *value) {
 
   if (vector->length >= vector->capacity) {
     vector->capacity *= 2;
-    vector->buffer = (void **) realloc(vector->buffer, sizeof(void *) * vector->capacity);
+    vector->buffer = realloc(vector->buffer, sizeof(void *) * vector->capacity);
   }
 
   vector->buffer[vector->length] = NULL;

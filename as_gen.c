@@ -9,7 +9,7 @@ static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current)
   int section_syms[SHNUM] = { 0, TEXT_SYM, 0, DATA_SYM, 0, 0, 0, 0 };
 
   for (int i = 0; i < section->relocs->length; i++) {
-    Reloc *reloc = section->relocs->array[i];
+    Reloc *reloc = section->relocs->buffer[i];
     Symbol *symbol = map_lookup(symbols, reloc->ident);
 
     if (symbol->global || symbol->section == UNDEF) {

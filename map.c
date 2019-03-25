@@ -1,7 +1,18 @@
-#include "sk2cc.h"
+#define bool _Bool
+#define false 0
+#define true 1
+#define NULL ((void *) 0)
+typedef signed long long intptr_t;
+typedef unsigned long long uintptr_t;
+typedef unsigned long long size_t;
+void *calloc(size_t nmemb, size_t size);
+void *realloc(void *ptr, size_t size);
+int strcmp(char *s1, char *s2);
+
+#include "map.h"
 
 Map *map_new() {
-  Map *map = (Map *) calloc(1, sizeof(Map));
+  Map *map = calloc(1, sizeof(Map));
   map->count = 0;
   return map;
 }
