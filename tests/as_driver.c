@@ -3,10 +3,10 @@
 int main(int argc, char *argv[]) {
   char *input = "/dev/stdin";
 
-  Vector *source = scan(input);
-  Vector *lines = tokenize(input, source);
-  Vector *stmts = parse(lines);
-  TransUnit *trans_unit = encode(stmts);
+  Vector *source = as_scan(input);
+  Vector *lines = as_tokenize(input, source);
+  Vector *stmts = as_parse(lines);
+  TransUnit *trans_unit = as_encode(stmts);
 
   Binary *text = trans_unit->text->bin;
   for (int i = 0; i < text->length; i++) {

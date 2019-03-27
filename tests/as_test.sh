@@ -1,5 +1,7 @@
 #!/bin/bash
 
+target=$1
+
 count=0
 
 error() {
@@ -40,7 +42,7 @@ failed() {
 expect() {
   expect=$1
   cat - > tmp/as_test.s
-  ./as tmp/as_test.s tmp/as_test.o 2> tmp/as_test.log || error
+  $target tmp/as_test.s tmp/as_test.o 2> tmp/as_test.log || error
   gcc -static tmp/as_test.o -o tmp/as_test || invalid
   ./tmp/as_test > /dev/null
   actual=$?

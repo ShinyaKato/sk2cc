@@ -1,6 +1,6 @@
 #include "as.h"
 
-Token *token_new(char *file, int lineno, int column, char *line) {
+static Token *token_new(char *file, int lineno, int column, char *line) {
   Token *token = (Token *) calloc(1, sizeof(Token));
   token->file = file;
   token->lineno = lineno;
@@ -46,7 +46,7 @@ static Reg regcode(char *reg, Token *token) {
   ERROR(token, "invalid register: %s.", reg);
 }
 
-Vector *tokenize(char *file, Vector *source) {
+Vector *as_tokenize(char *file, Vector *source) {
   Vector *lines = vector_new();
 
   for (int lineno = 0; lineno < source->length; lineno++) {

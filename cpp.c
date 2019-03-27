@@ -13,12 +13,12 @@ typedef struct macro {
   bool expanded;
 } Macro;
 
-Map *macros;
+static Map *macros;
 
-Vector *replace_macro(Vector *tokens, char *filename, int lineno);
-Vector *preprocessing_unit();
+static Vector *replace_macro(Vector *tokens, char *filename, int lineno);
+static Vector *preprocessing_unit();
 
-bool check_file_macro(Token *token) {
+static bool check_file_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     return strcmp(token->identifier, "__FILE__") == 0;
   }
@@ -26,7 +26,7 @@ bool check_file_macro(Token *token) {
   return false;
 }
 
-bool check_line_macro(Token *token) {
+static bool check_line_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     return strcmp(token->identifier, "__LINE__") == 0;
   }
@@ -34,7 +34,7 @@ bool check_line_macro(Token *token) {
   return false;
 }
 
-bool check_object_macro(Token *token) {
+static bool check_object_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     Macro *macro = map_lookup(macros, token->identifier);
     return macro && !macro->expanded && macro->mc_type == OBJECT_MACRO;
@@ -43,7 +43,7 @@ bool check_object_macro(Token *token) {
   return false;
 }
 
-bool check_function_macro(Token *token) {
+static bool check_function_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER && has_next_token() && check_token('(')) {
     Macro *macro = map_lookup(macros, token->identifier);
     return macro && !macro->expanded && macro->mc_type == FUNCTION_MACRO;
@@ -52,7 +52,7 @@ bool check_function_macro(Token *token) {
   return false;
 }
 
-Token *expand_file_macro(Token *token, char *filename) {
+static Token *expand_file_macro(Token *token, char *filename) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -71,7 +71,7 @@ Token *expand_file_macro(Token *token, char *filename) {
   return str;
 }
 
-Token *expand_line_macro(Token *token, int lineno) {
+static Token *expand_line_macro(Token *token, int lineno) {
   if (!lineno) {
     lineno = token->loc->lineno;
   }
@@ -91,7 +91,7 @@ Token *expand_line_macro(Token *token, int lineno) {
   return num;
 }
 
-Vector *expand_object_macro(Token *token, char *filename, int lineno) {
+static Vector *expand_object_macro(Token *token, char *filename, int lineno) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -108,7 +108,7 @@ Vector *expand_object_macro(Token *token, char *filename, int lineno) {
   return tokens;
 }
 
-Vector *expand_function_macro(Token *token, char *filename, int lineno) {
+static Vector *expand_function_macro(Token *token, char *filename, int lineno) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -191,7 +191,7 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
   return tokens;
 }
 
-Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
+static Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
   Scanner *prev = scanner_preserve(tokens);
 
   Vector *result = vector_new();
@@ -215,7 +215,7 @@ Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
   return result;
 }
 
-void define_directive() {
+static void define_directive() {
   char *identifier = expect_token(TK_IDENTIFIER)->identifier;
 
   MacroType mc_type;
@@ -261,7 +261,7 @@ void define_directive() {
   map_put(macros, identifier, macro);
 }
 
-Vector *include_directive() {
+static Vector *include_directive() {
   char *filename = expect_token(TK_STRING_LITERAL)->string_literal->buffer;
   read_token(TK_SPACE);
   expect_token(TK_NEWLINE);
@@ -276,7 +276,7 @@ Vector *include_directive() {
   return tokens;
 }
 
-Vector *text_line() {
+static Vector *text_line() {
   Vector *text_tokens = vector_new();
 
   while (has_next_token()) {
@@ -291,7 +291,7 @@ Vector *text_line() {
   return replace_macro(text_tokens, NULL, 0);
 }
 
-Vector *group() {
+static Vector *group() {
   Vector *tokens = vector_new();
 
   while (has_next_token()) {
@@ -321,7 +321,7 @@ Vector *group() {
   return tokens;
 }
 
-Vector *preprocessing_unit() {
+static Vector *preprocessing_unit() {
   return group();
 }
 

@@ -1,6 +1,6 @@
 #include "as.h"
 
-Reloc *reloc_new(int offset, char *ident, int type, int addend) {
+static Reloc *reloc_new(int offset, char *ident, int type, int addend) {
   Reloc *reloc = (Reloc *) calloc(1, sizeof(Reloc));
   reloc->offset = offset;
   reloc->ident = ident;
@@ -9,14 +9,14 @@ Reloc *reloc_new(int offset, char *ident, int type, int addend) {
   return reloc;
 }
 
-Section *section_new() {
+static Section *section_new() {
   Section *section = (Section *) calloc(1, sizeof(Section));
   section->bin = binary_new();
   section->relocs = vector_new();
   return section;
 }
 
-Symbol *symbol_new(bool global, int section, int offset) {
+static Symbol *symbol_new(bool global, int section, int offset) {
   Symbol *symbol = (Symbol *) calloc(1, sizeof(Symbol));
   symbol->global = global;
   symbol->section = section;
@@ -24,7 +24,7 @@ Symbol *symbol_new(bool global, int section, int offset) {
   return symbol;
 }
 
-TransUnit *trans_unit_new() {
+static TransUnit *trans_unit_new() {
   TransUnit *trans_unit = (TransUnit *) calloc(1, sizeof(TransUnit));
   trans_unit->text = section_new();
   trans_unit->data = section_new();
@@ -1424,7 +1424,7 @@ static void gen_inst(Inst *inst) {
   }
 }
 
-TransUnit *encode(Vector *stmts) {
+TransUnit *as_encode(Vector *stmts) {
   trans_unit = trans_unit_new();
   bin = trans_unit->text->bin;
   relocs = trans_unit->text->relocs;

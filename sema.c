@@ -7,20 +7,20 @@ typedef struct decl_attribution {
   bool sp_noreturn;
 } DeclAttribution;
 
-Vector *tag_scopes; // Vector<Map<Type*>*>
+static Vector *tag_scopes; // Vector<Map<Type*>*>
 
-Symbol *func_symbol;
-int stack_size;
+static Symbol *func_symbol;
+static int stack_size;
 
-Vector *label_names;
-Vector *goto_stmts;
+static Vector *label_names;
+static Vector *goto_stmts;
 
-Vector *switch_cases;
+static Vector *switch_cases;
 
-int continue_level;
-int break_level;
+static int continue_level;
+static int break_level;
 
-void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
+static void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   if (symbol->prev && symbol->prev->definition) {
     ERROR(symbol->token, "duplicated declaration: %s.", symbol->identifier);
   }
@@ -57,13 +57,13 @@ void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   }
 }
 
-void put_tag(char *tag, Type *type, Token *token) {
+static void put_tag(char *tag, Type *type, Token *token) {
   Map *map = tag_scopes->buffer[tag_scopes->length - 1];
 
   map_put(map, tag, type);
 }
 
-Type *lookup_tag(char *tag) {
+static Type *lookup_tag(char *tag) {
   for (int i = tag_scopes->length - 1; i >= 0; i--) {
     Map *map = tag_scopes->buffer[i];
     Type *type = map_lookup(map, tag);
@@ -75,10 +75,10 @@ Type *lookup_tag(char *tag) {
 
 // semantics of expression
 
-Expr *sema_expr(Expr *expr);
-Type *sema_type_name(TypeName *type_name);
+static Expr *sema_expr(Expr *expr);
+static Type *sema_type_name(TypeName *type_name);
 
-bool check_lvalue(Expr *expr) {
+static bool check_lvalue(Expr *expr) {
   if (expr->nd_type == ND_IDENTIFIER) return true;
   if (expr->nd_type == ND_DOT) return true;
   if (expr->nd_type == ND_ARROW) return true;
@@ -87,7 +87,7 @@ bool check_lvalue(Expr *expr) {
   return false;
 }
 
-bool check_cast(Type *type, Expr *expr) {
+static bool check_cast(Type *type, Expr *expr) {
   if (check_integer(type) && check_integer(expr->type)) {
     return true;
   }
@@ -116,7 +116,7 @@ bool check_cast(Type *type, Expr *expr) {
   return false;
 }
 
-Expr *insert_cast(Type *type, Expr *expr, Token *token) {
+static Expr *insert_cast(Type *type, Expr *expr, Token *token) {
   Expr *cast = expr_cast(NULL, expr, token);
   cast->type = type;
 
@@ -128,7 +128,7 @@ Expr *insert_cast(Type *type, Expr *expr, Token *token) {
 }
 
 // integer promotion
-Type *promote_integer(Expr **expr) {
+static Type *promote_integer(Expr **expr) {
   TypeType ty_types[] = { TY_BOOL, TY_CHAR, TY_UCHAR, TY_SHORT, TY_USHORT };
 
   for (int i = 0; i < sizeof(ty_types) / sizeof(TypeType); i++) {
@@ -142,7 +142,7 @@ Type *promote_integer(Expr **expr) {
 }
 
 // usual arithmetic conversion
-Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
+static Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
   promote_integer(lhs);
   promote_integer(rhs);
 
@@ -156,7 +156,7 @@ Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
   return type;
 }
 
-Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
+static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
   Symbol *sym_addr = symbol_variable(NULL, token);
@@ -186,7 +186,7 @@ Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return sema_expr(comma);
 }
 
-Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
+static Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
   Symbol *sym_addr = symbol_variable(NULL, token);
@@ -206,7 +206,7 @@ Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return sema_expr(assign);
 }
 
-Expr *sema_va_start(Expr *expr) {
+static Expr *sema_va_start(Expr *expr) {
   expr->macro_ap = sema_expr(expr->macro_ap);
   if (expr->macro_ap->type->ty_type != TY_POINTER) {
     ERROR(expr->macro_ap->token, "invalid argument of 'va_start'.");
@@ -217,7 +217,7 @@ Expr *sema_va_start(Expr *expr) {
   return expr;
 }
 
-Expr *sema_va_arg(Expr *expr) {
+static Expr *sema_va_arg(Expr *expr) {
   expr->macro_ap = sema_expr(expr->macro_ap);
   if (expr->macro_ap->type->ty_type != TY_POINTER) {
     ERROR(expr->macro_ap->token, "invalid argument of 'va_arg'.");
@@ -228,7 +228,7 @@ Expr *sema_va_arg(Expr *expr) {
   return expr;
 }
 
-Expr *sema_va_end(Expr *expr) {
+static Expr *sema_va_end(Expr *expr) {
   expr->macro_ap = sema_expr(expr->macro_ap);
   if (expr->macro_ap->type->ty_type != TY_POINTER) {
     ERROR(expr->macro_ap->token, "invalid argument of 'va_end'.");
@@ -239,7 +239,7 @@ Expr *sema_va_end(Expr *expr) {
   return expr;
 }
 
-Expr *sema_identifier(Expr *expr) {
+static Expr *sema_identifier(Expr *expr) {
   if (expr->symbol) {
     expr->type = expr->symbol->type;
   } else {
@@ -249,7 +249,7 @@ Expr *sema_identifier(Expr *expr) {
   return expr;
 }
 
-Expr *sema_integer(Expr *expr) {
+static Expr *sema_integer(Expr *expr) {
   if (!expr->int_decimal) {
     if (!expr->int_u) {
       if (!expr->int_l && !expr->int_ll) {
@@ -313,11 +313,11 @@ Expr *sema_integer(Expr *expr) {
   return expr;
 }
 
-Expr *sema_enum_const(Expr *expr) {
+static Expr *sema_enum_const(Expr *expr) {
   return sema_expr(expr_integer(expr->symbol->const_value, false, false, false, false, expr->token));
 }
 
-Expr *sema_string(Expr *expr) {
+static Expr *sema_string(Expr *expr) {
   int length = expr->string_literal->length;
   expr->type = type_array(type_array_incomplete(type_char()), length);
 
@@ -325,7 +325,7 @@ Expr *sema_string(Expr *expr) {
 }
 
 // convert expr[index] to *(expr + index)
-Expr *sema_subscription(Expr *expr) {
+static Expr *sema_subscription(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
   expr->index = sema_expr(expr->index);
 
@@ -335,7 +335,7 @@ Expr *sema_subscription(Expr *expr) {
   return sema_expr(ref);
 }
 
-Expr *sema_call(Expr *expr) {
+static Expr *sema_call(Expr *expr) {
   if (expr->expr->nd_type == ND_IDENTIFIER) {
     if (expr->expr->symbol) {
       expr->expr = sema_expr(expr->expr);
@@ -383,7 +383,7 @@ Expr *sema_call(Expr *expr) {
   return expr;
 }
 
-Expr *sema_dot(Expr *expr) {
+static Expr *sema_dot(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (expr->expr->type->ty_type != TY_STRUCT) {
@@ -402,7 +402,7 @@ Expr *sema_dot(Expr *expr) {
 }
 
 // convert expr->member to (*expr).member
-Expr *sema_arrow(Expr *expr) {
+static Expr *sema_arrow(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   Expr *ref = expr_unary(ND_INDIRECT, expr->expr, expr->token);
@@ -411,27 +411,27 @@ Expr *sema_arrow(Expr *expr) {
   return sema_expr(dot);
 }
 
-Expr *sema_post_inc(Expr *expr) {
+static Expr *sema_post_inc(Expr *expr) {
   Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_post(ND_ADD, expr->expr, int_const, expr->token);
 }
 
-Expr *sema_post_dec(Expr *expr) {
+static Expr *sema_post_dec(Expr *expr) {
   Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_post(ND_SUB, expr->expr, int_const, expr->token);
 }
 
-Expr *sema_pre_inc(Expr *expr) {
+static Expr *sema_pre_inc(Expr *expr) {
   Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_pre(ND_ADD, expr->expr, int_const, expr->token);
 }
 
-Expr *sema_pre_dec(Expr *expr) {
+static Expr *sema_pre_dec(Expr *expr) {
   Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
   return comp_assign_pre(ND_SUB, expr->expr, int_const, expr->token);
 }
 
-Expr *sema_address(Expr *expr) {
+static Expr *sema_address(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_lvalue(expr->expr)) {
@@ -443,7 +443,7 @@ Expr *sema_address(Expr *expr) {
   return expr;
 }
 
-Expr *sema_indirect(Expr *expr) {
+static Expr *sema_indirect(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_pointer(expr->expr->type)) {
@@ -455,7 +455,7 @@ Expr *sema_indirect(Expr *expr) {
   return expr;
 }
 
-Expr *sema_uplus(Expr *expr) {
+static Expr *sema_uplus(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_arithmetic(expr->expr->type)) {
@@ -468,7 +468,7 @@ Expr *sema_uplus(Expr *expr) {
   return expr->expr;
 }
 
-Expr *sema_uminus(Expr *expr) {
+static Expr *sema_uminus(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_arithmetic(expr->expr->type)) {
@@ -480,7 +480,7 @@ Expr *sema_uminus(Expr *expr) {
   return expr;
 }
 
-Expr *sema_not(Expr *expr) {
+static Expr *sema_not(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_integer(expr->expr->type)) {
@@ -492,7 +492,7 @@ Expr *sema_not(Expr *expr) {
   return expr;
 }
 
-Expr *sema_lnot(Expr *expr) {
+static Expr *sema_lnot(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
 
   if (check_scalar(expr->expr->type)) {
@@ -506,7 +506,7 @@ Expr *sema_lnot(Expr *expr) {
 }
 
 // convert sizeof to integer-constant
-Expr *sema_sizeof(Expr *expr) {
+static Expr *sema_sizeof(Expr *expr) {
   if (expr->expr) {
     Type *type = sema_expr(expr->expr)->type;
     return sema_expr(expr_integer(type->original->size, false, false, false, false, expr->token));
@@ -517,12 +517,12 @@ Expr *sema_sizeof(Expr *expr) {
 }
 
 // convert alignof to integer-constant
-Expr *sema_alignof(Expr *expr) {
+static Expr *sema_alignof(Expr *expr) {
   Type *type = sema_type_name(expr->type_name);
   return sema_expr(expr_integer(type->align, false, false, false, false, expr->token));
 }
 
-Expr *sema_cast(Expr *expr) {
+static Expr *sema_cast(Expr *expr) {
   expr->expr = sema_expr(expr->expr);
   expr->type = sema_type_name(expr->type_name);
 
@@ -533,7 +533,7 @@ Expr *sema_cast(Expr *expr) {
   return expr;
 }
 
-Expr *sema_mul(Expr *expr) {
+static Expr *sema_mul(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -546,7 +546,7 @@ Expr *sema_mul(Expr *expr) {
   return expr;
 }
 
-Expr *sema_mod(Expr *expr) {
+static Expr *sema_mod(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -559,7 +559,7 @@ Expr *sema_mod(Expr *expr) {
   return expr;
 }
 
-Expr *sema_add(Expr *expr) {
+static Expr *sema_add(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -581,7 +581,7 @@ Expr *sema_add(Expr *expr) {
   return expr;
 }
 
-Expr *sema_sub(Expr *expr) {
+static Expr *sema_sub(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -597,7 +597,7 @@ Expr *sema_sub(Expr *expr) {
   return expr;
 }
 
-Expr *sema_shift(Expr *expr) {
+static Expr *sema_shift(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -610,7 +610,7 @@ Expr *sema_shift(Expr *expr) {
   return expr;
 }
 
-Expr *sema_relational(Expr *expr) {
+static Expr *sema_relational(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -640,7 +640,7 @@ Expr *sema_relational(Expr *expr) {
   return expr;
 }
 
-Expr *sema_equality(Expr *expr) {
+static Expr *sema_equality(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -656,7 +656,7 @@ Expr *sema_equality(Expr *expr) {
   return expr;
 }
 
-Expr *sema_bitwise(Expr *expr) {
+static Expr *sema_bitwise(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -669,7 +669,7 @@ Expr *sema_bitwise(Expr *expr) {
   return expr;
 }
 
-Expr *sema_logical(Expr *expr) {
+static Expr *sema_logical(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -684,7 +684,7 @@ Expr *sema_logical(Expr *expr) {
   return expr;
 }
 
-Expr *sema_condition(Expr *expr) {
+static Expr *sema_condition(Expr *expr) {
   expr->cond = sema_expr(expr->cond);
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
@@ -706,7 +706,7 @@ Expr *sema_condition(Expr *expr) {
   return expr;
 }
 
-Expr *sema_assign(Expr *expr) {
+static Expr *sema_assign(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -720,27 +720,27 @@ Expr *sema_assign(Expr *expr) {
   return expr;
 }
 
-Expr *sema_mul_assign(Expr *expr) {
+static Expr *sema_mul_assign(Expr *expr) {
   return comp_assign_pre(ND_MUL, expr->lhs, expr->rhs, expr->token);
 }
 
-Expr *sema_div_assign(Expr *expr) {
+static Expr *sema_div_assign(Expr *expr) {
   return comp_assign_pre(ND_DIV, expr->lhs, expr->rhs, expr->token);
 }
 
-Expr *sema_mod_assign(Expr *expr) {
+static Expr *sema_mod_assign(Expr *expr) {
   return comp_assign_pre(ND_MOD, expr->lhs, expr->rhs, expr->token);
 }
 
-Expr *sema_add_assign(Expr *expr) {
+static Expr *sema_add_assign(Expr *expr) {
   return comp_assign_pre(ND_ADD, expr->lhs, expr->rhs, expr->token);
 }
 
-Expr *sema_sub_assign(Expr *expr) {
+static Expr *sema_sub_assign(Expr *expr) {
   return comp_assign_pre(ND_SUB, expr->lhs, expr->rhs, expr->token);
 }
 
-Expr *sema_comma(Expr *expr) {
+static Expr *sema_comma(Expr *expr) {
   expr->lhs = sema_expr(expr->lhs);
   expr->rhs = sema_expr(expr->rhs);
 
@@ -749,7 +749,7 @@ Expr *sema_comma(Expr *expr) {
   return expr;
 }
 
-Expr *sema_expr(Expr *expr) {
+static Expr *sema_expr(Expr *expr) {
   if (expr->type) {
     return expr;
   }
@@ -851,7 +851,7 @@ Expr *sema_expr(Expr *expr) {
   return expr;
 }
 
-Expr *sema_const_expr(Expr *expr) {
+static Expr *sema_const_expr(Expr *expr) {
   expr = sema_expr(expr);
 
   if (expr->nd_type != ND_INTEGER) {
@@ -863,16 +863,16 @@ Expr *sema_const_expr(Expr *expr) {
 
 // semantics of declaration
 
-void sema_decl(Decl *decl, bool global);
-DeclAttribution *sema_specs(Vector *specs, Token *token);
-Type *sema_struct(Specifier *spec);
-Type *sema_enum(Specifier *spec);
-Type *sema_typedef_name(Specifier *spec);
-Type *sema_declarator(Declarator *decl, Type *type);
-Type *sema_type_name(TypeName *type_name);
-void sema_initializer(Initializer *init, Type *type, bool global);
+static void sema_decl(Decl *decl, bool global);
+static DeclAttribution *sema_specs(Vector *specs, Token *token);
+static Type *sema_struct(Specifier *spec);
+static Type *sema_enum(Specifier *spec);
+static Type *sema_typedef_name(Specifier *spec);
+static Type *sema_declarator(Declarator *decl, Type *type);
+static Type *sema_type_name(TypeName *type_name);
+static void sema_initializer(Initializer *init, Type *type, bool global);
 
-void sema_decl(Decl *decl, bool global) {
+static void sema_decl(Decl *decl, bool global) {
   DeclAttribution *attr = sema_specs(decl->specs, decl->token);
 
   for (int i = 0; i < decl->symbols->length; i++) {
@@ -899,7 +899,7 @@ void sema_decl(Decl *decl, bool global) {
   }
 }
 
-DeclAttribution *sema_specs(Vector *specs, Token *token) {
+static DeclAttribution *sema_specs(Vector *specs, Token *token) {
   int sp_storage = 0;
   bool sp_extern = false;
   bool sp_static = false;
@@ -1046,7 +1046,7 @@ DeclAttribution *sema_specs(Vector *specs, Token *token) {
   return attr;
 }
 
-Type *sema_struct(Specifier *spec) {
+static Type *sema_struct(Specifier *spec) {
   if (spec->struct_decls) {
     Type *type = NULL;
     if (spec->struct_tag) {
@@ -1087,7 +1087,7 @@ Type *sema_struct(Specifier *spec) {
   return type;
 }
 
-Type *sema_enum(Specifier *spec) {
+static Type *sema_enum(Specifier *spec) {
   if (spec->enums) {
     int const_value = 0;
     for (int i = 0; i < spec->enums->length; i++) {
@@ -1119,7 +1119,7 @@ Type *sema_enum(Specifier *spec) {
   return type;
 }
 
-Type *sema_typedef_name(Specifier *spec) {
+static Type *sema_typedef_name(Specifier *spec) {
   Symbol *symbol = spec->typedef_symbol;
 
   if (strcmp(symbol->identifier, "__builtin_va_list") == 0) {
@@ -1129,7 +1129,7 @@ Type *sema_typedef_name(Specifier *spec) {
   return symbol->type;
 }
 
-Type *sema_declarator(Declarator *decl, Type *type) {
+static Type *sema_declarator(Declarator *decl, Type *type) {
   if (decl && decl->decl_type == DECL_POINTER) {
     Type *pointer_to = sema_declarator(decl->decl, type);
     return type_pointer(pointer_to);
@@ -1165,13 +1165,13 @@ Type *sema_declarator(Declarator *decl, Type *type) {
   return type;
 }
 
-Type *sema_type_name(TypeName *type_name) {
+static Type *sema_type_name(TypeName *type_name) {
   DeclAttribution *attr = sema_specs(type_name->specs, type_name->token);
 
   return sema_declarator(type_name->decl, attr->type);
 }
 
-void sema_initializer(Initializer *init, Type *type, bool global) {
+static void sema_initializer(Initializer *init, Type *type, bool global) {
   init->type = type;
 
   if (init->list) {
@@ -1191,29 +1191,29 @@ void sema_initializer(Initializer *init, Type *type, bool global) {
 
 // semantics of statement
 
-void begin_switch() {
+static void begin_switch() {
   vector_push(switch_cases, vector_new());
   break_level++;
 }
 
-void end_switch() {
+static void end_switch() {
   vector_pop(switch_cases);
   break_level--;
 }
 
-void begin_loop() {
+static void begin_loop() {
   continue_level++;
   break_level++;
 }
 
-void end_loop() {
+static void end_loop() {
   continue_level--;
   break_level--;
 }
 
-void sema_stmt(Stmt *stmt);
+static void sema_stmt(Stmt *stmt);
 
-void sema_label(Stmt *stmt) {
+static void sema_label(Stmt *stmt) {
   for (int i = 0; i < label_names->length; i++) {
     char *label_name = label_names->buffer[i];
     if (strcmp(stmt->label_name, label_name) == 0) {
@@ -1225,7 +1225,7 @@ void sema_label(Stmt *stmt) {
   sema_stmt(stmt->label_stmt);
 }
 
-void sema_case(Stmt *stmt) {
+static void sema_case(Stmt *stmt) {
   if (switch_cases->length > 0) {
     vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
   } else {
@@ -1237,7 +1237,7 @@ void sema_case(Stmt *stmt) {
   sema_stmt(stmt->case_stmt);
 }
 
-void sema_default(Stmt *stmt) {
+static void sema_default(Stmt *stmt) {
   if (switch_cases->length > 0) {
     vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
   } else {
@@ -1247,7 +1247,7 @@ void sema_default(Stmt *stmt) {
   sema_stmt(stmt->default_stmt);
 }
 
-void sema_if(Stmt *stmt) {
+static void sema_if(Stmt *stmt) {
   stmt->if_cond = sema_expr(stmt->if_cond);
   if (check_scalar(stmt->if_cond->type)) {
     promote_integer(&stmt->if_cond);
@@ -1262,7 +1262,7 @@ void sema_if(Stmt *stmt) {
   }
 }
 
-void sema_switch(Stmt *stmt) {
+static void sema_switch(Stmt *stmt) {
   begin_switch();
 
   stmt->switch_cond = sema_expr(stmt->switch_cond);
@@ -1279,7 +1279,7 @@ void sema_switch(Stmt *stmt) {
   end_switch();
 }
 
-void sema_while(Stmt *stmt) {
+static void sema_while(Stmt *stmt) {
   begin_loop();
 
   stmt->while_cond = sema_expr(stmt->while_cond);
@@ -1294,7 +1294,7 @@ void sema_while(Stmt *stmt) {
   end_loop();
 }
 
-void sema_do(Stmt *stmt) {
+static void sema_do(Stmt *stmt) {
   begin_loop();
 
   stmt->do_cond = sema_expr(stmt->do_cond);
@@ -1309,7 +1309,7 @@ void sema_do(Stmt *stmt) {
   end_loop();
 }
 
-void sema_for(Stmt *stmt) {
+static void sema_for(Stmt *stmt) {
   vector_push(tag_scopes, map_new());
   begin_loop();
 
@@ -1341,23 +1341,23 @@ void sema_for(Stmt *stmt) {
   end_loop();
 }
 
-void sema_goto(Stmt *stmt) {
+static void sema_goto(Stmt *stmt) {
   vector_push(goto_stmts, stmt);
 }
 
-void sema_continue(Stmt *stmt) {
+static void sema_continue(Stmt *stmt) {
   if (continue_level == 0) {
     ERROR(stmt->token, "continue statement should appear in loops.");
   }
 }
 
-void sema_break(Stmt *stmt) {
+static void sema_break(Stmt *stmt) {
   if (break_level == 0) {
     ERROR(stmt->token, "break statement should appear in loops.");
   }
 }
 
-void sema_return(Stmt *stmt) {
+static void sema_return(Stmt *stmt) {
   Type *type = func_symbol->type->returning;
   if (type->ty_type != TY_VOID) {
     if (stmt->ret) {
@@ -1372,7 +1372,7 @@ void sema_return(Stmt *stmt) {
   }
 }
 
-void sema_stmt(Stmt *stmt) {
+static void sema_stmt(Stmt *stmt) {
   if (stmt->nd_type == ND_LABEL) {
     sema_label(stmt);
   } else if (stmt->nd_type == ND_CASE) {
@@ -1417,10 +1417,11 @@ void sema_stmt(Stmt *stmt) {
   }
 }
 
-void sema_func(Func *func) {
+static void sema_func(Func *func) {
   DeclAttribution *attr = sema_specs(func->specs, func->token);
-
   func->symbol->type = sema_declarator(func->symbol->decl, attr->type);
+  put_variable(attr, func->symbol, true);
+  func->symbol->definition = true;
 
   if (func->symbol->type->returning->ty_type == TY_ARRAY) {
     ERROR(func->symbol->token, "definition of function returning array.");
@@ -1464,7 +1465,7 @@ void sema_func(Func *func) {
   func->label_names = label_names;
 }
 
-void sema_trans_unit(TransUnit *trans_unit) {
+static void sema_trans_unit(TransUnit *trans_unit) {
   vector_push(tag_scopes, map_new());
 
   for (int i = 0; i < trans_unit->decls->length; i++) {

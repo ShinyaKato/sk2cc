@@ -1,6 +1,6 @@
 #include "as.h"
 
-Vector *scan(char *file) {
+Vector *as_scan(char *file) {
   Vector *source = vector_new();
 
   FILE *fp = fopen(file, "r");

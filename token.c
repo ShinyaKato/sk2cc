@@ -1,6 +1,6 @@
 #include "sk2cc.h"
 
-char *tk_chars[] = {
+static char *tk_chars[] = {
   "[",
   "]",
   "(",
@@ -28,7 +28,7 @@ char *tk_chars[] = {
   "#",
 };
 
-char *tk_names[] = {
+static char *tk_names[] = {
   // newline, white space
   "newline",
   "white space",

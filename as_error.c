@@ -1,6 +1,6 @@
 #include "as.h"
 
-noreturn void errorf(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...) {
+noreturn void as_error(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...) {
   va_list ap;
   va_start(ap, format);
   fprintf(stderr, "%s:%d:%d: error: ", file, lineno + 1, column + 1);

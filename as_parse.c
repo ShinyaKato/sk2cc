@@ -1,80 +1,80 @@
 #include "as.h"
 
-Label *label_new(char *ident, Token *token) {
+static Label *label_new(char *ident, Token *token) {
   Label *label = (Label *) calloc(1, sizeof(Label));
   label->ident = ident;
   label->token = token;
   return label;
 }
 
-Dir *dir_new(DirType type, Token *token) {
+static Dir *dir_new(DirType type, Token *token) {
   Dir *dir = (Dir *) calloc(1, sizeof(Dir));
   dir->type = type;
   dir->token = token;
   return dir;
 }
 
-Dir *dir_text(Token *token) {
+static Dir *dir_text(Token *token) {
   return dir_new(DIR_TEXT, token);
 }
 
-Dir *dir_data(Token *token) {
+static Dir *dir_data(Token *token) {
   return dir_new(DIR_DATA, token);
 }
 
-Dir *dir_global(char *ident, Token *token) {
+static Dir *dir_global(char *ident, Token *token) {
   Dir *dir = dir_new(DIR_GLOBAL, token);
   dir->ident = ident;
   return dir;
 }
 
-Dir *dir_zero(int num, Token *token) {
+static Dir *dir_zero(int num, Token *token) {
   Dir *dir = dir_new(DIR_ZERO, token);
   dir->num = num;
   return dir;
 }
 
-Dir *dir_long(int num, Token *token) {
+static Dir *dir_long(int num, Token *token) {
   Dir *dir = dir_new(DIR_LONG, token);
   dir->num = num;
   return dir;
 }
 
-Dir *dir_quad(char *ident, Token *token) {
+static Dir *dir_quad(char *ident, Token *token) {
   Dir *dir = dir_new(DIR_QUAD, token);
   dir->ident = ident;
   return dir;
 }
 
-Dir *dir_ascii(char *string, int length, Token *token) {
+static Dir *dir_ascii(char *string, int length, Token *token) {
   Dir *dir = dir_new(DIR_ASCII, token);
   dir->string = string;
   dir->length = length;
   return dir;
 }
 
-Op *op_new(OpType type, Token *token) {
+static Op *op_new(OpType type, Token *token) {
   Op *op = (Op *) calloc(1, sizeof(Op));
   op->type = type;
   op->token = token;
   return op;
 }
 
-Op *op_reg(RegType regtype, Reg regcode, Token *token) {
+static Op *op_reg(RegType regtype, Reg regcode, Token *token) {
   Op *op = op_new(OP_REG, token);
   op->regtype = regtype;
   op->regcode = regcode;
   return op;
 }
 
-Op *op_mem_base(Reg base, Reg disp, Token *token) {
+static Op *op_mem_base(Reg base, Reg disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->base = base;
   op->disp = disp;
   return op;
 }
 
-Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
+static Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->sib = true;
   op->scale = scale;
@@ -84,26 +84,26 @@ Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
   return op;
 }
 
-Op *op_rip_rel(char *ident, Token *token) {
+static Op *op_rip_rel(char *ident, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->rip = true;
   op->ident = ident;
   return op;
 }
 
-Op *op_sym(char *ident, Token *token) {
+static Op *op_sym(char *ident, Token *token) {
   Op *op = op_new(OP_SYM, token);
   op->ident = ident;
   return op;
 }
 
-Op *op_imm(int imm, Token *token) {
+static Op *op_imm(int imm, Token *token) {
   Op *op = op_new(OP_IMM, token);
   op->imm = imm;
   return op;
 }
 
-Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
+static Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
   Inst *inst = (Inst *) calloc(1, sizeof(Inst));
   inst->type = type;
   inst->suffix = suffix;
@@ -111,42 +111,42 @@ Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
   return inst;
 }
 
-Inst *inst_op0(InstType type, InstSuffix suffix, Token *token) {
+static Inst *inst_op0(InstType type, InstSuffix suffix, Token *token) {
   return inst_new(type, suffix, token);
 }
 
-Inst *inst_op1(InstType type, InstSuffix suffix, Op *op, Token *token) {
+static Inst *inst_op1(InstType type, InstSuffix suffix, Op *op, Token *token) {
   Inst *inst = inst_new(type, suffix, token);
   inst->op = op;
   return inst;
 }
 
-Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
+static Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
   Inst *inst = inst_new(type, suffix, token);
   inst->src = src;
   inst->dest = dest;
   return inst;
 }
 
-Stmt *stmt_new(StmtType type) {
+static Stmt *stmt_new(StmtType type) {
   Stmt *stmt = (Stmt *) calloc(1, sizeof(Stmt));
   stmt->type = type;
   return stmt;
 }
 
-Stmt *stmt_label(Label *label) {
+static Stmt *stmt_label(Label *label) {
   Stmt *stmt = stmt_new(STMT_LABEL);
   stmt->label = label;
   return stmt;
 }
 
-Stmt *stmt_dir(Dir *dir) {
+static Stmt *stmt_dir(Dir *dir) {
   Stmt *stmt = stmt_new(STMT_DIR);
   stmt->dir = dir;
   return stmt;
 }
 
-Stmt *stmt_inst(Inst *inst) {
+static Stmt *stmt_inst(Inst *inst) {
   Stmt *stmt = stmt_new(STMT_INST);
   stmt->inst = inst;
   return stmt;
@@ -1222,7 +1222,7 @@ static Inst *parse_inst(Token **token) {
   ERROR(inst, "unknown instruction '%s'.", inst->ident);
 }
 
-Vector *parse(Vector *lines) {
+Vector *as_parse(Vector *lines) {
   Vector *stmts = vector_new();
 
   for (int i = 0; i < lines->length; i++) {

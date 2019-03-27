@@ -366,22 +366,22 @@ typedef struct trans_unit {
 #define ERROR(token, ...) \
   do { \
     Token *t = (token); \
-    errorf(t->file, t->lineno, t->column, t->line, __FILE__, __LINE__, __VA_ARGS__); \
+    as_error(t->file, t->lineno, t->column, t->line, __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
 
-extern noreturn void errorf(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
+extern noreturn void as_error(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
 
 // as_scan.c
-extern Vector *scan(char *file);
+extern Vector *as_scan(char *file);
 
 // as_lex.c
-extern Vector *tokenize(char *file, Vector *source);
+extern Vector *as_tokenize(char *file, Vector *source);
 
 // as_parse.c
-extern Vector *parse(Vector *lines);
+extern Vector *as_parse(Vector *lines);
 
 // as_encode.c
-extern TransUnit *encode(Vector *stmts);
+extern TransUnit *as_encode(Vector *stmts);
 
 // as_gen.c
 #define SHNUM 8
