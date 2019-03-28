@@ -596,31 +596,6 @@ extern Vector *tokenize(char *input_filename);
 // cpp.c
 extern Vector *preprocess(Vector *pp_tokens);
 
-// type.c
-extern Type *type_void();
-extern Type *type_char();
-extern Type *type_uchar();
-extern Type *type_short();
-extern Type *type_ushort();
-extern Type *type_int();
-extern Type *type_uint();
-extern Type *type_long();
-extern Type *type_ulong();
-extern Type *type_bool();
-extern Type *type_pointer(Type *pointer_to);
-extern Type *type_array_incomplete(Type *array_of);
-extern Type *type_array(Type *type, int length);
-extern Type *type_function(Type *returning, Vector *params, bool ellipsis);
-extern Type *type_struct_incomplete();
-extern Type *type_struct(Type *type, Vector *symbols);
-extern Type *type_convert(Type *type);
-extern Type *type_va_list();
-extern bool check_integer(Type *type);
-extern bool check_arithmetic(Type *type);
-extern bool check_pointer(Type *type);
-extern bool check_scalar(Type *type);
-extern bool check_same(Type *type1, Type *type2);
-
 // parse.c
 extern TransUnit *parse(Vector *tokens);
 

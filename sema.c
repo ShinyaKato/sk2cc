@@ -7,18 +7,9 @@ typedef struct decl_attribution {
   bool sp_noreturn;
 } DeclAttribution;
 
-static Vector *tag_scopes; // Vector<Map<Type*>*>
+// symbols
 
-static Symbol *func_symbol;
 static int stack_size;
-
-static Vector *label_names;
-static Vector *goto_stmts;
-
-static Vector *switch_cases;
-
-static int continue_level;
-static int break_level;
 
 static void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   if (symbol->prev && symbol->prev->definition) {
@@ -57,9 +48,12 @@ static void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   }
 }
 
+// tags
+
+static Vector *tag_scopes; // Vector<Map<Type*>*>
+
 static void put_tag(char *tag, Type *type, Token *token) {
   Map *map = tag_scopes->buffer[tag_scopes->length - 1];
-
   map_put(map, tag, type);
 }
 
@@ -73,7 +67,199 @@ static Type *lookup_tag(char *tag) {
   return NULL;
 }
 
-// semantics of expression
+// types
+
+static Type *type_new(TypeType ty_type, int size, int align, bool complete) {
+  Type *type = calloc(1, sizeof(Type));
+  type->ty_type = ty_type;
+  type->size = size;
+  type->align = align;
+  type->complete = complete;
+  type->original = type;
+  return type;
+}
+
+static Type *type_void() {
+  return type_new(TY_VOID, 0, 1, false);
+}
+
+static Type *type_char() {
+  return type_new(TY_CHAR, 1, 1, true);
+}
+
+static Type *type_uchar() {
+  return type_new(TY_UCHAR, 1, 1, true);
+}
+
+static Type *type_short() {
+  return type_new(TY_SHORT, 2, 2, true);
+}
+
+static Type *type_ushort() {
+  return type_new(TY_USHORT, 2, 2, true);
+}
+
+static Type *type_int() {
+  return type_new(TY_INT, 4, 4, true);
+}
+
+static Type *type_uint() {
+  return type_new(TY_UINT, 4, 4, true);
+}
+
+static Type *type_long() {
+  return type_new(TY_LONG, 8, 8, true);
+}
+
+static Type *type_ulong() {
+  return type_new(TY_ULONG, 8, 8, true);
+}
+
+static Type *type_bool() {
+  return type_new(TY_BOOL, 1, 1, true);
+}
+
+static Type *type_pointer(Type *pointer_to) {
+  Type *type = type_new(TY_POINTER, 8, 8, true);
+  type->pointer_to = pointer_to;
+  return type;
+}
+
+static Type *type_array_incomplete(Type *array_of) {
+  Type *type = type_new(TY_ARRAY, 0, array_of->align, false);
+  type->array_of = array_of;
+  return type;
+}
+
+static Type *type_array(Type *type, int length) {
+  type->size = type->array_of->size * length;
+  type->align = type->array_of->align;
+  type->complete = true;
+  type->length = length;
+  return type;
+}
+
+static Type *type_function(Type *returning, Vector *params, bool ellipsis) {
+  Type *type = type_new(TY_FUNCTION, 0, 1, true);
+  type->returning = returning;
+  type->params = params;
+  type->ellipsis = ellipsis;
+  return type;
+}
+
+static Type *type_struct_incomplete() {
+  return type_new(TY_STRUCT, 0, 1, false);
+}
+
+static Type *type_struct(Type *type, Vector *symbols) {
+  Map *members = map_new();
+  int size = 0;
+  int align = 0;
+
+  for (int i = 0; i < symbols->length; i++) {
+    Symbol *symbol = symbols->buffer[i];
+    Type *type = symbol->type;
+
+    // add padding for the member alignment
+    if (size % type->align != 0) {
+      size = size / type->align * type->align + type->align;
+    }
+
+    Member *member = calloc(1, sizeof(Member));
+    member->type = type;
+    member->offset = size;
+    map_put(members, symbol->identifier, member);
+
+    // add member size
+    size += type->size;
+
+    // align of the struct is max value of member's aligns
+    if (align < type->align) {
+      align = type->align;
+    }
+  }
+
+  // add padding for the struct alignment
+  if (size % align != 0) {
+    size = size / align * align + align;
+  }
+
+  type->size = size;
+  type->align = align;
+  type->complete = true;
+  type->members = members;
+  return type;
+}
+
+// typedef struct {
+//   int gp_offset;
+//   int fp_offset;
+//   void *overflow_arg_area;
+//   void *reg_save_area;
+// } va_list[1];
+static Type *type_va_list() {
+  Vector *symbols = vector_new();
+
+  Symbol *gp_offset = calloc(1, sizeof(Symbol));
+  gp_offset->sy_type = SY_VARIABLE;
+  gp_offset->identifier = "gp_offset";
+  gp_offset->type = type_int();
+  vector_push(symbols, gp_offset);
+
+  Symbol *fp_offset = calloc(1, sizeof(Symbol));
+  fp_offset->sy_type = SY_VARIABLE;
+  fp_offset->identifier = "fp_offset";
+  fp_offset->type = type_int();
+  vector_push(symbols, fp_offset);
+
+  Symbol *overflow_arg_area = calloc(1, sizeof(Symbol));
+  overflow_arg_area->sy_type = SY_VARIABLE;
+  overflow_arg_area->identifier = "overflow_arg_area";
+  overflow_arg_area->type = type_pointer(type_void());
+  vector_push(symbols, overflow_arg_area);
+
+  Symbol *reg_save_area = calloc(1, sizeof(Symbol));
+  reg_save_area->sy_type = SY_VARIABLE;
+  reg_save_area->identifier = "reg_save_area";
+  reg_save_area->type = type_pointer(type_void());
+  vector_push(symbols, reg_save_area);
+
+  Type *type = type_struct_incomplete();
+  type = type_struct(type, symbols);
+  type = type_array_incomplete(type);
+  type = type_array(type, 1);
+
+  return type;
+}
+
+static bool check_integer(Type *type) {
+  if (type->ty_type == TY_CHAR) return true;
+  if (type->ty_type == TY_UCHAR) return true;
+  if (type->ty_type == TY_SHORT) return true;
+  if (type->ty_type == TY_USHORT) return true;
+  if (type->ty_type == TY_INT) return true;
+  if (type->ty_type == TY_UINT) return true;
+  if (type->ty_type == TY_LONG) return true;
+  if (type->ty_type == TY_ULONG) return true;
+  if (type->ty_type == TY_BOOL) return true;
+  return false;
+}
+
+// Originally, floating pointe types are also included
+// in arithmetic type, but we do not support them yet.
+static bool check_arithmetic(Type *type) {
+  return check_integer(type);
+}
+
+static bool check_pointer(Type *type) {
+  return type->ty_type == TY_POINTER;
+}
+
+static bool check_scalar(Type *type) {
+  return check_arithmetic(type) || check_pointer(type);
+}
+
+// expressions
 
 static Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token) {
   Expr *expr = calloc(1, sizeof(Expr));
@@ -127,8 +313,7 @@ static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return expr;
 }
 
-static Expr *sema_expr(Expr *expr);
-static Type *sema_type_name(TypeName *type_name);
+// semantics of expression
 
 static bool check_lvalue(Expr *expr) {
   if (expr->nd_type == ND_IDENTIFIER) return true;
@@ -207,6 +392,9 @@ static Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
 
   return type;
 }
+
+static Expr *sema_expr(Expr *expr);
+static Type *sema_type_name(TypeName *type_name);
 
 static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
@@ -1250,6 +1438,16 @@ static void sema_initializer(Initializer *init, Type *type, bool global) {
 
 // semantics of statement
 
+static Symbol *func_symbol;
+
+static Vector *label_names;
+static Vector *goto_stmts;
+
+static Vector *switch_cases;
+
+static int continue_level;
+static int break_level;
+
 static void begin_switch() {
   vector_push(switch_cases, vector_new());
   break_level++;
@@ -1491,8 +1689,9 @@ static void sema_func(Func *func) {
     ERROR(func->symbol->token, "duplicated function definition: %s.", func->symbol->identifier);
   }
 
-  func_symbol = func->symbol;
   stack_size = func->symbol->type->ellipsis ? 176 : 0;
+
+  func_symbol = func->symbol;
   label_names = vector_new();
   goto_stmts = vector_new();
 
