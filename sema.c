@@ -75,6 +75,58 @@ static Type *lookup_tag(char *tag) {
 
 // semantics of expression
 
+static Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = ND_IDENTIFIER;
+  expr->identifier = identifier;
+  expr->symbol = symbol;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_integer(unsigned long long int_value, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = ND_INTEGER;
+  expr->int_value = int_value;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_dot(Expr *_expr, char *member, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = ND_DOT;
+  expr->expr = _expr;
+  expr->member = member;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_cast(TypeName *type_name, Expr *_expr, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = ND_CAST;
+  expr->expr = _expr;
+  expr->type_name = type_name;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_unary(NodeType nd_type, Expr *_expr, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->expr = _expr;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->lhs = lhs;
+  expr->rhs = rhs;
+  expr->token = token;
+  return expr;
+}
+
 static Expr *sema_expr(Expr *expr);
 static Type *sema_type_name(TypeName *type_name);
 
@@ -314,7 +366,7 @@ static Expr *sema_integer(Expr *expr) {
 }
 
 static Expr *sema_enum_const(Expr *expr) {
-  return sema_expr(expr_integer(expr->symbol->const_value, false, false, false, false, expr->token));
+  return sema_expr(expr_integer(expr->symbol->const_value, expr->token));
 }
 
 static Expr *sema_string(Expr *expr) {
@@ -412,22 +464,22 @@ static Expr *sema_arrow(Expr *expr) {
 }
 
 static Expr *sema_post_inc(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, expr->token);
   return comp_assign_post(ND_ADD, expr->expr, int_const, expr->token);
 }
 
 static Expr *sema_post_dec(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, expr->token);
   return comp_assign_post(ND_SUB, expr->expr, int_const, expr->token);
 }
 
 static Expr *sema_pre_inc(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, expr->token);
   return comp_assign_pre(ND_ADD, expr->expr, int_const, expr->token);
 }
 
 static Expr *sema_pre_dec(Expr *expr) {
-  Expr *int_const = expr_integer(1, false, false, false, false, expr->token);
+  Expr *int_const = expr_integer(1, expr->token);
   return comp_assign_pre(ND_SUB, expr->expr, int_const, expr->token);
 }
 
@@ -509,17 +561,17 @@ static Expr *sema_lnot(Expr *expr) {
 static Expr *sema_sizeof(Expr *expr) {
   if (expr->expr) {
     Type *type = sema_expr(expr->expr)->type;
-    return sema_expr(expr_integer(type->original->size, false, false, false, false, expr->token));
+    return sema_expr(expr_integer(type->original->size, expr->token));
   }
 
   Type *type = sema_type_name(expr->type_name);
-  return sema_expr(expr_integer(type->original->size, false, false, false, false, expr->token));
+  return sema_expr(expr_integer(type->original->size, expr->token));
 }
 
 // convert alignof to integer-constant
 static Expr *sema_alignof(Expr *expr) {
   Type *type = sema_type_name(expr->type_name);
-  return sema_expr(expr_integer(type->align, false, false, false, false, expr->token));
+  return sema_expr(expr_integer(type->align, expr->token));
 }
 
 static Expr *sema_cast(Expr *expr) {

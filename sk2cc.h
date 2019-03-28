@@ -601,39 +601,6 @@ extern Symbol *symbol_variable(char *identifier, Token *token);
 extern Symbol *symbol_type(char *identifier, Token *token);
 extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
 
-// node.c
-extern Expr *expr_va_start(Expr *macro_ap, char *macro_arg, Token *token);
-extern Expr *expr_va_arg(Expr *macro_ap, TypeName *macro_type, Token *token);
-extern Expr *expr_va_end(Expr *macro_ap, Token *token);
-extern Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token);
-extern Expr *expr_integer(unsigned long long int_value, bool int_decimal, bool int_u, bool int_l, bool int_ll, Token *token);
-extern Expr *expr_enum_const(char *identifier, Symbol *symbol, Token *token);
-extern Expr *expr_string(String *string_literal, int string_label, Token *token);
-extern Expr *expr_subscription(Expr *expr, Expr *index, Token *token);
-extern Expr *expr_call(Expr *expr, Vector *args, Token *token);
-extern Expr *expr_dot(Expr *expr, char *member, Token *token);
-extern Expr *expr_arrow(Expr *expr, char *member, Token *token);
-extern Expr *expr_sizeof(Expr *expr, TypeName *type_name, Token *token);
-extern Expr *expr_alignof(TypeName *type_name, Token *token);
-extern Expr *expr_cast(TypeName *type_name, Expr *expr, Token *token);
-extern Expr *expr_unary(NodeType nd_type, Expr *expr, Token *token);
-extern Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token);
-extern Expr *expr_condition(Expr *cond, Expr *lhs, Expr *rhs, Token *token);
-extern Decl *decl_new(Vector *specs, Vector *symbols, Token *token);
-extern Decl *decl_struct(Vector *specs, Vector *symbols, Token *token);
-extern Decl *decl_param(Vector *specs, Symbol *symbol, Token *token);
-extern Specifier *specifier_new(SpecifierType sp_type, Token *token);
-extern Specifier *specifier_enum(char *tag, Vector *enums, Token *token);
-extern Specifier *specifier_struct(char *tag, Vector *decls, Token *token);
-extern Specifier *specifier_typedef_name(char *identifier, Symbol *symbol, Token *token);
-extern Declarator *declarator_new(DeclaratorType decl_type, Declarator *decl, Token *token);
-extern TypeName *type_name_new(Vector *specs, Declarator *decl, Token *token);
-extern Initializer *initializer_expr(Expr *expr, Token *token);
-extern Initializer *initializer_list(Vector *list, Token *token);
-extern Stmt *stmt_new(NodeType nd_type, Token *token);
-extern Func *func_new(Vector *specs, Symbol *symbol, Stmt *body, Token *token);
-extern TransUnit *trans_unit_new(Vector *literals, Vector *decls);
-
 // type.c
 extern Type *type_void();
 extern Type *type_char();

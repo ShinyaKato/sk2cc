@@ -112,6 +112,30 @@ static bool check_declaration_specifier() {
 
 // parse expression
 
+static Expr *expr_new(NodeType nd_type, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_unary(NodeType nd_type, Expr *_expr, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->expr = _expr;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->lhs = lhs;
+  expr->rhs = rhs;
+  expr->token = token;
+  return expr;
+}
+
 static Expr *cast_expression();
 static Expr *assignment_expression();
 static Expr *expression();
@@ -126,46 +150,76 @@ static Expr *primary_expression() {
   Token *token = peek();
 
   if (!check_typedef_name() && read(TK_IDENTIFIER)) {
+    // check builtin macros
     if (strcmp(token->identifier, "__builtin_va_start") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
       expect(',');
       char *macro_arg = expect(TK_IDENTIFIER)->identifier;
       expect(')');
-      return expr_va_start(macro_ap, macro_arg, token);
+
+      Expr *expr = expr_new(ND_VA_START, token);
+      expr->macro_ap = macro_ap;
+      expr->macro_arg = macro_arg;
+      return expr;
     }
     if (strcmp(token->identifier, "__builtin_va_arg") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
       expect(',');
       TypeName *macro_type = type_name();
       expect(')');
-      return expr_va_arg(macro_ap, macro_type, token);
+
+      Expr *expr = expr_new(ND_VA_ARG, token);
+      expr->macro_ap = macro_ap;
+      expr->macro_type = macro_type;
+      return expr;
     }
     if (strcmp(token->identifier, "__builtin_va_end") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
       expect(')');
-      return expr_va_end(macro_ap, token);
+
+      Expr *expr = expr_new(ND_VA_END, token);
+      expr->macro_ap = macro_ap;
+      return expr;
     }
 
     Symbol *symbol = lookup_symbol(token->identifier);
     if (symbol && symbol->sy_type == SY_CONST) {
-      return expr_enum_const(token->identifier, symbol, token);
+      Expr *expr = expr_new(ND_ENUM_CONST, token);
+      expr->identifier = token->identifier;
+      expr->symbol = symbol;
+      return expr;
     } else {
-      return expr_identifier(token->identifier, symbol, token);
+      Expr *expr = expr_new(ND_IDENTIFIER, token);
+      expr->identifier = token->identifier;
+      expr->symbol = symbol;
+      return expr;
     }
   }
 
   if (read(TK_INTEGER_CONST)) {
-    return expr_integer(token->int_value, token->int_decimal, token->int_u, token->int_l, token->int_ll, token);
+    Expr *expr = expr_new(ND_INTEGER, token);
+    expr->int_value = token->int_value;
+    expr->int_decimal = token->int_decimal;
+    expr->int_u = token->int_u;
+    expr->int_l = token->int_l;
+    expr->int_ll = token->int_ll;
+    return expr;
   }
 
   if (read(TK_CHAR_CONST)) {
-    return expr_integer(token->char_value, false, false, false, false, token);
+    Expr *expr = expr_new(ND_INTEGER, token);
+    expr->int_value = token->char_value;
+    return expr;
   }
 
   if (read(TK_STRING_LITERAL)) {
     int string_label = literals->length;
     vector_push(literals, token->string_literal);
-    return expr_string(token->string_literal, string_label, token);
+
+    Expr *expr = expr_new(ND_STRING, token);
+    expr->string_literal = token->string_literal;
+    expr->string_label = string_label;
+    return expr;
   }
 
   if (read('(')) {
@@ -195,7 +249,9 @@ static Expr *postfix_expression(Expr *expr) {
     if (read('[')) {
       Expr *index = expression();
       expect(']');
-      expr = expr_subscription(expr, index, token);
+
+      expr = expr_unary(ND_SUBSCRIPTION, expr, token);
+      expr->index = index;
     } else if (read('(')) {
       Vector *args = vector_new();
       if (!check(')')) {
@@ -204,13 +260,19 @@ static Expr *postfix_expression(Expr *expr) {
         } while (read(','));
       }
       expect(')');
-      expr = expr_call(expr, args, token);
+
+      expr = expr_unary(ND_CALL, expr, token);
+      expr->args = args;
     } else if (read('.')) {
       char *member = expect(TK_IDENTIFIER)->identifier;
-      expr = expr_dot(expr, member, token);
+
+      expr = expr_unary(ND_DOT, expr, token);
+      expr->member = member;
     } else if (read(TK_ARROW)) {
       char *member = expect(TK_IDENTIFIER)->identifier;
-      expr = expr_arrow(expr, member, token);
+
+      expr = expr_unary(ND_ARROW, expr, token);
+      expr->member = member;
     } else if (read(TK_INC)) {
       expr = expr_unary(ND_POST_INC, expr, token);
     } else if (read(TK_DEC)) {
@@ -256,31 +318,31 @@ static Expr *unary_expression() {
     return expr_unary(ND_LNOT, unary_expression(), token);
 
   if (read(TK_SIZEOF)) {
-    Expr *expr = NULL;
-    TypeName *type = NULL;
+    Expr *expr = expr_new(ND_SIZEOF, token);
 
     // If '(' follows 'sizeof', it is 'sizeof' type-name
     // or 'sizeof' '(' expression ')'.
     // Otherwise, it is 'sizeof' unary-expression.
     if (read('(')) {
       if (check_type_specifier()) {
-        type = type_name();
+        expr->type_name = type_name();
       } else {
-        expr = expression();
+        expr->expr = expression();
       }
       expect(')');
     } else {
-      expr = unary_expression();
+      expr->expr = unary_expression();
     }
 
-    return expr_sizeof(expr, type, token);
+    return expr;
   }
 
   if (read(TK_ALIGNOF)) {
+    Expr *expr = expr_new(ND_ALIGNOF, token);
     expect('(');
-    TypeName *type = type_name();
+    expr->type_name = type_name();
     expect(')');
-    return expr_alignof(type, token);
+    return expr;
   }
 
   return postfix_expression(NULL);
@@ -296,9 +358,11 @@ static Expr *cast_expression() {
   // Otherwise, it is postfix-expression like '(' expression ')' '++'.
   if (read('(')) {
     if (check_type_specifier()) {
-      TypeName *type = type_name();
+      Expr *expr = expr_new(ND_CAST, token);
+      expr->type_name = type_name();
       expect(')');
-      return expr_cast(type, cast_expression(), token);
+      expr->expr = cast_expression();
+      return expr;
     }
 
     Expr *expr = expression();
@@ -500,8 +564,8 @@ static Expr *logical_or_expression(Expr *expr) {
 // conditional-expression :
 //   logical-or-expression
 //   logical-or-expression '?' expression ':' conditional-expression
-static Expr *conditional_expression(Expr *expr) {
-  expr = logical_or_expression(expr);
+static Expr *conditional_expression(Expr *cond) {
+  cond = logical_or_expression(cond);
 
   Token *token = peek();
   if (read('?')) {
@@ -509,10 +573,14 @@ static Expr *conditional_expression(Expr *expr) {
     expect(':');
     Expr *rhs = conditional_expression(NULL);
 
-    return expr_condition(expr, lhs, rhs, token);
+    Expr *expr = expr_new(ND_CONDITION, token);
+    expr->cond = cond;
+    expr->lhs = lhs;
+    expr->rhs = rhs;
+    return expr;
   }
 
-  return expr;
+  return cond;
 }
 
 // assignment-expression :
@@ -564,6 +632,39 @@ static Expr *constant_expression() {
 }
 
 // parse declaration
+
+static Decl *decl_new(Vector *specs, Vector *symbols, Token *token) {
+  Decl *decl = calloc(1, sizeof(Decl));
+  decl->nd_type = ND_DECL;
+  decl->specs = specs;
+  decl->symbols = symbols;
+  decl->token = token;
+  return decl;
+}
+
+static Decl *param_new(Vector *specs, Symbol *symbol, Token *token) {
+  Decl *decl = calloc(1, sizeof(Decl));
+  decl->nd_type = ND_DECL;
+  decl->specs = specs;
+  decl->symbol = symbol;
+  decl->token = token;
+  return decl;
+}
+
+static Specifier *specifier_new(SpecifierType sp_type, Token *token) {
+  Specifier *spec = calloc(1, sizeof(Specifier));
+  spec->sp_type = sp_type;
+  spec->token = token;
+  return spec;
+}
+
+static Declarator *declarator_new(DeclaratorType decl_type, Declarator *_decl, Token *token) {
+  Declarator *decl = calloc(1, sizeof(Declarator));
+  decl->decl_type = decl_type;
+  decl->decl = _decl;
+  decl->token = token;
+  return decl;
+}
 
 static bool check_typedef(Vector *specs) {
   bool sp_typedef = false;
@@ -730,10 +831,16 @@ static Specifier *struct_or_union_specifier() {
       } while (!check('}') && !check(TK_EOF));
       expect('}');
 
-      return specifier_struct(tag, decls, token);
+      Specifier *spec = specifier_new(SP_STRUCT, token);
+      spec->struct_tag = tag;
+      spec->struct_decls = decls;
+      return spec;
     }
 
-    return specifier_struct(tag, NULL, token);
+    Specifier *spec = specifier_new(SP_STRUCT, token);
+    spec->struct_tag = tag;
+    spec->struct_decls = NULL;
+    return spec;
   }
 
   Vector *decls = vector_new();
@@ -743,7 +850,10 @@ static Specifier *struct_or_union_specifier() {
   } while (!check('}') && !check(TK_EOF));
   expect('}');
 
-  return specifier_struct(NULL, decls, token);
+  Specifier *spec = specifier_new(SP_STRUCT, token);
+  spec->struct_tag = NULL;
+  spec->struct_decls = decls;
+  return spec;
 }
 
 // struct-declaration :
@@ -760,7 +870,7 @@ static Decl *struct_declaration() {
   }
   expect(';');
 
-  return decl_struct(specs, symbols, token);
+  return decl_new(specs, symbols, token);
 }
 
 // enum-specifier :
@@ -782,10 +892,16 @@ static Specifier *enum_specifier() {
       } while (read(',') && !check('}'));
       expect('}');
 
-      return specifier_enum(tag, enums, token);
+      Specifier *spec = specifier_new(SP_ENUM, token);
+      spec->enum_tag = tag;
+      spec->enums = enums;
+      return spec;
     }
 
-    return specifier_enum(tag, NULL, token);
+    Specifier *spec = specifier_new(SP_ENUM, token);
+    spec->enum_tag = tag;
+    spec->enums = NULL;
+    return spec;
   }
 
   Vector *enums = vector_new();
@@ -797,7 +913,10 @@ static Specifier *enum_specifier() {
   } while (read(',') && !check('}'));
   expect('}');
 
-  return specifier_enum(NULL, enums, token);
+  Specifier *spec = specifier_new(SP_ENUM, token);
+  spec->enum_tag = NULL;
+  spec->enums = enums;
+  return spec;
 }
 
 // enumerator :
@@ -816,7 +935,10 @@ static Specifier *typedef_name() {
   Token *token = expect(TK_IDENTIFIER);
   Symbol *symbol = lookup_symbol(token->identifier);
 
-  return specifier_typedef_name(token->identifier, symbol, token);
+  Specifier *spec = specifier_new(SP_TYPEDEF_NAME, token);
+  spec->typedef_name = token->identifier;
+  spec->typedef_symbol = symbol;
+  return spec;
 }
 
 // function-specifier :
@@ -924,7 +1046,7 @@ static Decl *parameter_declaration() {
 
   put_symbol(symbol->identifier, symbol);
 
-  return decl_param(specs, symbol, token);
+  return param_new(specs, symbol, token);
 }
 
 // type-name :
@@ -935,7 +1057,11 @@ static TypeName *type_name() {
   Vector *specs = specifier_qualifier_list();
   Declarator *decl = check('*') ? abstract_declarator(NULL) : NULL;
 
-  return type_name_new(specs, decl, token);
+  TypeName *type_name = calloc(1, sizeof(TypeName));
+  type_name->specs = specs;
+  type_name->decl = decl;
+  type_name->token = token;
+  return type_name;
 }
 
 // abstract-declarator :
@@ -966,13 +1092,26 @@ static Initializer *initializer() {
     }
     expect('}');
 
-    return initializer_list(list, token);
+    Initializer *init = calloc(1, sizeof(Initializer));
+    init->list = list;
+    init->token = token;
+    return init;
   }
 
-  return initializer_expr(assignment_expression(), token);
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->expr = assignment_expression();
+  init->token = token;
+  return init;
 }
 
 // parse statement
+
+static Stmt *stmt_new(NodeType nd_type, Token *token) {
+  Stmt *stmt = calloc(1, sizeof(Stmt));
+  stmt->nd_type = nd_type;
+  stmt->token = token;
+  return stmt;
+}
 
 static Stmt *statement();
 
@@ -1293,7 +1432,13 @@ static Node *external_declaration() {
   Stmt *body = compound_statement();
   vector_pop(symbol_scopes);
 
-  return (Node *) func_new(specs, symbol, body, token);
+  Func *func = calloc(1, sizeof(Func));
+  func->nd_type = ND_FUNC;
+  func->specs = specs;
+  func->symbol = symbol;
+  func->body = body;
+  func->token = token;
+  return (Node *) func;
 }
 
 // translation-unit :
@@ -1315,7 +1460,10 @@ static TransUnit *translation_unit() {
 
   vector_pop(symbol_scopes); // end file scope
 
-  return trans_unit_new(literals, decls);
+  TransUnit *unit = calloc(1, sizeof(TransUnit));
+  unit->literals = literals;
+  unit->decls = decls;
+  return unit;
 }
 
 // parser
