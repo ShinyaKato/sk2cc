@@ -65,9 +65,8 @@ int tolower(int c);
 
 // struct declaration
 typedef struct location Location;
-typedef struct token Token;
 
-typedef struct scanner Scanner;
+typedef struct token Token;
 
 typedef struct node Node;
 typedef struct expr Expr;
@@ -173,7 +172,6 @@ typedef enum token_type {
 // This information is used for error report.
 struct token {
   TokenType tk_type;
-  char *tk_name;
 
   // pp-number
   char *pp_number;
@@ -199,12 +197,6 @@ struct token {
 
   // location information
   Location *loc;
-};
-
-// Scanner (token scanner)
-struct scanner {
-  Vector *tokens;
-  int pos;
 };
 
 // NodeType
@@ -599,26 +591,12 @@ extern noreturn void error(Location *loc, char *format, ...);
 extern noreturn void internal_error(char *format, ...);
 
 // token.c
-extern bool check_char_token(char c);
-extern char *token_name(TokenType tk_type);
 extern Location *location_new(char *filename, char *line_ptr, int lineno, int column);
 extern Token *token_new(TokenType tk_type, char *text, Location *loc);
 extern Token *inspect_pp_number(Token *token);
 
 // lex.c
 extern Vector *tokenize(char *input_filename);
-
-// scan.c
-extern void scanner_init(Vector *tokens);
-extern Scanner *scanner_preserve(Vector *tokens);
-extern void scanner_restore(Scanner *prev);
-extern bool has_next_token();
-extern Token *peek_token();
-extern Token *get_token();
-extern bool check_token(TokenType tk_type);
-extern bool check_next_token(TokenType tk_type);
-extern Token *read_token(TokenType tk_type);
-extern Token *expect_token(TokenType tk_type);
 
 // cpp.c
 extern Vector *preprocess(Vector *pp_tokens);

@@ -1,4 +1,6 @@
 #define NULL ((void *) 0)
+typedef signed long long intptr_t;
+typedef unsigned long long uintptr_t;
 typedef unsigned long long size_t;
 void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
@@ -29,7 +31,17 @@ void vector_push(Vector *vector, void *value) {
 }
 
 void *vector_pop(Vector *vector) {
-  return vector->buffer[--vector->length];
+  void *value = vector->buffer[--vector->length];
+  vector->buffer[vector->length] = NULL;
+  return value;
+}
+
+void vector_pushi(Vector *vector, int value) {
+  vector_push(vector, (void *) (intptr_t) value);
+}
+
+int vector_popi(Vector *vector) {
+  return (int) (intptr_t) vector_pop(vector);
 }
 
 void vector_merge(Vector *dest, Vector *src) {

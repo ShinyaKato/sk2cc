@@ -7,7 +7,7 @@ HEADERS = \
 
 SRCS = \
 	vector.c string.c map.c binary.c \
-	error.c token.c lex.c scan.c cpp.c node.c symbol.c type.c parse.c sema.c gen.c cc.c \
+	error.c token.c lex.c cpp.c node.c symbol.c type.c parse.c sema.c gen.c cc.c \
 	as_error.c as_scan.c as_lex.c as_parse.c as_encode.c as_gen.c as.c \
 	main.c
 
@@ -52,7 +52,6 @@ test_unit:
 	gcc -std=c11 -Wall string.c tests/string_driver.c -o tmp/string_test && ./tmp/string_test
 	gcc -std=c11 -Wall vector.c tests/vector_driver.c -o tmp/vector_test && ./tmp/vector_test
 	gcc -std=c11 -Wall map.c tests/map_driver.c -o tmp/map_test && ./tmp/map_test
-	gcc -std=c11 -Wall error.c token.c tests/token_driver.c -o tmp/token_test && ./tmp/token_test
 
 .PHONY: test_check
 test_check:

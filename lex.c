@@ -278,8 +278,11 @@ static Token *next_token() {
     return create_token(TK_ELLIPSIS);
   }
 
-  if (check_char_token(c)) {
-    return create_token(c);
+  char *tk_chars = "[](){}.&*+-~!/%<>^|?:;=,#";
+  for (int i = 0; i < tk_chars[i]; i++) {
+    if (c == tk_chars[i]) {
+      return create_token(c);
+    }
   }
 
   error(loc, "failed to tokenize.");
