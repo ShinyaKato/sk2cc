@@ -36,7 +36,7 @@ static TransUnit *trans_unit;
 static Binary *bin;
 static Vector *relocs;
 static Map *symbols;
-int current;
+static int current;
 
 static void gen_label(Label *label) {
   Symbol *symbol = map_lookup(symbols, label->ident);

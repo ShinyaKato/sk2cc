@@ -59,7 +59,7 @@ static Token *create_token(TokenType tk_type) {
   return token;
 }
 
-void next_line() {
+static void next_line() {
   line_ptr = &src[pos];
   lineno++;
   column = 1;
