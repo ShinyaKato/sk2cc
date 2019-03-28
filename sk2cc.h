@@ -596,11 +596,6 @@ extern Vector *tokenize(char *input_filename);
 // cpp.c
 extern Vector *preprocess(Vector *pp_tokens);
 
-// symbol.c
-extern Symbol *symbol_variable(char *identifier, Token *token);
-extern Symbol *symbol_type(char *identifier, Token *token);
-extern Symbol *symbol_const(char *identifier, Expr *expr, Token *token);
-
 // type.c
 extern Type *type_void();
 extern Type *type_char();

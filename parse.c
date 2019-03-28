@@ -926,7 +926,12 @@ static Symbol *enumerator() {
   Token *token = expect(TK_IDENTIFIER);
   Expr *const_expr = read('=') ? constant_expression() : NULL;
 
-  return symbol_const(token->identifier, const_expr, token);
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = SY_CONST;
+  symbol->identifier = token->identifier;
+  symbol->const_expr = const_expr;
+  symbol->token = token;
+  return symbol;
 }
 
 // typedef-name :
@@ -981,12 +986,10 @@ static Symbol *declarator(bool sp_typedef, Declarator *decl) {
 static Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
   Token *token = expect(TK_IDENTIFIER);
 
-  Symbol *symbol;
-  if (sp_typedef) {
-    symbol = symbol_type(token->identifier, token);
-  } else {
-    symbol = symbol_variable(token->identifier, token);
-  }
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = sp_typedef ? SY_TYPE : SY_VARIABLE;
+  symbol->identifier = token->identifier;
+  symbol->token = token;
 
   Declarator **decl_ptr = &symbol->decl;
   while (1) {
@@ -1450,8 +1453,11 @@ static TransUnit *translation_unit() {
   vector_push(symbol_scopes, map_new()); // begin file scope
 
   // __builtin_va_list
-  Symbol *symbol_va_list = symbol_type("__builtin_va_list", NULL);
-  put_symbol(symbol_va_list->identifier, symbol_va_list);
+  Symbol *sym_va_list = calloc(1, sizeof(Symbol));
+  sym_va_list->sy_type = SY_TYPE;
+  sym_va_list->identifier = "__builtin_va_list";
+  sym_va_list->token = NULL;
+  put_symbol(sym_va_list->identifier, sym_va_list);
 
   Vector *decls = vector_new();
   do {

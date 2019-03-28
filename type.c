@@ -131,19 +131,27 @@ Type *type_struct(Type *type, Vector *symbols) {
 Type *type_va_list() {
   Vector *symbols = vector_new();
 
-  Symbol *gp_offset = symbol_variable("gp_offset", NULL);
+  Symbol *gp_offset = calloc(1, sizeof(Symbol));
+  gp_offset->sy_type = SY_VARIABLE;
+  gp_offset->identifier = "gp_offset";
   gp_offset->type = type_int();
   vector_push(symbols, gp_offset);
 
-  Symbol *fp_offset = symbol_variable("fp_offset", NULL);
+  Symbol *fp_offset = calloc(1, sizeof(Symbol));
+  fp_offset->sy_type = SY_VARIABLE;
+  fp_offset->identifier = "fp_offset";
   fp_offset->type = type_int();
   vector_push(symbols, fp_offset);
 
-  Symbol *overflow_arg_area = symbol_variable("overflow_arg_area", NULL);
+  Symbol *overflow_arg_area = calloc(1, sizeof(Symbol));
+  overflow_arg_area->sy_type = SY_VARIABLE;
+  overflow_arg_area->identifier = "overflow_arg_area";
   overflow_arg_area->type = type_pointer(type_void());
   vector_push(symbols, overflow_arg_area);
 
-  Symbol *reg_save_area = symbol_variable("reg_save_area", NULL);
+  Symbol *reg_save_area = calloc(1, sizeof(Symbol));
+  reg_save_area->sy_type = SY_VARIABLE;
+  reg_save_area->identifier = "reg_save_area";
   reg_save_area->type = type_pointer(type_void());
   vector_push(symbols, reg_save_area);
 

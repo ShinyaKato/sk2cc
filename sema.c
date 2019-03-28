@@ -211,14 +211,18 @@ static Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
 static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
-  Symbol *sym_addr = symbol_variable(NULL, token);
-  sym_addr->type = type_pointer(lhs->type);
+  Symbol *sym_addr = calloc(1, sizeof(Symbol));
+  sym_addr->sy_type = SY_VARIABLE;
   sym_addr->link = LN_NONE;
+  sym_addr->type = type_pointer(lhs->type);
+  sym_addr->token = token;
   put_variable(NULL, sym_addr, false);
 
-  Symbol *sym_val = symbol_variable(NULL, token);
-  sym_val->type = lhs->type;
+  Symbol *sym_val = calloc(1, sizeof(Symbol));
+  sym_val->sy_type = SY_VARIABLE;
   sym_val->link = LN_NONE;
+  sym_val->type = lhs->type;
+  sym_val->token = token;
   put_variable(NULL, sym_val, false);
 
   Expr *addr_ident = expr_identifier(NULL, sym_addr, token);
@@ -241,8 +245,11 @@ static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *tok
 static Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
-  Symbol *sym_addr = symbol_variable(NULL, token);
+  Symbol *sym_addr = calloc(1, sizeof(Symbol));
+  sym_addr->sy_type = SY_VARIABLE;
+  sym_addr->link = LN_NONE;
   sym_addr->type = type_pointer(lhs->type);
+  sym_addr->token = token;
   put_variable(NULL, sym_addr, false);
 
   Expr *addr_ident = expr_identifier(NULL, sym_addr, token);
