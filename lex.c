@@ -52,7 +52,11 @@ static String *replace_newline(String *file) {
 }
 
 static Token *create_token(TokenType tk_type) {
-  return token_new(tk_type, text->buffer, loc);
+  Token *token = calloc(1, sizeof(Token));
+  token->tk_type = tk_type;
+  token->text = text->buffer;
+  token->loc = loc;
+  return token;
 }
 
 void next_line() {
@@ -158,8 +162,13 @@ static Token *next_token() {
   skip_backslash_newline();
 
   // store the start position of the next token.
+  loc = calloc(1, sizeof(Location));
+  loc->filename = filename;
+  loc->line_ptr = line_ptr;
+  loc->lineno = lineno;
+  loc->column = column;
+
   text = string_new();
-  loc = location_new(filename, line_ptr, lineno, column);
 
   // check EOF
   if (peek_char() == '\0') {

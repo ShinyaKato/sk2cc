@@ -119,7 +119,10 @@ static Token *expand_file_macro(Token *token, char *filename) {
   string_write(literal, filename);
   string_push(literal, '\0');
 
-  Token *str = token_new(TK_STRING_LITERAL, text->buffer, token->loc);
+  Token *str = calloc(1, sizeof(Token));
+  str->tk_type = TK_STRING_LITERAL;
+  str->text = text->buffer;
+  str->loc = token->loc;
   str->string_literal = literal;
   return str;
 }
@@ -139,7 +142,10 @@ static Token *expand_line_macro(Token *token, int lineno) {
     text->buffer[j] = c;
   }
 
-  Token *num = token_new(TK_PP_NUMBER, text->buffer, token->loc);
+  Token *num = calloc(1, sizeof(Token));
+  num->tk_type = TK_PP_NUMBER;
+  num->text = text->buffer;
+  num->loc = token->loc;
   num->pp_number = text->buffer;
   return num;
 }

@@ -1320,17 +1320,86 @@ static TransUnit *translation_unit() {
 
 // parser
 
-// remove newlines and white-spaces
-// inspect pp-numbers
-static Vector *inspect_tokens(Vector *tokens) {
+static Token *inspect_pp_number(Token *token) {
+  char *pp_number = token->pp_number;
+  int pos = 0;
+
+  unsigned long long int_value = 0;
+  bool int_decimal = false;
+  if (pp_number[pos] == '0') {
+    pos++;
+    if (tolower(pp_number[pos]) == 'x') {
+      pos++;
+      while (isxdigit(pp_number[pos])) {
+        char c = pp_number[pos++];
+        int d = isdigit(c) ? c - '0' : tolower(c) - 'a' + 10;
+        int_value = int_value * 16 + d;
+      }
+    } else {
+      while ('0' <= pp_number[pos] && pp_number[pos] < '8') {
+        int_value = int_value * 8 + (pp_number[pos++] - '0');
+      }
+    }
+  } else {
+    int_decimal = true;
+    while (isdigit(pp_number[pos])) {
+      int_value = int_value * 10 + (pp_number[pos++] - '0');
+    }
+  }
+
+  bool int_u = false;
+  bool int_l = false;
+  bool int_ll = false;
+  if (tolower(pp_number[pos]) == 'u') {
+    int_u = true;
+    pos++;
+    if (tolower(pp_number[pos] == 'l')) {
+      pos++;
+      if (tolower(pp_number[pos] == 'l')) {
+        int_ll = true;
+        pos++;
+      } else {
+        int_l = true;
+      }
+    }
+  } else if (tolower(pp_number[pos]) == 'l') {
+    pos++;
+    if (tolower(pp_number[pos]) == 'l') {
+      int_ll = true;
+      pos++;
+    } else {
+      int_l = true;
+    }
+    if (tolower(pp_number[pos]) == 'u') {
+      int_u = true;
+      pos++;
+    }
+  }
+
+  if (pp_number[pos] != '\0') {
+    ERROR(token, "invalid preprocessing number.");
+  }
+
+  Token *int_const = calloc(1, sizeof(Token));
+  int_const->tk_type = TK_INTEGER_CONST;
+  int_const->text = token->text;
+  int_const->loc = token->loc;
+  int_const->int_value = int_value;
+  int_const->int_decimal = int_decimal;
+  int_const->int_u = int_u;
+  int_const->int_l = int_l;
+  int_const->int_ll = int_ll;
+  return int_const;
+}
+
+TransUnit *parse(Vector *_tokens) {
+  // remove newlines and white-spaces
+  // inspect pp-numbers
   Vector *parse_tokens = vector_new();
-
-  for (int i = 0; i < tokens->length; i++) {
-    Token *token = tokens->buffer[i];
-
+  for (int i = 0; i < _tokens->length; i++) {
+    Token *token = _tokens->buffer[i];
     if (token->tk_type == TK_SPACE) continue;
     if (token->tk_type == TK_NEWLINE) continue;
-
     if (token->tk_type == TK_PP_NUMBER) {
       vector_push(parse_tokens, inspect_pp_number(token));
     } else {
@@ -1338,13 +1407,7 @@ static Vector *inspect_tokens(Vector *tokens) {
     }
   }
 
-  return parse_tokens;
-}
-
-TransUnit *parse(Vector *_tokens) {
-  _tokens = inspect_tokens(_tokens);
-
-  tokens = (Token **) _tokens->buffer;
+  tokens = (Token **) parse_tokens->buffer;
   pos = 0;
 
   return translation_unit();

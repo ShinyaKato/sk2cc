@@ -590,11 +590,6 @@ struct symbol {
 extern noreturn void error(Location *loc, char *format, ...);
 extern noreturn void internal_error(char *format, ...);
 
-// token.c
-extern Location *location_new(char *filename, char *line_ptr, int lineno, int column);
-extern Token *token_new(TokenType tk_type, char *text, Location *loc);
-extern Token *inspect_pp_number(Token *token);
-
 // lex.c
 extern Vector *tokenize(char *input_filename);
 
