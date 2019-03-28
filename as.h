@@ -371,11 +371,8 @@ typedef struct trans_unit {
 
 extern noreturn void as_error(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
 
-// as_scan.c
-extern Vector *as_scan(char *file);
-
 // as_lex.c
-extern Vector *as_tokenize(char *file, Vector *source);
+extern Vector *as_tokenize(char *file);
 
 // as_parse.c
 extern Vector *as_parse(Vector *lines);

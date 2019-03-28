@@ -3,8 +3,7 @@
 int main(int argc, char *argv[]) {
   char *input = "/dev/stdin";
 
-  Vector *source = as_scan(input);
-  Vector *lines = as_tokenize(input, source);
+  Vector *lines = as_tokenize(input);
   Vector *stmts = as_parse(lines);
   TransUnit *trans_unit = as_encode(stmts);
 

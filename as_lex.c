@@ -1,5 +1,33 @@
 #include "as.h"
 
+static Vector *read_file(char *file) {
+  Vector *source = vector_new();
+
+  FILE *fp = fopen(file, "r");
+  if (!fp) {
+    perror(file);
+    exit(1);
+  }
+
+  while (1) {
+    char c = fgetc(fp);
+    if (c == EOF) break;
+    ungetc(c, fp);
+
+    String *line = string_new();
+    while (1) {
+      char c = fgetc(fp);
+      if (c == EOF || c == '\n') break;
+      string_push(line, c);
+    }
+    vector_push(source, line->buffer);
+  }
+
+  fclose(fp);
+
+  return source;
+}
+
 static Token *token_new(char *file, int lineno, int column, char *line) {
   Token *token = (Token *) calloc(1, sizeof(Token));
   token->file = file;
@@ -46,7 +74,9 @@ static Reg regcode(char *reg, Token *token) {
   ERROR(token, "invalid register: %s.", reg);
 }
 
-Vector *as_tokenize(char *file, Vector *source) {
+Vector *as_tokenize(char *file) {
+  Vector *source = read_file(file);
+
   Vector *lines = vector_new();
 
   for (int lineno = 0; lineno < source->length; lineno++) {
