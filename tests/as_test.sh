@@ -437,12 +437,12 @@ EOS
 
 expect 12 << EOS
   .section .rodata
-.LC0:
+.S0:
   .ascii "Hello World\n\0"
   .data
   .global hello
 hello:
-  .quad .LC0
+  .quad .S0
   .text
   .global main
 main:
