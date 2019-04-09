@@ -1,15 +1,4 @@
-#define bool _Bool
-#define false 0
-#define true 1
-
-typedef struct _IO_FILE FILE;
-extern FILE *stdin;
-extern FILE *stdout;
-extern FILE *stderr;
-
-int fprintf(FILE *stream, char *format, ...);
-int strcmp(char *s1, char *s2);
-void exit(int status);
+#include "sk2cc.h"
 
 extern void compile(char *input, bool cpp);
 extern void assemble(char *input, char *output);

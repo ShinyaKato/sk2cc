@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 void compile(char *input, bool cpp) {
   Vector *pp_tokens = tokenize(input);

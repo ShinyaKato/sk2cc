@@ -1,39 +1,32 @@
-#define bool _Bool
-#define false 0
-#define true 1
-#define NULL ((void *) 0)
-typedef signed long long intptr_t;
-typedef unsigned long long uintptr_t;
-typedef unsigned long long size_t;
-void *calloc(size_t nmemb, size_t size);
-void *realloc(void *ptr, size_t size);
-int strcmp(char *s1, char *s2);
-
+#include "sk2cc.h"
 #include "map.h"
 
 Map *map_new() {
   Map *map = calloc(1, sizeof(Map));
   map->count = 0;
+  map->capacity = 64;
+  map->keys = calloc(map->capacity, sizeof(char *));
+  map->values = calloc(map->capacity, sizeof(void *));
   return map;
 }
 
-bool map_put(Map *map, char *key, void *value) {
+void map_put(Map *map, char *key, void *value) {
   for (int i = 0; i < map->count; i++) {
     if (strcmp(map->keys[i], key) == 0) {
       map->values[i] = value;
-      return true;
+      return;
     }
-  }
-
-  if (map->count >= 1024) {
-    return false;
   }
 
   map->keys[map->count] = key;
   map->values[map->count] = value;
   map->count++;
 
-  return true;
+  if (map->count == map->capacity) {
+    map->capacity *= 2;
+    map->keys = realloc(map->keys, sizeof(void *) * map->capacity);
+    map->values = realloc(map->values, sizeof(void *) * map->capacity);
+  }
 }
 
 void *map_lookup(Map *map, char *key) {
@@ -46,8 +39,8 @@ void *map_lookup(Map *map, char *key) {
   return NULL;
 }
 
-bool map_puti(Map *map, char *key, int value) {
-  return map_put(map, key, (void *) (intptr_t) value);
+void map_puti(Map *map, char *key, int value) {
+  map_put(map, key, (void *) (intptr_t) value);
 }
 
 int map_lookupi(Map *map, char *key) {

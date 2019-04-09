@@ -1,10 +1,4 @@
-#define NULL ((void *) 0)
-typedef signed long long intptr_t;
-typedef unsigned long long uintptr_t;
-typedef unsigned long long size_t;
-void *calloc(size_t nmemb, size_t size);
-void *realloc(void *ptr, size_t size);
-
+#include "sk2cc.h"
 #include "vector.h"
 
 Vector *vector_new() {

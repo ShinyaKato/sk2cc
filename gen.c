@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 static char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
 
@@ -238,7 +238,7 @@ static void gen_call(Expr *node) {
     printf("  movb $0, %%al\n");
   }
 
-  printf("  call %s@PLT\n", node->expr->identifier);
+  printf("  call %s\n", node->expr->identifier);
 
   // restore rsp
   if (padding + stack_args * 8 > 0) {

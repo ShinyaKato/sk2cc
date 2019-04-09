@@ -3,7 +3,7 @@ CFLAGS = -std=c11 --pedantic-errors -Wall -g
 
 HEADERS = \
 	string.h vector.h map.h binary.h \
-	sk2cc.h as.h
+	sk2cc.h cc.h as.h
 
 SRCS = \
 	vector.c string.c map.c binary.c \
@@ -26,24 +26,30 @@ $(SK2CC): $(HEADERS) $(SRCS)
 	$(CC) $(CFLAGS) -o $@ $(SRCS)
 
 # self host
-ASMS_SELF = $(patsubst %.c,$(DIR)/%.s,$(SRCS))
-
-$(ASMS_SELF): $(DIR)/%.s:%.c $(HEADERS) $(SK2CC)
+SELF_ASMS = $(patsubst %.c,$(DIR)/%.s,$(SRCS))
+$(SELF_ASMS): $(DIR)/%.s:%.c $(HEADERS) $(SK2CC)
 	@mkdir -p $(DIR)
 	$(SK2CC) $< > $@
 
-$(SELF): $(ASMS_SELF)
-	$(CC) $(CFLAGS) -o $@ $^
+SELF_OBJS = $(patsubst %.s,%.o,$(SELF_ASMS))
+$(SELF_OBJS): %.o:%.s $(HEADERS) $(SK2CC)
+	$(SK2CC) --as $< $@
+
+$(SELF): $(SELF_OBJS)
+	$(CC) -static $(CFLAGS) -o $@ $^
 
 # self host by self-hosted executable
-ASMS_SELF2 = $(patsubst %.c,$(DIR)/%2.s,$(SRCS))
-
-$(ASMS_SELF2): $(DIR)/%2.s:%.c $(HEADERS) $(SELF)
+SELF2_ASMS = $(patsubst %.c,$(DIR)/%2.s,$(SRCS))
+$(SELF2_ASMS): $(DIR)/%2.s:%.c $(HEADERS) $(SK2CC)
 	@mkdir -p $(DIR)
-	$(SELF) $< > $@
+	$(SK2CC) $< > $@
 
-$(SELF2): $(ASMS_SELF2)
-	$(CC) $(CFLAGS) -o $@ $^
+SELF2_OBJS = $(patsubst %2.s,%2.o,$(SELF2_ASMS))
+$(SELF2_OBJS): %2.o:%2.s $(HEADERS) $(SELF)
+	$(SELF) --as $< $@
+
+$(SELF2): $(SELF2_OBJS)
+	$(CC) -static $(CFLAGS) -o $@ $^
 
 # test commands
 .PHONY: test_unit
@@ -73,7 +79,7 @@ test_self2: $(SELF2)
 	./tests/as_test.sh '$(SELF2) --as'
 
 .PHONY: test_diff
-test_diff: $(ASMS_SELF) $(ASMS_SELF2)
+test_diff: $(SELF_ASMS) $(SELF2_ASMS)
 	for src in $(SRCS); do \
 		diff tmp/`echo $$src | sed -e "s/\.c$$/.s/g"` tmp/`echo $$src | sed -e "s/\.c$$/2.s/g"`; \
 	done

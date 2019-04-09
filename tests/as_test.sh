@@ -436,7 +436,7 @@ main:
 EOS
 
 expect 12 << EOS
-  .text
+  .section .rodata
 .LC0:
   .ascii "Hello World\n\0"
   .data
@@ -1488,6 +1488,10 @@ test_encoding 'sete (%rbx)' '0f 94 03'
 test_encoding 'setne %bl' '0f 95 c3'
 test_encoding 'setne (%rbx)' '0f 95 03'
 
+# setb
+test_encoding 'setb %bl' '0f 92 c3'
+test_encoding 'setb (%rbx)' '0f 92 03'
+
 # setl
 test_encoding 'setl %bl' '0f 9c c3'
 test_encoding 'setl (%rbx)' '0f 9c 03'
@@ -1495,6 +1499,10 @@ test_encoding 'setl (%rbx)' '0f 9c 03'
 # setg
 test_encoding 'setg %bl' '0f 9f c3'
 test_encoding 'setg (%rbx)' '0f 9f 03'
+
+# setbe
+test_encoding 'setbe %bl' '0f 96 c3'
+test_encoding 'setbe (%rbx)' '0f 96 03'
 
 # setle
 test_encoding 'setle %bl' '0f 9e c3'

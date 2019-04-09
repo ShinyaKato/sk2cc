@@ -22,6 +22,12 @@ static Dir *dir_data(Token *token) {
   return dir_new(DIR_DATA, token);
 }
 
+static Dir *dir_section(char *ident, Token *token) {
+  Dir *dir = dir_new(DIR_SECTION, token);
+  dir->ident = ident;
+  return dir;
+}
+
 static Dir *dir_global(char *ident, Token *token) {
   Dir *dir = dir_new(DIR_GLOBAL, token);
   dir->ident = ident;
@@ -1105,6 +1111,20 @@ static Inst *parse_inst(Token **token) {
     return inst_op1(INST_SETNE, INST_BYTE, op, inst);
   }
 
+  if (strcmp(inst->ident, "setb") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->buffer[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETB, INST_BYTE, op, inst);
+  }
+
   if (strcmp(inst->ident, "setl") == 0) {
     if (ops->length != 1) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
@@ -1131,6 +1151,20 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETG, INST_BYTE, op, inst);
+  }
+
+  if (strcmp(inst->ident, "setbe") == 0) {
+    if (ops->length != 1) {
+      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
+    }
+    Op *op = ops->buffer[0];
+    if (op->type != OP_REG && op->type != OP_MEM) {
+      ERROR(inst, "register or memory operand is expected.");
+    }
+    if (op->type == OP_REG && op->regtype != REG8) {
+      ERROR(inst, "operand type mismatched.");
+    }
+    return inst_op1(INST_SETBE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setle") == 0) {
@@ -1242,6 +1276,18 @@ Vector *as_parse(Vector *lines) {
       vector_push(stmts, stmt_dir(dir_text(token[0])));
     } else if (strcmp(token[0]->ident, ".data") == 0) {
       vector_push(stmts, stmt_dir(dir_data(token[0])));
+    } else if (strcmp(token[0]->ident, ".section") == 0) {
+      if (!token[1] || token[1]->type != TOK_IDENT) {
+        ERROR(token[0], "identifier is expected.");
+      }
+      if (token[2]) {
+        ERROR(token[0], "invalid directive.");
+      }
+      char *ident = token[1]->ident;
+      if (strcmp(ident, ".rodata") != 0) {
+        ERROR(token[0], "only '.rodata' is supported.");
+      }
+      vector_push(stmts, stmt_dir(dir_section(ident, token[0])));
     } else if (strcmp(token[0]->ident, ".global") == 0) {
       if (!token[1] || token[1]->type != TOK_IDENT) {
         ERROR(token[0], "identifier is expected.");

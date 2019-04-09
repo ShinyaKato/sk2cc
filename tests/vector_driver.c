@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "../sk2cc.h"
+#include "../vector.h"
 
 int data[128];
 

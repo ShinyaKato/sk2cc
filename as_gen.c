@@ -1,12 +1,13 @@
 #include "as.h"
 
-#define LOCAL_SYMS 3
+#define LOCAL_SYMS 4
 #define TEXT_SYM 1
 #define DATA_SYM 2
+#define RODATA_SYM 3
 
 static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current) {
   Binary *bin = binary_new();
-  int section_syms[SHNUM] = { 0, TEXT_SYM, 0, DATA_SYM, 0, 0, 0, 0 };
+  int section_syms[SHNUM] = { 0, TEXT_SYM, 0, DATA_SYM, 0, RODATA_SYM, 0, 0, 0, 0 };
 
   for (int i = 0; i < section->relocs->length; i++) {
     Reloc *reloc = section->relocs->buffer[i];
@@ -40,6 +41,7 @@ static Binary *gen_rela(Section *section, Map *symbols, Map *gsyms, int current)
 void gen_obj(TransUnit *trans_unit, char *output) {
   Section *text = trans_unit->text;
   Section *data = trans_unit->data;
+  Section *rodata = trans_unit->rodata;
   Map *symbols = trans_unit->symbols;
   Map *gsyms = map_new();
 
@@ -72,6 +74,17 @@ void gen_obj(TransUnit *trans_unit, char *output) {
   string_write(strtab, ".data");
   string_push(strtab, '\0');
 
+  Elf64_Sym *rodata_sym = (Elf64_Sym *) calloc(1, sizeof(Elf64_Sym));
+  rodata_sym->st_name = strtab->length;
+  rodata_sym->st_info = ELF64_ST_INFO(STB_LOCAL, STT_SECTION);
+  rodata_sym->st_other = STV_DEFAULT;
+  rodata_sym->st_shndx = RODATA;
+  rodata_sym->st_value = 0;
+
+  binary_write(symtab, rodata_sym, sizeof(Elf64_Sym));
+  string_write(strtab, ".rodata");
+  string_push(strtab, '\0');
+
   for (int i = 0; i < symbols->count; i++) {
     char *ident = symbols->keys[i];
     Symbol *symbol = symbols->values[i];
@@ -91,9 +104,10 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     }
   }
 
-  // .reloc.text and .rela.data
+  // .reloc.text, .rela.data and .rela.rodata
   Binary *rela_text = gen_rela(text, symbols, gsyms, TEXT);
   Binary *rela_data = gen_rela(data, symbols, gsyms, DATA);
+  Binary *rela_rodata = gen_rela(rodata, symbols, gsyms, RODATA);
 
   // .shstrtab
   String *shstrtab = string_new();
@@ -104,6 +118,8 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     ".rela.text",
     ".data",
     ".rela.data",
+    ".rodata",
+    ".rela.rodata",
     ".symtab",
     ".strtab",
     ".shstrtab",
@@ -142,7 +158,7 @@ void gen_obj(TransUnit *trans_unit, char *output) {
   // section header for .data
   shdrtab[DATA].sh_name = names[DATA];
   shdrtab[DATA].sh_type = SHT_PROGBITS;
-  shdrtab[DATA].sh_flags = SHF_ALLOC | SHF_EXECINSTR;
+  shdrtab[DATA].sh_flags = SHF_ALLOC | SHF_WRITE;
   shdrtab[DATA].sh_offset = offset;
   shdrtab[DATA].sh_size = data->bin->length;
   offset += data->bin->length;
@@ -158,6 +174,27 @@ void gen_obj(TransUnit *trans_unit, char *output) {
     shdrtab[RELA_DATA].sh_info = DATA;
     shdrtab[RELA_DATA].sh_entsize = sizeof(Elf64_Rela);
     offset += rela_data->length;
+  }
+
+  // section header for .rodata
+  shdrtab[RODATA].sh_name = names[RODATA];
+  shdrtab[RODATA].sh_type = SHT_PROGBITS;
+  shdrtab[RODATA].sh_flags = SHF_ALLOC;
+  shdrtab[RODATA].sh_offset = offset;
+  shdrtab[RODATA].sh_size = rodata->bin->length;
+  offset += rodata->bin->length;
+
+  // section header for .rela.rodata
+  if (rela_rodata->length > 0) {
+    shdrtab[RELA_RODATA].sh_name = names[RELA_RODATA];
+    shdrtab[RELA_RODATA].sh_type = SHT_RELA;
+    shdrtab[RELA_RODATA].sh_flags = SHF_INFO_LINK;
+    shdrtab[RELA_RODATA].sh_offset = offset;
+    shdrtab[RELA_RODATA].sh_size = rela_rodata->length;
+    shdrtab[RELA_RODATA].sh_link = SYMTAB;
+    shdrtab[RELA_RODATA].sh_info = RODATA;
+    shdrtab[RELA_DATA].sh_entsize = sizeof(Elf64_Rela);
+    offset += rela_rodata->length;
   }
 
   // section header for .symtab
@@ -215,6 +252,8 @@ void gen_obj(TransUnit *trans_unit, char *output) {
   fwrite(rela_text->buffer, rela_text->length, 1, out);
   fwrite(data->bin->buffer, data->bin->length, 1, out);
   fwrite(rela_data->buffer, rela_data->length, 1, out);
+  fwrite(rodata->bin->buffer, rodata->bin->length, 1, out);
+  fwrite(rela_rodata->buffer, rela_rodata->length, 1, out);
   fwrite(symtab->buffer, symtab->length, 1, out);
   fwrite(strtab->buffer, strtab->length, 1, out);
   fwrite(shstrtab->buffer, shstrtab->length, 1, out);

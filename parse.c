@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 static Vector *literals; // Vector<String*>
 

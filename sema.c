@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 typedef struct decl_attribution {
   Type *type;

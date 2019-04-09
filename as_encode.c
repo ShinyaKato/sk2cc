@@ -28,6 +28,7 @@ static TransUnit *trans_unit_new() {
   TransUnit *trans_unit = (TransUnit *) calloc(1, sizeof(TransUnit));
   trans_unit->text = section_new();
   trans_unit->data = section_new();
+  trans_unit->rodata = section_new();
   trans_unit->symbols = map_new();
   return trans_unit;
 }
@@ -63,6 +64,13 @@ static void gen_dir(Dir *dir) {
       bin = trans_unit->data->bin;
       relocs = trans_unit->data->relocs;
       current = DATA;
+    }
+    break;
+
+    case DIR_SECTION: {
+      bin = trans_unit->rodata->bin;
+      relocs = trans_unit->rodata->relocs;
+      current = RODATA;
     }
     break;
 
@@ -1276,6 +1284,24 @@ static void gen_setne(Inst *inst) {
   }
 }
 
+static void gen_setb(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 92
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x92);
+    gen_ops(0, op); // reg filed is not used
+  } else {
+    // 0F 92
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x92);
+    gen_ops(0, op); // reg filed is not used
+  }
+}
+
 static void gen_setl(Inst *inst) {
   Op *op = inst->op;
   if (op->type == OP_REG) {
@@ -1309,6 +1335,24 @@ static void gen_setg(Inst *inst) {
     gen_opcode(0x0f);
     gen_opcode(0x9f);
     gen_ops(0, op); // reg field is not used.
+  }
+}
+
+static void gen_setbe(Inst *inst) {
+  Op *op = inst->op;
+  if (op->type == OP_REG) {
+    // 0F 96
+    bool required = (op->regcode & 12) == 4;
+    gen_rex(0, 0, 0, op->regcode, required);
+    gen_opcode(0x0f);
+    gen_opcode(0x96);
+    gen_ops(0, op); // reg filed is not used
+  } else {
+    // 0F 96
+    gen_rex(0, 0, op->index, op->base, 0);
+    gen_opcode(0x0f);
+    gen_opcode(0x96);
+    gen_ops(0, op); // reg filed is not used
   }
 }
 
@@ -1411,8 +1455,10 @@ static void gen_inst(Inst *inst) {
     case INST_CMP: gen_cmp(inst); break;
     case INST_SETE: gen_sete(inst); break;
     case INST_SETNE: gen_setne(inst); break;
+    case INST_SETB: gen_setb(inst); break;
     case INST_SETL: gen_setl(inst); break;
     case INST_SETG: gen_setg(inst); break;
+    case INST_SETBE: gen_setbe(inst); break;
     case INST_SETLE: gen_setle(inst); break;
     case INST_SETGE: gen_setge(inst); break;
     case INST_JMP: gen_jmp(inst); break;

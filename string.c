@@ -1,7 +1,4 @@
-typedef unsigned long long size_t;
-void *calloc(size_t nmemb, size_t size);
-void *realloc(void *ptr, size_t size);
-
+#include "sk2cc.h"
 #include "string.h"
 
 String *string_new() {
