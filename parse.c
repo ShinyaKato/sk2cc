@@ -1,11 +1,12 @@
-#include "sk2cc.h"
+#include "cc.h"
 
-Vector *literals;      // Vector<String*>
-Vector *symbol_scopes; // Vector<Map<SymbolType*>*>
+static Vector *literals; // Vector<String*>
 
 // symbol table and scopes
 
-void put_symbol(char *identifier, Symbol *symbol) {
+static Vector *symbol_scopes; // Vector<Map<SymbolType*>*>
+
+static void put_symbol(char *identifier, Symbol *symbol) {
   Map *map = symbol_scopes->buffer[symbol_scopes->length - 1];
 
   symbol->prev = map_lookup(map, identifier);
@@ -16,7 +17,7 @@ void put_symbol(char *identifier, Symbol *symbol) {
   map_put(map, identifier, symbol);
 }
 
-Symbol *lookup_symbol(char *identifier) {
+static Symbol *lookup_symbol(char *identifier) {
   for (int i = symbol_scopes->length - 1; i >= 0; i--) {
     Map *map = symbol_scopes->buffer[i];
     Symbol *symbol = map_lookup(map, identifier);
@@ -26,48 +27,82 @@ Symbol *lookup_symbol(char *identifier) {
   return NULL;
 }
 
+// tokens
+
+static Token **tokens;
+static int pos;
+
+static Token *peek() {
+  return tokens[pos];
+}
+
+static Token *check(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos];
+  }
+  return NULL;
+}
+
+static Token *read(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos++];
+  }
+  return NULL;
+}
+
+static Token *expect(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos++];
+  }
+
+  if (isprint(tk_type)) {
+    ERROR(tokens[pos], "'%c' is expected.", tk_type);
+  }
+  ERROR(tokens[pos], "unexpected token.");
+}
+
 // check declaration specifiers
 
-bool check_storage_class_specifier() {
-  if (check_token(TK_TYPEDEF)) return true;
-  if (check_token(TK_EXTERN)) return true;
-  if (check_token(TK_STATIC)) return true;
+static bool check_storage_class_specifier() {
+  if (check(TK_TYPEDEF)) return true;
+  if (check(TK_EXTERN)) return true;
+  if (check(TK_STATIC)) return true;
 
   return false;
 }
 
-bool check_typedef_name() {
-  if (check_token(TK_IDENTIFIER)) {
-    Symbol *symbol = lookup_symbol(peek_token()->identifier);
+static bool check_typedef_name() {
+  if (check(TK_IDENTIFIER)) {
+    Symbol *symbol = lookup_symbol(peek()->identifier);
     return symbol && symbol->sy_type == SY_TYPE;
   }
 
   return false;
 }
 
-bool check_type_specifier() {
-  if (check_token(TK_VOID)) return true;
-  if (check_token(TK_CHAR)) return true;
-  if (check_token(TK_SHORT)) return true;
-  if (check_token(TK_INT)) return true;
-  if (check_token(TK_LONG)) return true;
-  if (check_token(TK_SIGNED)) return true;
-  if (check_token(TK_UNSIGNED)) return true;
-  if (check_token(TK_BOOL)) return true;
-  if (check_token(TK_STRUCT)) return true;
-  if (check_token(TK_ENUM)) return true;
+static bool check_type_specifier() {
+  if (check(TK_VOID)) return true;
+  if (check(TK_CHAR)) return true;
+  if (check(TK_SHORT)) return true;
+  if (check(TK_INT)) return true;
+  if (check(TK_LONG)) return true;
+  if (check(TK_SIGNED)) return true;
+  if (check(TK_UNSIGNED)) return true;
+  if (check(TK_BOOL)) return true;
+  if (check(TK_STRUCT)) return true;
+  if (check(TK_ENUM)) return true;
   if (check_typedef_name()) return true;
 
   return false;
 }
 
-bool check_function_specifier() {
-  if (check_token(TK_NORETURN)) return true;
+static bool check_function_specifier() {
+  if (check(TK_NORETURN)) return true;
 
   return false;
 }
 
-bool check_declaration_specifier() {
+static bool check_declaration_specifier() {
   if (check_storage_class_specifier()) return true;
   if (check_type_specifier()) return true;
   if (check_function_specifier()) return true;
@@ -77,65 +112,119 @@ bool check_declaration_specifier() {
 
 // parse expression
 
-Expr *cast_expression();
-Expr *assignment_expression();
-Expr *expression();
-TypeName *type_name();
+static Expr *expr_new(NodeType nd_type, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_unary(NodeType nd_type, Expr *_expr, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->expr = _expr;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
+  Expr *expr = calloc(1, sizeof(Expr));
+  expr->nd_type = nd_type;
+  expr->lhs = lhs;
+  expr->rhs = rhs;
+  expr->token = token;
+  return expr;
+}
+
+static Expr *cast_expression();
+static Expr *assignment_expression();
+static Expr *expression();
+static TypeName *type_name();
 
 // primary-expression :
 //   identifier
 //   integer-constant
 //   string-literal
 //   '(' expression ')'
-Expr *primary_expression() {
-  Token *token = peek_token();
+static Expr *primary_expression() {
+  Token *token = peek();
 
-  if (!check_typedef_name() && read_token(TK_IDENTIFIER)) {
-    if (strcmp(token->identifier, "__builtin_va_start") == 0 && read_token('(')) {
+  if (!check_typedef_name() && read(TK_IDENTIFIER)) {
+    // check builtin macros
+    if (strcmp(token->identifier, "__builtin_va_start") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
-      expect_token(',');
-      char *macro_arg = expect_token(TK_IDENTIFIER)->identifier;
-      expect_token(')');
-      return expr_va_start(macro_ap, macro_arg, token);
+      expect(',');
+      char *macro_arg = expect(TK_IDENTIFIER)->identifier;
+      expect(')');
+
+      Expr *expr = expr_new(ND_VA_START, token);
+      expr->macro_ap = macro_ap;
+      expr->macro_arg = macro_arg;
+      return expr;
     }
-    if (strcmp(token->identifier, "__builtin_va_arg") == 0 && read_token('(')) {
+    if (strcmp(token->identifier, "__builtin_va_arg") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
-      expect_token(',');
+      expect(',');
       TypeName *macro_type = type_name();
-      expect_token(')');
-      return expr_va_arg(macro_ap, macro_type, token);
+      expect(')');
+
+      Expr *expr = expr_new(ND_VA_ARG, token);
+      expr->macro_ap = macro_ap;
+      expr->macro_type = macro_type;
+      return expr;
     }
-    if (strcmp(token->identifier, "__builtin_va_end") == 0 && read_token('(')) {
+    if (strcmp(token->identifier, "__builtin_va_end") == 0 && read('(')) {
       Expr *macro_ap = assignment_expression();
-      expect_token(')');
-      return expr_va_end(macro_ap, token);
+      expect(')');
+
+      Expr *expr = expr_new(ND_VA_END, token);
+      expr->macro_ap = macro_ap;
+      return expr;
     }
 
     Symbol *symbol = lookup_symbol(token->identifier);
     if (symbol && symbol->sy_type == SY_CONST) {
-      return expr_enum_const(token->identifier, symbol, token);
+      Expr *expr = expr_new(ND_ENUM_CONST, token);
+      expr->identifier = token->identifier;
+      expr->symbol = symbol;
+      return expr;
     } else {
-      return expr_identifier(token->identifier, symbol, token);
+      Expr *expr = expr_new(ND_IDENTIFIER, token);
+      expr->identifier = token->identifier;
+      expr->symbol = symbol;
+      return expr;
     }
   }
 
-  if (read_token(TK_INTEGER_CONST)) {
-    return expr_integer(token->int_value, token->int_decimal, token->int_u, token->int_l, token->int_ll, token);
+  if (read(TK_INTEGER_CONST)) {
+    Expr *expr = expr_new(ND_INTEGER, token);
+    expr->int_value = token->int_value;
+    expr->int_decimal = token->int_decimal;
+    expr->int_u = token->int_u;
+    expr->int_l = token->int_l;
+    expr->int_ll = token->int_ll;
+    return expr;
   }
 
-  if (read_token(TK_CHAR_CONST)) {
-    return expr_integer(token->char_value, false, false, false, false, token);
+  if (read(TK_CHAR_CONST)) {
+    Expr *expr = expr_new(ND_INTEGER, token);
+    expr->int_value = token->char_value;
+    return expr;
   }
 
-  if (read_token(TK_STRING_LITERAL)) {
+  if (read(TK_STRING_LITERAL)) {
     int string_label = literals->length;
     vector_push(literals, token->string_literal);
-    return expr_string(token->string_literal, string_label, token);
+
+    Expr *expr = expr_new(ND_STRING, token);
+    expr->string_literal = token->string_literal;
+    expr->string_label = string_label;
+    return expr;
   }
 
-  if (read_token('(')) {
+  if (read('(')) {
     Expr *expr = expression();
-    expect_token(')');
+    expect(')');
     return expr;
   }
 
@@ -150,35 +239,43 @@ Expr *primary_expression() {
 //   postfix-expression '->' identifier
 //   postfix-expression '++'
 //   postfix-expression '--'
-Expr *postfix_expression(Expr *expr) {
+static Expr *postfix_expression(Expr *expr) {
   if (!expr) {
     expr = primary_expression();
   }
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('[')) {
+    Token *token = peek();
+    if (read('[')) {
       Expr *index = expression();
-      expect_token(']');
-      expr = expr_subscription(expr, index, token);
-    } else if (read_token('(')) {
+      expect(']');
+
+      expr = expr_unary(ND_SUBSCRIPTION, expr, token);
+      expr->index = index;
+    } else if (read('(')) {
       Vector *args = vector_new();
-      if (!check_token(')')) {
+      if (!check(')')) {
         do {
           vector_push(args, assignment_expression());
-        } while (read_token(','));
+        } while (read(','));
       }
-      expect_token(')');
-      expr = expr_call(expr, args, token);
-    } else if (read_token('.')) {
-      char *member = expect_token(TK_IDENTIFIER)->identifier;
-      expr = expr_dot(expr, member, token);
-    } else if (read_token(TK_ARROW)) {
-      char *member = expect_token(TK_IDENTIFIER)->identifier;
-      expr = expr_arrow(expr, member, token);
-    } else if (read_token(TK_INC)) {
+      expect(')');
+
+      expr = expr_unary(ND_CALL, expr, token);
+      expr->args = args;
+    } else if (read('.')) {
+      char *member = expect(TK_IDENTIFIER)->identifier;
+
+      expr = expr_unary(ND_DOT, expr, token);
+      expr->member = member;
+    } else if (read(TK_ARROW)) {
+      char *member = expect(TK_IDENTIFIER)->identifier;
+
+      expr = expr_unary(ND_ARROW, expr, token);
+      expr->member = member;
+    } else if (read(TK_INC)) {
       expr = expr_unary(ND_POST_INC, expr, token);
-    } else if (read_token(TK_DEC)) {
+    } else if (read(TK_DEC)) {
       expr = expr_unary(ND_POST_DEC, expr, token);
     } else {
       break;
@@ -199,53 +296,53 @@ Expr *postfix_expression(Expr *expr) {
 //   '_Alignof' '(' type-name ')'
 // unary-operator :
 //   '&' | '*' | '+' | '-' | '~' | '!'
-Expr *unary_expression() {
-  Token *token = peek_token();
+static Expr *unary_expression() {
+  Token *token = peek();
 
-  if (read_token(TK_INC))
+  if (read(TK_INC))
     return expr_unary(ND_PRE_INC, unary_expression(), token);
-  if (read_token(TK_DEC))
+  if (read(TK_DEC))
     return expr_unary(ND_PRE_DEC, unary_expression(), token);
 
-  if (read_token('&'))
+  if (read('&'))
     return expr_unary(ND_ADDRESS, unary_expression(), token);
-  if (read_token('*'))
+  if (read('*'))
     return expr_unary(ND_INDIRECT, unary_expression(), token);
-  if (read_token('+'))
+  if (read('+'))
     return expr_unary(ND_UPLUS, unary_expression(), token);
-  if (read_token('-'))
+  if (read('-'))
     return expr_unary(ND_UMINUS, unary_expression(), token);
-  if (read_token('~'))
+  if (read('~'))
     return expr_unary(ND_NOT, unary_expression(), token);
-  if (read_token('!'))
+  if (read('!'))
     return expr_unary(ND_LNOT, unary_expression(), token);
 
-  if (read_token(TK_SIZEOF)) {
-    Expr *expr = NULL;
-    TypeName *type = NULL;
+  if (read(TK_SIZEOF)) {
+    Expr *expr = expr_new(ND_SIZEOF, token);
 
     // If '(' follows 'sizeof', it is 'sizeof' type-name
     // or 'sizeof' '(' expression ')'.
     // Otherwise, it is 'sizeof' unary-expression.
-    if (read_token('(')) {
+    if (read('(')) {
       if (check_type_specifier()) {
-        type = type_name();
+        expr->type_name = type_name();
       } else {
-        expr = expression();
+        expr->expr = expression();
       }
-      expect_token(')');
+      expect(')');
     } else {
-      expr = unary_expression();
+      expr->expr = unary_expression();
     }
 
-    return expr_sizeof(expr, type, token);
+    return expr;
   }
 
-  if (read_token(TK_ALIGNOF)) {
-    expect_token('(');
-    TypeName *type = type_name();
-    expect_token(')');
-    return expr_alignof(type, token);
+  if (read(TK_ALIGNOF)) {
+    Expr *expr = expr_new(ND_ALIGNOF, token);
+    expect('(');
+    expr->type_name = type_name();
+    expect(')');
+    return expr;
   }
 
   return postfix_expression(NULL);
@@ -254,20 +351,22 @@ Expr *unary_expression() {
 // cast-expression :
 //   unary-expression
 //   '(' type-name ')' cast-expression
-Expr *cast_expression() {
-  Token *token = peek_token();
+static Expr *cast_expression() {
+  Token *token = peek();
 
   // If type-specifier follows '(', it is cast-expression.
   // Otherwise, it is postfix-expression like '(' expression ')' '++'.
-  if (read_token('(')) {
+  if (read('(')) {
     if (check_type_specifier()) {
-      TypeName *type = type_name();
-      expect_token(')');
-      return expr_cast(type, cast_expression(), token);
+      Expr *expr = expr_new(ND_CAST, token);
+      expr->type_name = type_name();
+      expect(')');
+      expr->expr = cast_expression();
+      return expr;
     }
 
     Expr *expr = expression();
-    expect_token(')');
+    expect(')');
     return postfix_expression(expr);
   }
 
@@ -276,18 +375,18 @@ Expr *cast_expression() {
 
 // multiplicative-expression :
 //   cast-expression (('*' | '/' | '%') cast-expression)*
-Expr *multiplicative_expression(Expr *expr) {
+static Expr *multiplicative_expression(Expr *expr) {
   if (!expr) {
     expr = cast_expression();
   }
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('*')) {
+    Token *token = peek();
+    if (read('*')) {
       expr = expr_binary(ND_MUL, expr, cast_expression(), token);
-    } else if (read_token('/')) {
+    } else if (read('/')) {
       expr = expr_binary(ND_DIV, expr, cast_expression(), token);
-    } else if (read_token('%')) {
+    } else if (read('%')) {
       expr = expr_binary(ND_MOD, expr, cast_expression(), token);
     } else {
       break;
@@ -299,14 +398,14 @@ Expr *multiplicative_expression(Expr *expr) {
 
 // additive-expression :
 //   multiplicative-expression (('+' | '-') multiplicative-expression)*
-Expr *additive_expression(Expr *expr) {
+static Expr *additive_expression(Expr *expr) {
   expr = multiplicative_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('+')) {
+    Token *token = peek();
+    if (read('+')) {
       expr = expr_binary(ND_ADD, expr, multiplicative_expression(NULL), token);
-    } else if (read_token('-')) {
+    } else if (read('-')) {
       expr = expr_binary(ND_SUB, expr, multiplicative_expression(NULL), token);
     } else {
       break;
@@ -318,14 +417,14 @@ Expr *additive_expression(Expr *expr) {
 
 // shift-expression :
 //   additive-expression (('<<' | '>>') additive-expression)*
-Expr *shift_expression(Expr *expr) {
+static Expr *shift_expression(Expr *expr) {
   expr = additive_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token(TK_LSHIFT)) {
+    Token *token = peek();
+    if (read(TK_LSHIFT)) {
       expr = expr_binary(ND_LSHIFT, expr, additive_expression(NULL), token);
-    } else if (read_token(TK_RSHIFT)) {
+    } else if (read(TK_RSHIFT)) {
       expr = expr_binary(ND_RSHIFT, expr, additive_expression(NULL), token);
     } else {
       break;
@@ -337,18 +436,18 @@ Expr *shift_expression(Expr *expr) {
 
 // relational-expression :
 //   shift-expression (('<' | '>' | '<=' | '>=') shift-expression)*
-Expr *relational_expression(Expr *expr) {
+static Expr *relational_expression(Expr *expr) {
   expr = shift_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('<')) {
+    Token *token = peek();
+    if (read('<')) {
       expr = expr_binary(ND_LT, expr, shift_expression(NULL), token);
-    } else if (read_token('>')) {
+    } else if (read('>')) {
       expr = expr_binary(ND_GT, expr, shift_expression(NULL), token);
-    } else if (read_token(TK_LTE)) {
+    } else if (read(TK_LTE)) {
       expr = expr_binary(ND_LTE, expr, shift_expression(NULL), token);
-    } else if (read_token(TK_GTE)) {
+    } else if (read(TK_GTE)) {
       expr = expr_binary(ND_GTE, expr, shift_expression(NULL), token);
     } else {
       break;
@@ -360,14 +459,14 @@ Expr *relational_expression(Expr *expr) {
 
 // equality-expression :
 //   relational-expression (('=' | '!=') equality-expression)*
-Expr *equality_expression(Expr *expr) {
+static Expr *equality_expression(Expr *expr) {
   expr = relational_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token(TK_EQ)) {
+    Token *token = peek();
+    if (read(TK_EQ)) {
       expr = expr_binary(ND_EQ, expr, relational_expression(NULL), token);
-    } else if (read_token(TK_NEQ)) {
+    } else if (read(TK_NEQ)) {
       expr = expr_binary(ND_NEQ, expr, relational_expression(NULL), token);
     } else {
       break;
@@ -379,12 +478,12 @@ Expr *equality_expression(Expr *expr) {
 
 // and-expression :
 //   equality-expression ('&' equality-expression)*
-Expr *and_expression(Expr *expr) {
+static Expr *and_expression(Expr *expr) {
   expr = equality_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('&')) {
+    Token *token = peek();
+    if (read('&')) {
       expr = expr_binary(ND_AND, expr, equality_expression(NULL), token);
     } else {
       break;
@@ -396,12 +495,12 @@ Expr *and_expression(Expr *expr) {
 
 // xor-expression :
 //   and-expression ('^' and-expression)*
-Expr *xor_expression(Expr *expr) {
+static Expr *xor_expression(Expr *expr) {
   expr = and_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('^')) {
+    Token *token = peek();
+    if (read('^')) {
       expr = expr_binary(ND_XOR, expr, and_expression(NULL), token);
     } else {
       break;
@@ -413,12 +512,12 @@ Expr *xor_expression(Expr *expr) {
 
 // or-expression :
 //   xor-expression ('^' xor-expression)*
-Expr *or_expression(Expr *expr) {
+static Expr *or_expression(Expr *expr) {
   expr = xor_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token('|')) {
+    Token *token = peek();
+    if (read('|')) {
       expr = expr_binary(ND_OR, expr, xor_expression(NULL), token);
     } else {
       break;
@@ -430,12 +529,12 @@ Expr *or_expression(Expr *expr) {
 
 // logical-and-expression :
 //   or-expression ('&&' or-expression)*
-Expr *logical_and_expression(Expr *expr) {
+static Expr *logical_and_expression(Expr *expr) {
   expr = or_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token(TK_AND)) {
+    Token *token = peek();
+    if (read(TK_AND)) {
       expr = expr_binary(ND_LAND, expr, or_expression(NULL), token);
     } else {
       break;
@@ -447,12 +546,12 @@ Expr *logical_and_expression(Expr *expr) {
 
 // logical-or-expression :
 //   logical-and-expression ('||' logical-and-expression)*
-Expr *logical_or_expression(Expr *expr) {
+static Expr *logical_or_expression(Expr *expr) {
   expr = logical_and_expression(expr);
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token(TK_OR)) {
+    Token *token = peek();
+    if (read(TK_OR)) {
       expr = expr_binary(ND_LOR, expr, logical_and_expression(NULL), token);
     } else {
       break;
@@ -465,19 +564,23 @@ Expr *logical_or_expression(Expr *expr) {
 // conditional-expression :
 //   logical-or-expression
 //   logical-or-expression '?' expression ':' conditional-expression
-Expr *conditional_expression(Expr *expr) {
-  expr = logical_or_expression(expr);
+static Expr *conditional_expression(Expr *cond) {
+  cond = logical_or_expression(cond);
 
-  Token *token = peek_token();
-  if (read_token('?')) {
+  Token *token = peek();
+  if (read('?')) {
     Expr *lhs = expression();
-    expect_token(':');
+    expect(':');
     Expr *rhs = conditional_expression(NULL);
 
-    return expr_condition(expr, lhs, rhs, token);
+    Expr *expr = expr_new(ND_CONDITION, token);
+    expr->cond = cond;
+    expr->lhs = lhs;
+    expr->rhs = rhs;
+    return expr;
   }
 
-  return expr;
+  return cond;
 }
 
 // assignment-expression :
@@ -485,21 +588,21 @@ Expr *conditional_expression(Expr *expr) {
 //   unary-expression assignment-operator assignment-expression
 // assignment-operator :
 //   '=' | '*=' | '/=' | '%=' | '+=' | '-='
-Expr *assignment_expression() {
+static Expr *assignment_expression() {
   Expr *expr = cast_expression();
 
-  Token *token = peek_token();
-  if (read_token('='))
+  Token *token = peek();
+  if (read('='))
     return expr_binary(ND_ASSIGN, expr, assignment_expression(), token);
-  if (read_token(TK_MUL_ASSIGN))
+  if (read(TK_MUL_ASSIGN))
     return expr_binary(ND_MUL_ASSIGN, expr, assignment_expression(), token);
-  if (read_token(TK_DIV_ASSIGN))
+  if (read(TK_DIV_ASSIGN))
     return expr_binary(ND_DIV_ASSIGN, expr, assignment_expression(), token);
-  if (read_token(TK_MOD_ASSIGN))
+  if (read(TK_MOD_ASSIGN))
     return expr_binary(ND_MOD_ASSIGN, expr, assignment_expression(), token);
-  if (read_token(TK_ADD_ASSIGN))
+  if (read(TK_ADD_ASSIGN))
     return expr_binary(ND_ADD_ASSIGN, expr, assignment_expression(), token);
-  if (read_token(TK_SUB_ASSIGN))
+  if (read(TK_SUB_ASSIGN))
     return expr_binary(ND_SUB_ASSIGN, expr, assignment_expression(), token);
 
   return conditional_expression(expr);
@@ -507,12 +610,12 @@ Expr *assignment_expression() {
 
 // expression :
 //   assignment-expression (',' assignment-expression)*
-Expr *expression() {
+static Expr *expression() {
   Expr *expr = assignment_expression();
 
   while (1) {
-    Token *token = peek_token();
-    if (read_token(',')) {
+    Token *token = peek();
+    if (read(',')) {
       expr = expr_binary(ND_COMMA, expr, assignment_expression(), token);
     } else {
       break;
@@ -524,13 +627,46 @@ Expr *expression() {
 
 // constant-expression :
 //   conditional-expression
-Expr *constant_expression() {
+static Expr *constant_expression() {
   return conditional_expression(NULL);
 }
 
 // parse declaration
 
-bool check_typedef(Vector *specs) {
+static Decl *decl_new(Vector *specs, Vector *symbols, Token *token) {
+  Decl *decl = calloc(1, sizeof(Decl));
+  decl->nd_type = ND_DECL;
+  decl->specs = specs;
+  decl->symbols = symbols;
+  decl->token = token;
+  return decl;
+}
+
+static Decl *param_new(Vector *specs, Symbol *symbol, Token *token) {
+  Decl *decl = calloc(1, sizeof(Decl));
+  decl->nd_type = ND_DECL;
+  decl->specs = specs;
+  decl->symbol = symbol;
+  decl->token = token;
+  return decl;
+}
+
+static Specifier *specifier_new(SpecifierType sp_type, Token *token) {
+  Specifier *spec = calloc(1, sizeof(Specifier));
+  spec->sp_type = sp_type;
+  spec->token = token;
+  return spec;
+}
+
+static Declarator *declarator_new(DeclaratorType decl_type, Declarator *_decl, Token *token) {
+  Declarator *decl = calloc(1, sizeof(Declarator));
+  decl->decl_type = decl_type;
+  decl->decl = _decl;
+  decl->token = token;
+  return decl;
+}
+
+static bool check_typedef(Vector *specs) {
   bool sp_typedef = false;
   for (int i = 0; i < specs->length; i++) {
     Specifier *spec = specs->buffer[i];
@@ -545,48 +681,48 @@ bool check_typedef(Vector *specs) {
   return sp_typedef;
 }
 
-Vector *declaration_specifiers();
-Vector *specifier_qualifier_list();
-Specifier *storage_class_specifier();
-Specifier *type_specifier();
-Specifier *struct_or_union_specifier();
-Decl *struct_declaration();
-Specifier *enum_specifier();
-Symbol *enumerator();
-Specifier *typedef_name();
-Specifier *function_specifier();
-Symbol *init_declarator(bool sp_typedef);
-Symbol *declarator(bool sp_typedef, Declarator *decl);
-Symbol *direct_declarator(bool sp_typedef, Declarator *decl);
-Decl *parameter_declaration();
-TypeName *type_name();
-Declarator *abstract_declarator(Declarator *decl);
-Initializer *initializer();
+static Vector *declaration_specifiers();
+static Vector *specifier_qualifier_list();
+static Specifier *storage_class_specifier();
+static Specifier *type_specifier();
+static Specifier *struct_or_union_specifier();
+static Decl *struct_declaration();
+static Specifier *enum_specifier();
+static Symbol *enumerator();
+static Specifier *typedef_name();
+static Specifier *function_specifier();
+static Symbol *init_declarator(bool sp_typedef);
+static Symbol *declarator(bool sp_typedef, Declarator *decl);
+static Symbol *direct_declarator(bool sp_typedef, Declarator *decl);
+static Decl *parameter_declaration();
+static TypeName *type_name();
+static Declarator *abstract_declarator(Declarator *decl);
+static Initializer *initializer();
 
 // declaration :
 //   declaration-specifiers (init-declarator)* ';'
-Decl *declaration() {
-  Token *token = peek_token();
+static Decl *declaration() {
+  Token *token = peek();
 
   Vector *specs = declaration_specifiers();
   bool sp_typedef = check_typedef(specs);
 
   Vector *symbols = vector_new();
-  if (!check_token(';')) {
+  if (!check(';')) {
     do {
       Symbol *symbol = init_declarator(sp_typedef);
       vector_push(symbols, symbol);
       put_symbol(symbol->identifier, symbol);
-    } while (read_token(','));
+    } while (read(','));
   }
-  expect_token(';');
+  expect(';');
 
   return decl_new(specs, symbols, token);
 }
 
 // declaration-specifiers :
 //   (storage-class-specifier | type-specifier | function-specifier)*
-Vector *declaration_specifiers() {
+static Vector *declaration_specifiers() {
   Vector *specs = vector_new();
   while (1) {
     if (check_storage_class_specifier()) {
@@ -605,7 +741,7 @@ Vector *declaration_specifiers() {
 
 // specifier-qualifier-list :
 //   (type-specifier | type-qualifier)*
-Vector *specifier_qualifier_list() {
+static Vector *specifier_qualifier_list() {
   Vector *specs = vector_new();
   while (1) {
     if (check_storage_class_specifier()) {
@@ -623,14 +759,14 @@ Vector *specifier_qualifier_list() {
 // storage-class-specifier :
 //   'typedef'
 //   'extern'
-Specifier *storage_class_specifier() {
-  Token *token = peek_token();
+static Specifier *storage_class_specifier() {
+  Token *token = peek();
 
-  if (read_token(TK_TYPEDEF))
+  if (read(TK_TYPEDEF))
     return specifier_new(SP_TYPEDEF, token);
-  if (read_token(TK_EXTERN))
+  if (read(TK_EXTERN))
     return specifier_new(SP_EXTERN, token);
-  if (read_token(TK_STATIC))
+  if (read(TK_STATIC))
     return specifier_new(SP_STATIC, token);
 
   // unreachable
@@ -647,29 +783,29 @@ Specifier *storage_class_specifier() {
 //   struct-or-union-specifier
 //   enum-specifier
 //   typedef-name
-Specifier *type_specifier() {
-  Token *token = peek_token();
+static Specifier *type_specifier() {
+  Token *token = peek();
 
-  if (read_token(TK_VOID))
+  if (read(TK_VOID))
     return specifier_new(SP_VOID, token);
-  if (read_token(TK_CHAR))
+  if (read(TK_CHAR))
     return specifier_new(SP_CHAR, token);
-  if (read_token(TK_SHORT))
+  if (read(TK_SHORT))
     return specifier_new(SP_SHORT, token);
-  if (read_token(TK_INT))
+  if (read(TK_INT))
     return specifier_new(SP_INT, token);
-  if (read_token(TK_LONG))
+  if (read(TK_LONG))
     return specifier_new(SP_LONG, token);
-  if (read_token(TK_SIGNED))
+  if (read(TK_SIGNED))
     return specifier_new(SP_SIGNED, token);
-  if (read_token(TK_UNSIGNED))
+  if (read(TK_UNSIGNED))
     return specifier_new(SP_UNSIGNED, token);
-  if (read_token(TK_BOOL))
+  if (read(TK_BOOL))
     return specifier_new(SP_BOOL, token);
 
-  if (check_token(TK_STRUCT))
+  if (check(TK_STRUCT))
     return struct_or_union_specifier();
-  if (check_token(TK_ENUM))
+  if (check(TK_ENUM))
     return enum_specifier();
 
   if (check_typedef_name())
@@ -682,114 +818,140 @@ Specifier *type_specifier() {
 // struct-or-union-specifier :
 //   'struct' identifier? '{' struct-declaration (',' struct-declaration)* '}'
 //   'struct' identifier
-Specifier *struct_or_union_specifier() {
-  Token *token = expect_token(TK_STRUCT);
+static Specifier *struct_or_union_specifier() {
+  Token *token = expect(TK_STRUCT);
 
-  if (check_token(TK_IDENTIFIER)) {
-    char *tag = expect_token(TK_IDENTIFIER)->identifier;
+  if (check(TK_IDENTIFIER)) {
+    char *tag = expect(TK_IDENTIFIER)->identifier;
 
-    if (read_token('{')) {
+    if (read('{')) {
       Vector *decls = vector_new();
       do {
         vector_push(decls, struct_declaration());
-      } while (!check_token('}') && !check_token(TK_EOF));
-      expect_token('}');
+      } while (!check('}') && !check(TK_EOF));
+      expect('}');
 
-      return specifier_struct(tag, decls, token);
+      Specifier *spec = specifier_new(SP_STRUCT, token);
+      spec->struct_tag = tag;
+      spec->struct_decls = decls;
+      return spec;
     }
 
-    return specifier_struct(tag, NULL, token);
+    Specifier *spec = specifier_new(SP_STRUCT, token);
+    spec->struct_tag = tag;
+    spec->struct_decls = NULL;
+    return spec;
   }
 
   Vector *decls = vector_new();
-  expect_token('{');
+  expect('{');
   do {
     vector_push(decls, struct_declaration());
-  } while (!check_token('}') && !check_token(TK_EOF));
-  expect_token('}');
+  } while (!check('}') && !check(TK_EOF));
+  expect('}');
 
-  return specifier_struct(NULL, decls, token);
+  Specifier *spec = specifier_new(SP_STRUCT, token);
+  spec->struct_tag = NULL;
+  spec->struct_decls = decls;
+  return spec;
 }
 
 // struct-declaration :
 //   specifier-qualifier-list (declarator (',' declarator)*)? ';'
-Decl *struct_declaration() {
-  Token *token = peek_token();
+static Decl *struct_declaration() {
+  Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
   Vector *symbols = vector_new();
-  if (!check_token(';')) {
+  if (!check(';')) {
     do {
       vector_push(symbols, declarator(false, NULL));
-    } while (read_token(','));
+    } while (read(','));
   }
-  expect_token(';');
+  expect(';');
 
-  return decl_struct(specs, symbols, token);
+  return decl_new(specs, symbols, token);
 }
 
 // enum-specifier :
 //   'enum' identifier? '{' enumerator (',' enumerator)* '}'
 //   'enum' identifier? '{' enumerator (',' enumerator)* ',' '}'
 //   'enum' identifier
-Specifier *enum_specifier() {
-  Token *token = expect_token(TK_ENUM);
+static Specifier *enum_specifier() {
+  Token *token = expect(TK_ENUM);
 
-  if (check_token(TK_IDENTIFIER)) {
-    char *tag = expect_token(TK_IDENTIFIER)->identifier;
+  if (check(TK_IDENTIFIER)) {
+    char *tag = expect(TK_IDENTIFIER)->identifier;
 
-    if (read_token('{')) {
+    if (read('{')) {
       Vector *enums = vector_new();
       do {
         Symbol *symbol = enumerator();
         vector_push(enums, symbol);
         put_symbol(symbol->identifier, symbol);
-      } while (read_token(',') && !check_token('}'));
-      expect_token('}');
+      } while (read(',') && !check('}'));
+      expect('}');
 
-      return specifier_enum(tag, enums, token);
+      Specifier *spec = specifier_new(SP_ENUM, token);
+      spec->enum_tag = tag;
+      spec->enums = enums;
+      return spec;
     }
 
-    return specifier_enum(tag, NULL, token);
+    Specifier *spec = specifier_new(SP_ENUM, token);
+    spec->enum_tag = tag;
+    spec->enums = NULL;
+    return spec;
   }
 
   Vector *enums = vector_new();
-  expect_token('{');
+  expect('{');
   do {
     Symbol *symbol = enumerator();
     vector_push(enums, symbol);
     put_symbol(symbol->identifier, symbol);
-  } while (read_token(',') && !check_token('}'));
-  expect_token('}');
+  } while (read(',') && !check('}'));
+  expect('}');
 
-  return specifier_enum(NULL, enums, token);
+  Specifier *spec = specifier_new(SP_ENUM, token);
+  spec->enum_tag = NULL;
+  spec->enums = enums;
+  return spec;
 }
 
 // enumerator :
 //   enumeration-constant
 //   enumeration-constant '=' constant-expression
-Symbol *enumerator() {
-  Token *token = expect_token(TK_IDENTIFIER);
-  Expr *const_expr = read_token('=') ? constant_expression() : NULL;
+static Symbol *enumerator() {
+  Token *token = expect(TK_IDENTIFIER);
+  Expr *const_expr = read('=') ? constant_expression() : NULL;
 
-  return symbol_const(token->identifier, const_expr, token);
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = SY_CONST;
+  symbol->identifier = token->identifier;
+  symbol->const_expr = const_expr;
+  symbol->token = token;
+  return symbol;
 }
 
 // typedef-name :
 //   identifier
-Specifier *typedef_name() {
-  Token *token = expect_token(TK_IDENTIFIER);
+static Specifier *typedef_name() {
+  Token *token = expect(TK_IDENTIFIER);
   Symbol *symbol = lookup_symbol(token->identifier);
 
-  return specifier_typedef_name(token->identifier, symbol, token);
+  Specifier *spec = specifier_new(SP_TYPEDEF_NAME, token);
+  spec->typedef_name = token->identifier;
+  spec->typedef_symbol = symbol;
+  return spec;
 }
 
 // function-specifier :
 //   '_Noreturn'
-Specifier *function_specifier() {
-  Token *token = peek_token();
+static Specifier *function_specifier() {
+  Token *token = peek();
 
-  if (read_token(TK_NORETURN))
+  if (read(TK_NORETURN))
     return specifier_new(SP_NORETURN, token);
 
   // unreachable
@@ -799,18 +961,18 @@ Specifier *function_specifier() {
 // init-declarator :
 //   declarator
 //   declarator '=' initializer
-Symbol *init_declarator(bool sp_typedef) {
+static Symbol *init_declarator(bool sp_typedef) {
   Symbol *symbol = declarator(sp_typedef, NULL);
-  symbol->init = read_token('=') ? initializer() : NULL;
+  symbol->init = read('=') ? initializer() : NULL;
   return symbol;
 }
 
 // declarator :
 //   '*'* direct-declarator
-Symbol *declarator(bool sp_typedef, Declarator *decl) {
-  Token *token = peek_token();
+static Symbol *declarator(bool sp_typedef, Declarator *decl) {
+  Token *token = peek();
 
-  if (read_token('*')) {
+  if (read('*')) {
     return declarator(sp_typedef, declarator_new(DECL_POINTER, decl, token));
   }
 
@@ -821,44 +983,42 @@ Symbol *declarator(bool sp_typedef, Declarator *decl) {
 //   identifier
 //   direct-declarator '[' assignment-expression? ']'
 //   direct-declarator '(' (parameter-declaration (',' parameter-declaration)* (',' ...)?)? ')'
-Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
-  Token *token = expect_token(TK_IDENTIFIER);
+static Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
+  Token *token = expect(TK_IDENTIFIER);
 
-  Symbol *symbol;
-  if (sp_typedef) {
-    symbol = symbol_type(token->identifier, token);
-  } else {
-    symbol = symbol_variable(token->identifier, token);
-  }
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = sp_typedef ? SY_TYPE : SY_VARIABLE;
+  symbol->identifier = token->identifier;
+  symbol->token = token;
 
   Declarator **decl_ptr = &symbol->decl;
   while (1) {
-    Token *token = peek_token();
+    Token *token = peek();
 
     Declarator *decl;
-    if (read_token('[')) {
-      Expr *size = !check_token(']') ? assignment_expression() : NULL;
-      expect_token(']');
+    if (read('[')) {
+      Expr *size = !check(']') ? assignment_expression() : NULL;
+      expect(']');
 
       decl = declarator_new(DECL_ARRAY, NULL, token);
       decl->size = size;
-    } else if (read_token('(')) {
+    } else if (read('(')) {
       Map *proto_scope = map_new(); // begin prototype scope
       vector_push(symbol_scopes, proto_scope);
 
       Vector *params = vector_new();
       bool ellipsis = false;
-      if (!check_token(')')) {
+      if (!check(')')) {
         vector_push(params, parameter_declaration());
-        while (read_token(',')) {
-          if (read_token(TK_ELLIPSIS)) {
+        while (read(',')) {
+          if (read(TK_ELLIPSIS)) {
             ellipsis = true;
             break;
           }
           vector_push(params, parameter_declaration());
         }
       }
-      expect_token(')');
+      expect(')');
 
       vector_pop(symbol_scopes); // end prototype scope
 
@@ -881,34 +1041,38 @@ Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
 
 // parameter-declaration :
 //   specifier-qualifier-list declarator
-Decl *parameter_declaration() {
-  Token *token = peek_token();
+static Decl *parameter_declaration() {
+  Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
   Symbol *symbol = declarator(false, NULL);
 
   put_symbol(symbol->identifier, symbol);
 
-  return decl_param(specs, symbol, token);
+  return param_new(specs, symbol, token);
 }
 
 // type-name :
 //   specifier-qualifier-list abstract-declarator?
-TypeName *type_name() {
-  Token *token = peek_token();
+static TypeName *type_name() {
+  Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
-  Declarator *decl = check_token('*') ? abstract_declarator(NULL) : NULL;
+  Declarator *decl = check('*') ? abstract_declarator(NULL) : NULL;
 
-  return type_name_new(specs, decl, token);
+  TypeName *type_name = calloc(1, sizeof(TypeName));
+  type_name->specs = specs;
+  type_name->decl = decl;
+  type_name->token = token;
+  return type_name;
 }
 
 // abstract-declarator :
 //   '*' '*'*
-Declarator *abstract_declarator(Declarator *decl) {
-  Token *token = expect_token('*');
+static Declarator *abstract_declarator(Declarator *decl) {
+  Token *token = expect('*');
 
-  if (check_token('*')) {
+  if (check('*')) {
     return abstract_declarator(declarator_new(DECL_POINTER, decl, token));
   }
 
@@ -919,33 +1083,46 @@ Declarator *abstract_declarator(Declarator *decl) {
 //   assignment-expression
 //   '{' initializer (',' initializer)* '}'
 //   '{' initializer (',' initializer)* ',' '}'
-Initializer *initializer() {
-  Token *token = peek_token();
+static Initializer *initializer() {
+  Token *token = peek();
 
-  if (read_token('{')) {
+  if (read('{')) {
     Vector *list = vector_new();
-    if (!check_token('}')) {
+    if (!check('}')) {
       do {
         vector_push(list, initializer());
-      } while (read_token(',') && !check_token('}'));
+      } while (read(',') && !check('}'));
     }
-    expect_token('}');
+    expect('}');
 
-    return initializer_list(list, token);
+    Initializer *init = calloc(1, sizeof(Initializer));
+    init->list = list;
+    init->token = token;
+    return init;
   }
 
-  return initializer_expr(assignment_expression(), token);
+  Initializer *init = calloc(1, sizeof(Initializer));
+  init->expr = assignment_expression();
+  init->token = token;
+  return init;
 }
 
 // parse statement
 
-Stmt *statement();
+static Stmt *stmt_new(NodeType nd_type, Token *token) {
+  Stmt *stmt = calloc(1, sizeof(Stmt));
+  stmt->nd_type = nd_type;
+  stmt->token = token;
+  return stmt;
+}
+
+static Stmt *statement();
 
 // labbeled-statement :
 //   identifier ':' statement
-Stmt *labeled_statement() {
-  Token *token = expect_token(TK_IDENTIFIER);
-  expect_token(':');
+static Stmt *labeled_statement() {
+  Token *token = expect(TK_IDENTIFIER);
+  expect(':');
   Stmt *label_stmt = statement();
 
   Stmt *stmt = stmt_new(ND_LABEL, token);
@@ -956,10 +1133,10 @@ Stmt *labeled_statement() {
 
 // case-statement :
 //   'case' constant-expression ':' statement
-Stmt *case_statement() {
-  Token *token = expect_token(TK_CASE);
+static Stmt *case_statement() {
+  Token *token = expect(TK_CASE);
   Expr *case_const = constant_expression();
-  expect_token(':');
+  expect(':');
   Stmt *case_stmt = statement();
 
   Stmt *stmt = stmt_new(ND_CASE, token);
@@ -970,9 +1147,9 @@ Stmt *case_statement() {
 
 // default-statement :
 //   'default' ':' statement
-Stmt *default_statement() {
-  Token *token = expect_token(TK_DEFAULT);
-  expect_token(':');
+static Stmt *default_statement() {
+  Token *token = expect(TK_DEFAULT);
+  expect(':');
   Stmt *default_stmt = statement();
 
   Stmt *stmt = stmt_new(ND_DEFAULT, token);
@@ -982,17 +1159,17 @@ Stmt *default_statement() {
 
 // compound-statement :
 //   '{' (declaration | statement)* '}'
-Stmt *compound_statement() {
-  Token *token = expect_token('{');
+static Stmt *compound_statement() {
+  Token *token = expect('{');
   Vector *block_items = vector_new();
-  while (!check_token('}') && !check_token(TK_EOF)) {
+  while (!check('}') && !check(TK_EOF)) {
     if (check_declaration_specifier()) {
       vector_push(block_items, declaration());
     } else {
       vector_push(block_items, statement());
     }
   }
-  expect_token('}');
+  expect('}');
 
   Stmt *stmt = stmt_new(ND_COMP, token);
   stmt->block_items = block_items;
@@ -1001,11 +1178,11 @@ Stmt *compound_statement() {
 
 // expression-statement :
 //   expression? ';'
-Stmt *expression_statement() {
-  Token *token = peek_token();
+static Stmt *expression_statement() {
+  Token *token = peek();
 
-  Expr *expr = !check_token(';') ? expression() : NULL;
-  expect_token(';');
+  Expr *expr = !check(';') ? expression() : NULL;
+  expect(';');
 
   Stmt *stmt = stmt_new(ND_EXPR, token);
   stmt->expr = expr;
@@ -1015,13 +1192,13 @@ Stmt *expression_statement() {
 // if-statement :
 //   'if' '(' expression ')' statement
 //   'if' '(' expression ')' statement 'else' statement
-Stmt *if_statement() {
-  Token *token = expect_token(TK_IF);
-  expect_token('(');
+static Stmt *if_statement() {
+  Token *token = expect(TK_IF);
+  expect('(');
   Expr *if_cond = expression();
-  expect_token(')');
+  expect(')');
   Stmt *then_body = statement();
-  Stmt *else_body = read_token(TK_ELSE) ? statement() : NULL;
+  Stmt *else_body = read(TK_ELSE) ? statement() : NULL;
 
   Stmt *stmt = stmt_new(ND_IF, token);
   stmt->if_cond = if_cond;
@@ -1032,11 +1209,11 @@ Stmt *if_statement() {
 
 // switch-statement :
 //   'switch' '(' expression ')' statement
-Stmt *switch_statement() {
-  Token *token = expect_token(TK_SWITCH);
-  expect_token('(');
+static Stmt *switch_statement() {
+  Token *token = expect(TK_SWITCH);
+  expect('(');
   Expr *switch_cond = expression();
-  expect_token(')');
+  expect(')');
   Stmt *switch_body = statement();
 
   Stmt *stmt = stmt_new(ND_SWITCH, token);
@@ -1047,11 +1224,11 @@ Stmt *switch_statement() {
 
 // while-statement :
 //   'while' '(' expression ')' statement
-Stmt *while_statement() {
-  Token *token = expect_token(TK_WHILE);
-  expect_token('(');
+static Stmt *while_statement() {
+  Token *token = expect(TK_WHILE);
+  expect('(');
   Expr *while_cond = expression();
-  expect_token(')');
+  expect(')');
   Stmt *while_body = statement();
 
   Stmt *stmt = stmt_new(ND_WHILE, token);
@@ -1062,14 +1239,14 @@ Stmt *while_statement() {
 
 // do-statement :
 //   'do' statement 'while' '(' expression ')' ';'
-Stmt *do_statement() {
-  Token *token = expect_token(TK_DO);
+static Stmt *do_statement() {
+  Token *token = expect(TK_DO);
   Stmt *do_body = statement();
-  expect_token(TK_WHILE);
-  expect_token('(');
+  expect(TK_WHILE);
+  expect('(');
   Expr *do_cond = expression();
-  expect_token(')');
-  expect_token(';');
+  expect(')');
+  expect(';');
 
   Stmt *stmt = stmt_new(ND_DO, token);
   stmt->do_cond = do_cond;
@@ -1080,11 +1257,11 @@ Stmt *do_statement() {
 // for-statement :
 //   'for' '(' expression? ';' expression? ';' expression? ')' statement
 //   'for' '(' declaration expression? ';' expression? ')' statement
-Stmt *for_statement() {
+static Stmt *for_statement() {
   vector_push(symbol_scopes, map_new()); // begin for-statement scope
 
-  Token *token = expect_token(TK_FOR);
-  expect_token('(');
+  Token *token = expect(TK_FOR);
+  expect('(');
   Node *for_init;
   if (check_declaration_specifier()) {
     Decl *decl = declaration();
@@ -1093,13 +1270,13 @@ Stmt *for_statement() {
     }
     for_init = (Node *) decl;
   } else {
-    for_init = (Node *) (!check_token(';') ? expression() : NULL);
-    expect_token(';');
+    for_init = (Node *) (!check(';') ? expression() : NULL);
+    expect(';');
   }
-  Expr *for_cond = !check_token(';') ? expression() : NULL;
-  expect_token(';');
-  Expr *for_after = !check_token(')') ? expression() : NULL;
-  expect_token(')');
+  Expr *for_cond = !check(';') ? expression() : NULL;
+  expect(';');
+  Expr *for_after = !check(')') ? expression() : NULL;
+  expect(')');
   Stmt *for_body = statement();
 
   vector_pop(symbol_scopes); // end for-statement scope
@@ -1114,10 +1291,10 @@ Stmt *for_statement() {
 
 // goto-statmemt :
 //   'goto' identifier ';'
-Stmt *goto_statement() {
-  Token *token = expect_token(TK_GOTO);
-  char *goto_label = expect_token(TK_IDENTIFIER)->identifier;
-  expect_token(';');
+static Stmt *goto_statement() {
+  Token *token = expect(TK_GOTO);
+  char *goto_label = expect(TK_IDENTIFIER)->identifier;
+  expect(';');
 
   Stmt *stmt = stmt_new(ND_GOTO, token);
   stmt->goto_label = goto_label;
@@ -1126,28 +1303,28 @@ Stmt *goto_statement() {
 
 // continue-statement :
 //   'continue' ';'
-Stmt *continue_statement() {
-  Token *token = expect_token(TK_CONTINUE);
-  expect_token(';');
+static Stmt *continue_statement() {
+  Token *token = expect(TK_CONTINUE);
+  expect(';');
 
   return stmt_new(ND_CONTINUE, token);
 }
 
 // break-statement :
 //   'break' ';'
-Stmt *break_statement() {
-  Token *token = expect_token(TK_BREAK);
-  expect_token(';');
+static Stmt *break_statement() {
+  Token *token = expect(TK_BREAK);
+  expect(';');
 
   return stmt_new(ND_BREAK, token);
 }
 
 // return-statement :
 //   'return' expression? ';'
-Stmt *return_statement() {
-  Token *token = expect_token(TK_RETURN);
-  Expr *ret = !check_token(';') ? expression() : NULL;
-  expect_token(';');
+static Stmt *return_statement() {
+  Token *token = expect(TK_RETURN);
+  Expr *ret = !check(';') ? expression() : NULL;
+  expect(';');
 
   Stmt *stmt = stmt_new(ND_RETURN, token);
   stmt->ret = ret;
@@ -1168,33 +1345,33 @@ Stmt *return_statement() {
 //   continue-statement
 //   break-statement
 //   return-statement
-Stmt *statement() {
-  if (check_token(TK_IDENTIFIER) && check_next_token(':'))
+static Stmt *statement() {
+  if (check(TK_IDENTIFIER) && tokens[pos + 1]->tk_type == ':')
     return labeled_statement();
-  if (check_token(TK_CASE))
+  if (check(TK_CASE))
     return case_statement();
-  if (check_token(TK_DEFAULT))
+  if (check(TK_DEFAULT))
     return default_statement();
-  if (check_token(TK_IF))
+  if (check(TK_IF))
     return if_statement();
-  if (check_token(TK_SWITCH))
+  if (check(TK_SWITCH))
     return switch_statement();
-  if (check_token(TK_WHILE))
+  if (check(TK_WHILE))
     return while_statement();
-  if (check_token(TK_DO))
+  if (check(TK_DO))
     return do_statement();
-  if (check_token(TK_FOR))
+  if (check(TK_FOR))
     return for_statement();
-  if (check_token(TK_GOTO))
+  if (check(TK_GOTO))
     return goto_statement();
-  if (check_token(TK_CONTINUE))
+  if (check(TK_CONTINUE))
     return continue_statement();
-  if (check_token(TK_BREAK))
+  if (check(TK_BREAK))
     return break_statement();
-  if (check_token(TK_RETURN))
+  if (check(TK_RETURN))
     return return_statement();
 
-  if (check_token('{')) {
+  if (check('{')) {
     vector_push(symbol_scopes, map_new()); // begin block scope
     Stmt *stmt = compound_statement();
     vector_pop(symbol_scopes); // end block scope
@@ -1211,15 +1388,15 @@ Stmt *statement() {
 //   declaration
 // function-definition :
 //   declaration-specifiers declarator compound-statement
-Node *external_declaration() {
-  Token *token = peek_token();
+static Node *external_declaration() {
+  Token *token = peek();
 
   Vector *specs = declaration_specifiers();
   bool sp_typedef = check_typedef(specs);
 
   // If ';' follows declaration-specifiers,
   // this is declaration without declarators.
-  if (read_token(';')) {
+  if (read(';')) {
     return (Node *) decl_new(specs, vector_new(), token);
   }
 
@@ -1227,19 +1404,19 @@ Node *external_declaration() {
 
   // If '{' does not follow the first declarator,
   // this is declaration with init-declarators.
-  if (!check_token('{')) {
+  if (!check('{')) {
     Vector *symbols = vector_new();
 
-    symbol->init = read_token('=') ? initializer() : NULL;
+    symbol->init = read('=') ? initializer() : NULL;
     vector_push(symbols, symbol);
     put_symbol(symbol->identifier, symbol);
 
-    while (read_token(',')) {
+    while (read(',')) {
       Symbol *symbol = init_declarator(sp_typedef);
       vector_push(symbols, symbol);
       put_symbol(symbol->identifier, symbol);
     }
-    expect_token(';');
+    expect(';');
 
     return (Node *) decl_new(specs, symbols, token);
   }
@@ -1258,41 +1435,125 @@ Node *external_declaration() {
   Stmt *body = compound_statement();
   vector_pop(symbol_scopes);
 
-  return (Node *) func_new(specs, symbol, body, token);
+  Func *func = calloc(1, sizeof(Func));
+  func->nd_type = ND_FUNC;
+  func->specs = specs;
+  func->symbol = symbol;
+  func->body = body;
+  func->token = token;
+  return (Node *) func;
 }
 
 // translation-unit :
 //   external-declaration external-declaration*
-TransUnit *translation_unit() {
+static TransUnit *translation_unit() {
+  literals = vector_new();
+
+  symbol_scopes = vector_new();
   vector_push(symbol_scopes, map_new()); // begin file scope
 
   // __builtin_va_list
-  Symbol *symbol_va_list = symbol_type("__builtin_va_list", NULL);
-  put_symbol(symbol_va_list->identifier, symbol_va_list);
+  Symbol *sym_va_list = calloc(1, sizeof(Symbol));
+  sym_va_list->sy_type = SY_TYPE;
+  sym_va_list->identifier = "__builtin_va_list";
+  sym_va_list->token = NULL;
+  put_symbol(sym_va_list->identifier, sym_va_list);
 
   Vector *decls = vector_new();
   do {
     vector_push(decls, external_declaration());
-  } while (!check_token(TK_EOF));
+  } while (!check(TK_EOF));
 
   vector_pop(symbol_scopes); // end file scope
 
-  return trans_unit_new(literals, decls);
+  TransUnit *unit = calloc(1, sizeof(TransUnit));
+  unit->literals = literals;
+  unit->decls = decls;
+  return unit;
 }
 
 // parser
 
-// remove newlines and white-spaces
-// inspect pp-numbers
-Vector *inspect_tokens(Vector *tokens) {
+static Token *inspect_pp_number(Token *token) {
+  char *pp_number = token->pp_number;
+  int pos = 0;
+
+  unsigned long long int_value = 0;
+  bool int_decimal = false;
+  if (pp_number[pos] == '0') {
+    pos++;
+    if (tolower(pp_number[pos]) == 'x') {
+      pos++;
+      while (isxdigit(pp_number[pos])) {
+        char c = pp_number[pos++];
+        int d = isdigit(c) ? c - '0' : tolower(c) - 'a' + 10;
+        int_value = int_value * 16 + d;
+      }
+    } else {
+      while ('0' <= pp_number[pos] && pp_number[pos] < '8') {
+        int_value = int_value * 8 + (pp_number[pos++] - '0');
+      }
+    }
+  } else {
+    int_decimal = true;
+    while (isdigit(pp_number[pos])) {
+      int_value = int_value * 10 + (pp_number[pos++] - '0');
+    }
+  }
+
+  bool int_u = false;
+  bool int_l = false;
+  bool int_ll = false;
+  if (tolower(pp_number[pos]) == 'u') {
+    int_u = true;
+    pos++;
+    if (tolower(pp_number[pos] == 'l')) {
+      pos++;
+      if (tolower(pp_number[pos] == 'l')) {
+        int_ll = true;
+        pos++;
+      } else {
+        int_l = true;
+      }
+    }
+  } else if (tolower(pp_number[pos]) == 'l') {
+    pos++;
+    if (tolower(pp_number[pos]) == 'l') {
+      int_ll = true;
+      pos++;
+    } else {
+      int_l = true;
+    }
+    if (tolower(pp_number[pos]) == 'u') {
+      int_u = true;
+      pos++;
+    }
+  }
+
+  if (pp_number[pos] != '\0') {
+    ERROR(token, "invalid preprocessing number.");
+  }
+
+  Token *int_const = calloc(1, sizeof(Token));
+  int_const->tk_type = TK_INTEGER_CONST;
+  int_const->text = token->text;
+  int_const->loc = token->loc;
+  int_const->int_value = int_value;
+  int_const->int_decimal = int_decimal;
+  int_const->int_u = int_u;
+  int_const->int_l = int_l;
+  int_const->int_ll = int_ll;
+  return int_const;
+}
+
+TransUnit *parse(Vector *_tokens) {
+  // remove newlines and white-spaces
+  // inspect pp-numbers
   Vector *parse_tokens = vector_new();
-
-  for (int i = 0; i < tokens->length; i++) {
-    Token *token = tokens->buffer[i];
-
+  for (int i = 0; i < _tokens->length; i++) {
+    Token *token = _tokens->buffer[i];
     if (token->tk_type == TK_SPACE) continue;
     if (token->tk_type == TK_NEWLINE) continue;
-
     if (token->tk_type == TK_PP_NUMBER) {
       vector_push(parse_tokens, inspect_pp_number(token));
     } else {
@@ -1300,15 +1561,8 @@ Vector *inspect_tokens(Vector *tokens) {
     }
   }
 
-  return parse_tokens;
-}
-
-TransUnit *parse(Vector *tokens) {
-  tokens = inspect_tokens(tokens);
-  scanner_init(tokens);
-
-  literals = vector_new();
-  symbol_scopes = vector_new();
+  tokens = (Token **) parse_tokens->buffer;
+  pos = 0;
 
   return translation_unit();
 }

@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 noreturn void error(Location *loc, char *format, ...) {
   char *filename = loc->filename;

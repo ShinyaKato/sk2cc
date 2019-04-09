@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 static char *filename;
 
@@ -52,10 +52,14 @@ static String *replace_newline(String *file) {
 }
 
 static Token *create_token(TokenType tk_type) {
-  return token_new(tk_type, text->buffer, loc);
+  Token *token = calloc(1, sizeof(Token));
+  token->tk_type = tk_type;
+  token->text = text->buffer;
+  token->loc = loc;
+  return token;
 }
 
-void next_line() {
+static void next_line() {
   line_ptr = &src[pos];
   lineno++;
   column = 1;
@@ -158,8 +162,13 @@ static Token *next_token() {
   skip_backslash_newline();
 
   // store the start position of the next token.
+  loc = calloc(1, sizeof(Location));
+  loc->filename = filename;
+  loc->line_ptr = line_ptr;
+  loc->lineno = lineno;
+  loc->column = column;
+
   text = string_new();
-  loc = location_new(filename, line_ptr, lineno, column);
 
   // check EOF
   if (peek_char() == '\0') {
@@ -278,8 +287,11 @@ static Token *next_token() {
     return create_token(TK_ELLIPSIS);
   }
 
-  if (check_char_token(c)) {
-    return create_token(c);
+  char *tk_chars = "[](){}.&*+-~!/%<>^|?:;=,#";
+  for (int i = 0; i < tk_chars[i]; i++) {
+    if (c == tk_chars[i]) {
+      return create_token(c);
+    }
   }
 
   error(loc, "failed to tokenize.");

@@ -1,4 +1,4 @@
-#include "sk2cc.h"
+#include "cc.h"
 
 typedef enum macro_type {
   OBJECT_MACRO,
@@ -13,12 +13,65 @@ typedef struct macro {
   bool expanded;
 } Macro;
 
-Map *macros;
+static Map *macros;
 
-Vector *replace_macro(Vector *tokens, char *filename, int lineno);
-Vector *preprocessing_unit();
+// tokens
 
-bool check_file_macro(Token *token) {
+static Vector *stash_tokens, *stash_pos;
+static Token **tokens;
+static int pos;
+
+static bool has_next() {
+  return tokens[pos] != NULL;
+}
+
+static Token *get() {
+  return tokens[pos++];
+}
+
+static Token *check(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos];
+  }
+  return NULL;
+}
+
+static Token *read(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos++];
+  }
+  return NULL;
+}
+
+static Token *expect(TokenType tk_type) {
+  if (tokens[pos]->tk_type == tk_type) {
+    return tokens[pos++];
+  }
+
+  if (isprint(tk_type)) {
+    ERROR(tokens[pos], "'%c' is expected.", tk_type);
+  }
+  ERROR(tokens[pos], "unexpected token.");
+}
+
+static void stash(Vector *_tokens) {
+  vector_push(stash_tokens, tokens);
+  vector_pushi(stash_pos, pos);
+  tokens = (Token **) _tokens->buffer;
+  pos = 0;
+}
+
+static void restore() {
+  tokens = vector_pop(stash_tokens);
+  pos = vector_popi(stash_pos);
+}
+
+// macro replacement
+
+static Vector *replace_macro(Vector *tokens, char *filename, int lineno);
+static Vector *preprocessing_unit();
+
+static bool check_file_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     return strcmp(token->identifier, "__FILE__") == 0;
   }
@@ -26,7 +79,7 @@ bool check_file_macro(Token *token) {
   return false;
 }
 
-bool check_line_macro(Token *token) {
+static bool check_line_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     return strcmp(token->identifier, "__LINE__") == 0;
   }
@@ -34,7 +87,7 @@ bool check_line_macro(Token *token) {
   return false;
 }
 
-bool check_object_macro(Token *token) {
+static bool check_object_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
     Macro *macro = map_lookup(macros, token->identifier);
     return macro && !macro->expanded && macro->mc_type == OBJECT_MACRO;
@@ -43,8 +96,8 @@ bool check_object_macro(Token *token) {
   return false;
 }
 
-bool check_function_macro(Token *token) {
-  if (token->tk_type == TK_IDENTIFIER && has_next_token() && check_token('(')) {
+static bool check_function_macro(Token *token) {
+  if (token->tk_type == TK_IDENTIFIER && has_next() && check('(')) {
     Macro *macro = map_lookup(macros, token->identifier);
     return macro && !macro->expanded && macro->mc_type == FUNCTION_MACRO;
   }
@@ -52,7 +105,7 @@ bool check_function_macro(Token *token) {
   return false;
 }
 
-Token *expand_file_macro(Token *token, char *filename) {
+static Token *expand_file_macro(Token *token, char *filename) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -66,12 +119,15 @@ Token *expand_file_macro(Token *token, char *filename) {
   string_write(literal, filename);
   string_push(literal, '\0');
 
-  Token *str = token_new(TK_STRING_LITERAL, text->buffer, token->loc);
+  Token *str = calloc(1, sizeof(Token));
+  str->tk_type = TK_STRING_LITERAL;
+  str->text = text->buffer;
+  str->loc = token->loc;
   str->string_literal = literal;
   return str;
 }
 
-Token *expand_line_macro(Token *token, int lineno) {
+static Token *expand_line_macro(Token *token, int lineno) {
   if (!lineno) {
     lineno = token->loc->lineno;
   }
@@ -86,12 +142,15 @@ Token *expand_line_macro(Token *token, int lineno) {
     text->buffer[j] = c;
   }
 
-  Token *num = token_new(TK_PP_NUMBER, text->buffer, token->loc);
+  Token *num = calloc(1, sizeof(Token));
+  num->tk_type = TK_PP_NUMBER;
+  num->text = text->buffer;
+  num->loc = token->loc;
   num->pp_number = text->buffer;
   return num;
 }
 
-Vector *expand_object_macro(Token *token, char *filename, int lineno) {
+static Vector *expand_object_macro(Token *token, char *filename, int lineno) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -108,7 +167,7 @@ Vector *expand_object_macro(Token *token, char *filename, int lineno) {
   return tokens;
 }
 
-Vector *expand_function_macro(Token *token, char *filename, int lineno) {
+static Vector *expand_function_macro(Token *token, char *filename, int lineno) {
   if (!filename) {
     filename = token->loc->filename;
   }
@@ -119,21 +178,21 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
   Macro *macro = map_lookup(macros, token->identifier);
   Map *args = map_new();
 
-  read_token(TK_SPACE);
-  expect_token('(');
+  read(TK_SPACE);
+  expect('(');
   for (int i = 0; i < macro->params->length; i++) {
     Token *param = macro->params->buffer[i];
 
     Vector *arg = vector_new();
     int depth = 0;
 
-    read_token(TK_SPACE);
+    read(TK_SPACE);
     while (1) {
-      Token *token = get_token();
+      Token *token = get();
       if (token->tk_type == '(') depth++;
       if (token->tk_type == ')') depth--;
 
-      bool finished = depth == 0 && (check_token(',') || check_token(')'));
+      bool finished = depth == 0 && (check(',') || check(')'));
       if (token->tk_type == TK_SPACE && finished) break;
       vector_push(arg, token);
       if (finished) break;
@@ -142,10 +201,10 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
     map_put(args, param->identifier, arg);
 
     if (i != macro->params->length - 1) {
-      expect_token(',');
+      expect(',');
     } else {
-      if (macro->ellipsis && !check_token(')')) {
-        expect_token(',');
+      if (macro->ellipsis && !check(')')) {
+        expect(',');
       }
     }
   }
@@ -153,13 +212,13 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
     Vector *va_args = vector_new();
     int depth = 0;
 
-    read_token(TK_SPACE);
+    read(TK_SPACE);
     while (1) {
-      Token *token = get_token();
+      Token *token = get();
       if (token->tk_type == '(') depth++;
       if (token->tk_type == ')') depth--;
 
-      bool finished = depth == 0 && check_token(')');
+      bool finished = depth == 0 && check(')');
       if (token->tk_type == TK_SPACE && finished) break;
       vector_push(va_args, token);
       if (finished) break;
@@ -167,13 +226,13 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
 
     map_put(args, "__VA_ARGS__", va_args);
   }
-  expect_token(')');
+  expect(')');
 
-  Scanner *prev = scanner_preserve(macro->replace);
+  stash(macro->replace);
 
   Vector *tokens = vector_new();
-  while (has_next_token()) {
-    Token *token = get_token();
+  while (has_next()) {
+    Token *token = get();
     if (token->tk_type == TK_IDENTIFIER && map_lookup(args, token->identifier)) {
       Vector *arg = map_lookup(args, token->identifier);
       vector_merge(tokens, arg);
@@ -182,7 +241,7 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
     vector_push(tokens, token);
   }
 
-  scanner_restore(prev);
+  restore();
 
   macro->expanded = true;
   tokens = replace_macro(tokens, filename, lineno);
@@ -191,12 +250,12 @@ Vector *expand_function_macro(Token *token, char *filename, int lineno) {
   return tokens;
 }
 
-Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
-  Scanner *prev = scanner_preserve(tokens);
+static Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
+  stash(tokens);
 
   Vector *result = vector_new();
-  while (has_next_token()) {
-    Token *token = get_token();
+  while (has_next()) {
+    Token *token = get();
     if (check_file_macro(token)) {
       vector_push(result, expand_file_macro(token, filename));
     } else if (check_line_macro(token)) {
@@ -210,47 +269,49 @@ Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
     }
   }
 
-  scanner_restore(prev);
+  restore();
 
   return result;
 }
 
-void define_directive() {
-  char *identifier = expect_token(TK_IDENTIFIER)->identifier;
+// directives
+
+static void define_directive() {
+  char *identifier = expect(TK_IDENTIFIER)->identifier;
 
   MacroType mc_type;
   Vector *params = NULL;
   bool ellipsis = false;
-  if (check_token(TK_SPACE) || check_token(TK_NEWLINE)) {
+  if (check(TK_SPACE) || check(TK_NEWLINE)) {
     mc_type = OBJECT_MACRO;
-  } else if (read_token('(')) {
+  } else if (read('(')) {
     mc_type = FUNCTION_MACRO;
     params = vector_new();
-    if (!check_token(')')) {
+    if (!check(')')) {
       do {
-        read_token(TK_SPACE);
-        if (read_token(TK_ELLIPSIS)) {
+        read(TK_SPACE);
+        if (read(TK_ELLIPSIS)) {
           ellipsis = true;
-          read_token(TK_SPACE);
+          read(TK_SPACE);
           break;
         }
-        vector_push(params, expect_token(TK_IDENTIFIER));
-        read_token(TK_SPACE);
-      } while (read_token(','));
+        vector_push(params, expect(TK_IDENTIFIER));
+        read(TK_SPACE);
+      } while (read(','));
     }
-    expect_token(')');
+    expect(')');
   }
 
   Vector *replace = vector_new();
-  if (!check_token(TK_NEWLINE)) {
-    expect_token(TK_SPACE);
-    while (!check_token(TK_NEWLINE)) {
-      Token *token = get_token();
-      if (token->tk_type == TK_SPACE && check_token(TK_NEWLINE)) break;
+  if (!check(TK_NEWLINE)) {
+    expect(TK_SPACE);
+    while (!check(TK_NEWLINE)) {
+      Token *token = get();
+      if (token->tk_type == TK_SPACE && check(TK_NEWLINE)) break;
       vector_push(replace, token);
     }
   }
-  expect_token(TK_NEWLINE);
+  expect(TK_NEWLINE);
 
   Macro *macro = (Macro *) calloc(1, sizeof(Macro));
   macro->mc_type = mc_type;
@@ -261,50 +322,53 @@ void define_directive() {
   map_put(macros, identifier, macro);
 }
 
-Vector *include_directive() {
-  char *filename = expect_token(TK_STRING_LITERAL)->string_literal->buffer;
-  read_token(TK_SPACE);
-  expect_token(TK_NEWLINE);
+static Vector *include_directive() {
+  char *filename = expect(TK_STRING_LITERAL)->string_literal->buffer;
+  read(TK_SPACE);
+  expect(TK_NEWLINE);
 
   Vector *pp_tokens = tokenize(filename);
   vector_pop(pp_tokens);
 
-  Scanner *prev = scanner_preserve(pp_tokens);
+  stash(pp_tokens);
+
   Vector *tokens = preprocessing_unit();
-  scanner_restore(prev);
+
+  restore();
 
   return tokens;
 }
 
-Vector *text_line() {
+static Vector *text_line() {
   Vector *text_tokens = vector_new();
 
-  while (has_next_token()) {
-    Token *token = get_token();
+  while (has_next()) {
+    Token *token = get();
     vector_push(text_tokens, token);
 
-    if (token->tk_type == TK_NEWLINE && check_token('#')) {
-      break;
+    if (token->tk_type == TK_NEWLINE) {
+      if (!has_next()) break;
+      if (check('#')) break;
     }
   }
 
   return replace_macro(text_tokens, NULL, 0);
 }
 
-Vector *group() {
+static Vector *group() {
   Vector *tokens = vector_new();
 
-  while (has_next_token()) {
-    Token *token = read_token('#');
+  while (has_next()) {
+    Token *token = read('#');
 
     if (token) {
-      read_token(TK_SPACE);
+      read(TK_SPACE);
 
       // null directive
-      if (read_token(TK_NEWLINE)) continue;
+      if (read(TK_NEWLINE)) continue;
 
-      char *directive = expect_token(TK_IDENTIFIER)->identifier;
-      read_token(TK_SPACE);
+      char *directive = expect(TK_IDENTIFIER)->identifier;
+      read(TK_SPACE);
 
       if (strcmp(directive, "define") == 0) {
         define_directive();
@@ -321,17 +385,21 @@ Vector *group() {
   return tokens;
 }
 
-Vector *preprocessing_unit() {
+static Vector *preprocessing_unit() {
   return group();
 }
 
 // preprocess
 
-Vector *preprocess(Vector *pp_tokens) {
+Vector *preprocess(Vector *_tokens) {
+  Token *eof = vector_pop(_tokens);
+
   macros = map_new();
 
-  Token *eof = vector_pop(pp_tokens);
-  scanner_init(pp_tokens);
+  stash_tokens = vector_new();
+  stash_pos = vector_new();
+  tokens = (Token **) _tokens->buffer;
+  pos = 0;
 
   Vector *tokens = preprocessing_unit();
   vector_push(tokens, eof);

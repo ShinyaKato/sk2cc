@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "../sk2cc.h"
+#include "../string.h"
 
 int main(void) {
   String *string = string_new();

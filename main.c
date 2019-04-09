@@ -1,40 +1,37 @@
 #include "sk2cc.h"
 
-void print_usage() {
-  fprintf(stderr, "[usage] ./sk2cc filename\n");
-  exit(0);
-}
+extern void compile(char *input, bool cpp);
+extern void assemble(char *input, char *output);
 
 int main(int argc, char **argv) {
-  char *filename = NULL;
-  bool only_cpp = false;
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-E") == 0) {
-      only_cpp = true;
-    } else {
-      filename = argv[i];
+  char *command = argv[0];
+
+  if (argc >= 2 && strcmp(argv[1], "--as") == 0) {
+    if (argc != 4) {
+      fprintf(stderr, "usage: %s --as [input file]\n", command);
+      exit(1);
     }
-  }
 
-  if (!filename) {
-    print_usage();
-  }
-
-  Vector *pp_tokens = tokenize(filename);
-  Vector *tokens = preprocess(pp_tokens);
-
-  if (only_cpp) {
-    for (int i = 0; i < tokens->length; i++) {
-      Token *token = tokens->buffer[i];
-      if (token->tk_type == TK_EOF) break;
-      printf("%s", token->text);
+    char *input = argv[2];
+    char *output = argv[3];
+    assemble(input, output);
+  } else if (argc >= 2 && strcmp(argv[1], "--cpp") == 0) {
+    if (argc != 3) {
+      fprintf(stderr, "usage: %s --cpp [input file]\n", command);
+      exit(1);
     }
-    exit(0);
-  }
 
-  TransUnit *trans_unit = parse(tokens);
-  sema(trans_unit);
-  gen(trans_unit);
+    char *input = argv[2];
+    compile(input, true);
+  } else {
+    if (argc != 2) {
+      fprintf(stderr, "usage: %s [input  file]\n", command);
+      exit(1);
+    }
+
+    char *input = argv[1];
+    compile(input, false);
+  }
 
   return 0;
 }
