@@ -1377,25 +1377,25 @@ static Type *sema_typedef_name(Specifier *spec) {
 }
 
 static Type *sema_declarator(Declarator *decl, Type *type) {
-  if (decl && decl->decl_type == DECL_POINTER) {
-    Type *pointer_to = sema_declarator(decl->decl, type);
-    return type_pointer(pointer_to);
+  if (!decl) return type;
+
+  if (decl->decl_type == DECL_POINTER) {
+    Type *pointer = type_pointer(type);
+    return sema_declarator(decl->decl, pointer);
   }
 
-  if (decl && decl->decl_type == DECL_ARRAY) {
-    Type *array_of = sema_declarator(decl->decl, type);
-    Type *type = type_array_incomplete(array_of);
+  if (decl->decl_type == DECL_ARRAY) {
+    Type *array = type_array_incomplete(type);
     if (decl->size) {
       if (decl->size->nd_type != ND_INTEGER) {
         ERROR(decl->size->token, "only integer constant is supported for array size.");
       }
-      type = type_array(type, decl->size->int_value);
+      array = type_array(array, decl->size->int_value);
     }
-    return type;
+    return sema_declarator(decl->decl, array);
   }
 
-  if (decl && decl->decl_type == DECL_FUNCTION) {
-    Type *returning = sema_declarator(decl->decl, type);
+  if (decl->decl_type == DECL_FUNCTION) {
     Vector *params = vector_new();
     for (int i = 0; i < decl->params->length; i++) {
       Decl *param = decl->params->buffer[i];
@@ -1406,10 +1406,11 @@ static Type *sema_declarator(Declarator *decl, Type *type) {
       }
       vector_push(params, param->symbol);
     }
-    return type_function(returning, params, decl->ellipsis);
+    Type *func = type_function(type, params, decl->ellipsis);
+    return sema_declarator(decl->decl, func);
   }
 
-  return type;
+  internal_error("invalid declarator");
 }
 
 static Type *sema_type_name(TypeName *type_name) {

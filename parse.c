@@ -692,11 +692,11 @@ static Symbol *enumerator();
 static Specifier *typedef_name();
 static Specifier *function_specifier();
 static Symbol *init_declarator(bool sp_typedef);
-static Symbol *declarator(bool sp_typedef, Declarator *decl);
-static Symbol *direct_declarator(bool sp_typedef, Declarator *decl);
+static Symbol *declarator(bool sp_typedef);
+static Symbol *direct_declarator(bool sp_typedef);
 static Decl *parameter_declaration();
 static TypeName *type_name();
-static Declarator *abstract_declarator(Declarator *decl);
+static Declarator *abstract_declarator();
 static Initializer *initializer();
 
 // declaration :
@@ -865,7 +865,7 @@ static Decl *struct_declaration() {
   Vector *symbols = vector_new();
   if (!check(';')) {
     do {
-      vector_push(symbols, declarator(false, NULL));
+      vector_push(symbols, declarator(false));
     } while (read(','));
   }
   expect(';');
@@ -962,46 +962,49 @@ static Specifier *function_specifier() {
 //   declarator
 //   declarator '=' initializer
 static Symbol *init_declarator(bool sp_typedef) {
-  Symbol *symbol = declarator(sp_typedef, NULL);
+  Symbol *symbol = declarator(sp_typedef);
   symbol->init = read('=') ? initializer() : NULL;
+
   return symbol;
 }
 
 // declarator :
 //   '*'* direct-declarator
-static Symbol *declarator(bool sp_typedef, Declarator *decl) {
+static Symbol *declarator(bool sp_typedef) {
   Token *token = peek();
 
   if (read('*')) {
-    return declarator(sp_typedef, declarator_new(DECL_POINTER, decl, token));
+    Symbol *symbol = declarator(sp_typedef);
+    symbol->decl = declarator_new(DECL_POINTER, symbol->decl, token);
+
+    return symbol;
   }
 
-  return direct_declarator(sp_typedef, decl);
+  return direct_declarator(sp_typedef);
 }
 
 // direct-declarator :
 //   identifier
 //   direct-declarator '[' assignment-expression? ']'
 //   direct-declarator '(' (parameter-declaration (',' parameter-declaration)* (',' ...)?)? ')'
-static Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
+static Symbol *direct_declarator(bool sp_typedef) {
   Token *token = expect(TK_IDENTIFIER);
 
   Symbol *symbol = calloc(1, sizeof(Symbol));
   symbol->sy_type = sp_typedef ? SY_TYPE : SY_VARIABLE;
   symbol->identifier = token->identifier;
+  symbol->decl = NULL;
   symbol->token = token;
 
-  Declarator **decl_ptr = &symbol->decl;
   while (1) {
     Token *token = peek();
 
-    Declarator *decl;
     if (read('[')) {
       Expr *size = !check(']') ? assignment_expression() : NULL;
       expect(']');
 
-      decl = declarator_new(DECL_ARRAY, NULL, token);
-      decl->size = size;
+      symbol->decl = declarator_new(DECL_ARRAY, symbol->decl, token);
+      symbol->decl->size = size;
     } else if (read('(')) {
       Map *proto_scope = map_new(); // begin prototype scope
       vector_push(symbol_scopes, proto_scope);
@@ -1022,19 +1025,14 @@ static Symbol *direct_declarator(bool sp_typedef, Declarator *decl) {
 
       vector_pop(symbol_scopes); // end prototype scope
 
-      decl = declarator_new(DECL_FUNCTION, NULL, token);
-      decl->params = params;
-      decl->ellipsis = ellipsis;
-      decl->proto_scope = proto_scope;
+      symbol->decl = declarator_new(DECL_FUNCTION, symbol->decl, token);
+      symbol->decl->params = params;
+      symbol->decl->ellipsis = ellipsis;
+      symbol->decl->proto_scope = proto_scope;
     } else {
       break;
     }
-
-    *decl_ptr = decl;
-    decl_ptr = &decl->decl;
   }
-
-  *decl_ptr = decl;
 
   return symbol;
 }
@@ -1045,7 +1043,7 @@ static Decl *parameter_declaration() {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
-  Symbol *symbol = declarator(false, NULL);
+  Symbol *symbol = declarator(false);
 
   put_symbol(symbol->identifier, symbol);
 
@@ -1058,7 +1056,7 @@ static TypeName *type_name() {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
-  Declarator *decl = check('*') ? abstract_declarator(NULL) : NULL;
+  Declarator *decl = check('*') ? abstract_declarator() : NULL;
 
   TypeName *type_name = calloc(1, sizeof(TypeName));
   type_name->specs = specs;
@@ -1069,14 +1067,14 @@ static TypeName *type_name() {
 
 // abstract-declarator :
 //   '*' '*'*
-static Declarator *abstract_declarator(Declarator *decl) {
+static Declarator *abstract_declarator() {
   Token *token = expect('*');
 
   if (check('*')) {
-    return abstract_declarator(declarator_new(DECL_POINTER, decl, token));
+    return declarator_new(DECL_POINTER, abstract_declarator(), token);
   }
 
-  return declarator_new(DECL_POINTER, decl, token);
+  return declarator_new(DECL_POINTER, NULL, token);
 }
 
 // initializer :
@@ -1400,7 +1398,7 @@ static Node *external_declaration() {
     return (Node *) decl_new(specs, vector_new(), token);
   }
 
-  Symbol *symbol = declarator(sp_typedef, NULL);
+  Symbol *symbol = declarator(sp_typedef);
 
   // If '{' does not follow the first declarator,
   // this is declaration with init-declarators.
@@ -1422,16 +1420,23 @@ static Node *external_declaration() {
   }
 
   // Otherwise, this is function definition.
+  Declarator *func_decl = symbol->decl;
+  if (func_decl) {
+    while (func_decl->decl) {
+      func_decl = func_decl->decl;
+    }
+  }
+  if (!func_decl || func_decl->decl_type != DECL_FUNCTION) {
+    ERROR(symbol->token, "function definition should have function type.");
+  }
+
   if (sp_typedef) {
     ERROR(token, "typedef is not allowed in function definition.");
-  }
-  if (!symbol->decl || symbol->decl->decl_type != DECL_FUNCTION) {
-    ERROR(symbol->token, "function definition should have function type.");
   }
 
   put_symbol(symbol->identifier, symbol);
 
-  vector_push(symbol_scopes, symbol->decl->proto_scope);
+  vector_push(symbol_scopes, func_decl->proto_scope);
   Stmt *body = compound_statement();
   vector_pop(symbol_scopes);
 
