@@ -363,6 +363,11 @@ int main() {
 }
 EOS
 
+expect_return 42 <<-EOS
+int func(void) { return 42; }
+int main(void) { return func(); }
+EOS
+
 # testing error case
 test_error "int main() { 2 * (3 + 4; }"
 test_error "int main() { 5 + *; }"

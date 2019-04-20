@@ -7,6 +7,8 @@ static Vector *literals; // Vector<String*>
 static Vector *symbol_scopes; // Vector<Map<SymbolType*>*>
 
 static void put_symbol(char *identifier, Symbol *symbol) {
+  if (!identifier) return;
+
   Map *map = symbol_scopes->buffer[symbol_scopes->length - 1];
 
   symbol->prev = map_lookup(map, identifier);
@@ -18,6 +20,8 @@ static void put_symbol(char *identifier, Symbol *symbol) {
 }
 
 static Symbol *lookup_symbol(char *identifier) {
+  if (!identifier) return NULL;
+
   for (int i = symbol_scopes->length - 1; i >= 0; i--) {
     Map *map = symbol_scopes->buffer[i];
     Symbol *symbol = map_lookup(map, identifier);
@@ -695,9 +699,11 @@ static Symbol *init_declarator(bool sp_typedef);
 static Symbol *declarator(bool sp_typedef);
 static Symbol *direct_declarator(bool sp_typedef);
 static Decl *parameter_declaration();
+static Symbol *param_declarator();
+static Symbol *param_direct_declarator();
 static TypeName *type_name();
-static Declarator *abstract_declarator();
-static Declarator *direct_abstract_declarator();
+static Symbol *abstract_declarator();
+static Symbol *direct_abstract_declarator();
 static Initializer *initializer();
 
 // declaration :
@@ -1040,53 +1046,40 @@ static Symbol *direct_declarator(bool sp_typedef) {
 
 // parameter-declaration :
 //   specifier-qualifier-list declarator
+//   specifier-qualifier abstract-declarator?
 static Decl *parameter_declaration() {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
-  Symbol *symbol = declarator(false);
+  Symbol *symbol = param_declarator();
 
   put_symbol(symbol->identifier, symbol);
 
   return param_new(specs, symbol, token);
 }
 
-// type-name :
-//   specifier-qualifier-list abstract-declarator?
-static TypeName *type_name() {
-  Token *token = peek();
-
-
-  Vector *specs = specifier_qualifier_list();
-  Declarator *decl = check('*') || check('[') || check('(') ? abstract_declarator() : NULL;
-
-  TypeName *type_name = calloc(1, sizeof(TypeName));
-  type_name->specs = specs;
-  type_name->decl = decl;
-  type_name->token = token;
-  return type_name;
-}
-
-// abstract-declarator :
-//   '*' '*'*
-//   ('*' '*'*)? direct-abstract-declarator
-static Declarator *abstract_declarator() {
+static Symbol *param_declarator() {
   Token *token = peek();
 
   if (read('*')) {
-    if (check('*') || check('[') || check('(')) {
-      return declarator_new(DECL_POINTER, abstract_declarator(), token);
-    }
-    return declarator_new(DECL_POINTER, NULL, token);
+    Symbol *symbol = param_declarator();
+    symbol->decl = declarator_new(DECL_POINTER, symbol->decl, token);
+
+    return symbol;
   }
 
-  return direct_abstract_declarator();
+  return param_direct_declarator();
 }
 
-// direct-abstract-declarator :
-//   direct-abstract-declarator '[' assignment-expression ']'
-static Declarator *direct_abstract_declarator() {
-  Declarator *decl = NULL;
+static Symbol *param_direct_declarator() {
+  Token *token = peek();
+  Token *ident = read(TK_IDENTIFIER);
+
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = SY_VARIABLE;
+  symbol->identifier = ident ? ident->identifier : NULL;
+  symbol->decl = NULL;
+  symbol->token = token;
 
   while (1) {
     Token *token = peek();
@@ -1095,8 +1088,8 @@ static Declarator *direct_abstract_declarator() {
       Expr *size = !check(']') ? assignment_expression() : NULL;
       expect(']');
 
-      decl = declarator_new(DECL_ARRAY, decl, token);
-      decl->size = size;
+      symbol->decl = declarator_new(DECL_ARRAY, symbol->decl, token);
+      symbol->decl->size = size;
     } else if (read('(')) {
       Map *proto_scope = map_new(); // begin prototype scope
       vector_push(symbol_scopes, proto_scope);
@@ -1117,16 +1110,108 @@ static Declarator *direct_abstract_declarator() {
 
       vector_pop(symbol_scopes); // end prototype scope
 
-      decl = declarator_new(DECL_FUNCTION, decl, token);
-      decl->params = params;
-      decl->ellipsis = ellipsis;
-      decl->proto_scope = proto_scope;
+      symbol->decl = declarator_new(DECL_FUNCTION, symbol->decl, token);
+      symbol->decl->params = params;
+      symbol->decl->ellipsis = ellipsis;
+      symbol->decl->proto_scope = proto_scope;
     } else {
       break;
     }
   }
 
-  return decl;
+  return symbol;
+}
+
+// type-name :
+//   specifier-qualifier-list abstract-declarator?
+static TypeName *type_name() {
+  Token *token = peek();
+
+  Vector *specs = specifier_qualifier_list();
+  Declarator *decl = NULL;
+  if (check('*') || check('[') || check('(')) {
+    decl = abstract_declarator()->decl;
+  }
+
+  TypeName *type_name = calloc(1, sizeof(TypeName));
+  type_name->specs = specs;
+  type_name->decl = decl;
+  type_name->token = token;
+  return type_name;
+}
+
+// abstract-declarator :
+//   '*' '*'*
+//   ('*' '*'*)? direct-abstract-declarator
+static Symbol *abstract_declarator() {
+  Token *token = peek();
+
+  if (read('*')) {
+    if (check('*') || check('[') || check('(')) {
+      Symbol *symbol = abstract_declarator();
+      symbol->decl = declarator_new(DECL_POINTER, symbol->decl, token);
+      return symbol;
+    }
+
+    Symbol *symbol = calloc(1, sizeof(Symbol));
+    symbol->sy_type = SY_VARIABLE;
+    symbol->decl = declarator_new(DECL_POINTER, NULL, token);
+    symbol->token = token;
+    return symbol;
+  }
+
+  return direct_abstract_declarator();
+}
+
+// direct-abstract-declarator :
+//   direct-abstract-declarator '[' assignment-expression ']'
+static Symbol *direct_abstract_declarator() {
+  Token *token = peek();
+
+  Symbol *symbol = calloc(1, sizeof(Symbol));
+  symbol->sy_type = SY_VARIABLE;
+  symbol->decl = NULL;
+  symbol->token = token;
+
+  while (1) {
+    Token *token = peek();
+
+    if (read('[')) {
+      Expr *size = !check(']') ? assignment_expression() : NULL;
+      expect(']');
+
+      symbol->decl = declarator_new(DECL_ARRAY, symbol->decl, token);
+      symbol->decl->size = size;
+    } else if (read('(')) {
+      Map *proto_scope = map_new(); // begin prototype scope
+      vector_push(symbol_scopes, proto_scope);
+
+      Vector *params = vector_new();
+      bool ellipsis = false;
+      if (!check(')')) {
+        vector_push(params, parameter_declaration());
+        while (read(',')) {
+          if (read(TK_ELLIPSIS)) {
+            ellipsis = true;
+            break;
+          }
+          vector_push(params, parameter_declaration());
+        }
+      }
+      expect(')');
+
+      vector_pop(symbol_scopes); // end prototype scope
+
+      symbol->decl = declarator_new(DECL_FUNCTION, symbol->decl, token);
+      symbol->decl->params = params;
+      symbol->decl->ellipsis = ellipsis;
+      symbol->decl->proto_scope = proto_scope;
+    } else {
+      break;
+    }
+  }
+
+  return symbol;
 }
 
 // initializer :

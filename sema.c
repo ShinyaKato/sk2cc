@@ -1405,12 +1405,22 @@ static Type *sema_declarator(Declarator *decl, Type *type) {
     for (int i = 0; i < decl->params->length; i++) {
       Decl *param = decl->params->buffer[i];
       DeclAttribution *attr = sema_specs(param->specs, param->token);
-      param->symbol->type = sema_declarator(param->symbol->decl, attr->type);
-      if (param->symbol->type->ty_type == TY_ARRAY) {
-        param->symbol->type = type_pointer(param->symbol->type->array_of);
+
+      Symbol *symbol = param->symbol;
+      symbol->type = sema_declarator(symbol->decl, attr->type);
+
+      // If the declarator includes only 'void', the function takes no parameter.
+      if (decl->params->length == 1 && !symbol->identifier && symbol->type->ty_type == TY_VOID) {
+        break;
       }
-      vector_push(params, param->symbol);
+
+      if (symbol->type->ty_type == TY_ARRAY) {
+        symbol->type = type_pointer(symbol->type->array_of);
+      }
+
+      vector_push(params, symbol);
     }
+
     Type *func = type_function(type, params, decl->ellipsis);
     return sema_declarator(decl->decl, func);
   }
