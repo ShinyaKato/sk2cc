@@ -1,7 +1,7 @@
 #include "sk2cc.h"
 #include "string.h"
 
-String *string_new() {
+String *string_new(void) {
   String *string = calloc(1, sizeof(String));
 
   int capacity = 64;

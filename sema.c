@@ -79,43 +79,43 @@ static Type *type_new(TypeType ty_type, int size, int align, bool complete) {
   return type;
 }
 
-static Type *type_void() {
+static Type *type_void(void) {
   return type_new(TY_VOID, 0, 1, false);
 }
 
-static Type *type_char() {
+static Type *type_char(void) {
   return type_new(TY_CHAR, 1, 1, true);
 }
 
-static Type *type_uchar() {
+static Type *type_uchar(void) {
   return type_new(TY_UCHAR, 1, 1, true);
 }
 
-static Type *type_short() {
+static Type *type_short(void) {
   return type_new(TY_SHORT, 2, 2, true);
 }
 
-static Type *type_ushort() {
+static Type *type_ushort(void) {
   return type_new(TY_USHORT, 2, 2, true);
 }
 
-static Type *type_int() {
+static Type *type_int(void) {
   return type_new(TY_INT, 4, 4, true);
 }
 
-static Type *type_uint() {
+static Type *type_uint(void) {
   return type_new(TY_UINT, 4, 4, true);
 }
 
-static Type *type_long() {
+static Type *type_long(void) {
   return type_new(TY_LONG, 8, 8, true);
 }
 
-static Type *type_ulong() {
+static Type *type_ulong(void) {
   return type_new(TY_ULONG, 8, 8, true);
 }
 
-static Type *type_bool() {
+static Type *type_bool(void) {
   return type_new(TY_BOOL, 1, 1, true);
 }
 
@@ -147,7 +147,7 @@ static Type *type_function(Type *returning, Vector *params, bool ellipsis) {
   return type;
 }
 
-static Type *type_struct_incomplete() {
+static Type *type_struct_incomplete(void) {
   return type_new(TY_STRUCT, 0, 1, false);
 }
 
@@ -197,7 +197,7 @@ static Type *type_struct(Type *type, Vector *symbols) {
 //   void *overflow_arg_area;
 //   void *reg_save_area;
 // } va_list[1];
-static Type *type_va_list() {
+static Type *type_va_list(void) {
   Vector *symbols = vector_new();
 
   Symbol *gp_offset = calloc(1, sizeof(Symbol));
@@ -1464,22 +1464,22 @@ static Vector *switch_cases;
 static int continue_level;
 static int break_level;
 
-static void begin_switch() {
+static void begin_switch(void) {
   vector_push(switch_cases, vector_new());
   break_level++;
 }
 
-static void end_switch() {
+static void end_switch(void) {
   vector_pop(switch_cases);
   break_level--;
 }
 
-static void begin_loop() {
+static void begin_loop(void) {
   continue_level++;
   break_level++;
 }
 
-static void end_loop() {
+static void end_loop(void) {
   continue_level--;
   break_level--;
 }

@@ -1,7 +1,7 @@
 #include "sk2cc.h"
 #include "vector.h"
 
-Vector *vector_new() {
+Vector *vector_new(void) {
   Vector *vector = calloc(1, sizeof(Vector));
 
   int capacity = 64;

@@ -36,7 +36,7 @@ static Symbol *lookup_symbol(char *identifier) {
 static Token **tokens;
 static int pos;
 
-static Token *peek() {
+static Token *peek(void) {
   return tokens[pos];
 }
 
@@ -67,7 +67,7 @@ static Token *expect(TokenType tk_type) {
 
 // check declaration specifiers
 
-static bool check_storage_class_specifier() {
+static bool check_storage_class_specifier(void) {
   if (check(TK_TYPEDEF)) return true;
   if (check(TK_EXTERN)) return true;
   if (check(TK_STATIC)) return true;
@@ -75,7 +75,7 @@ static bool check_storage_class_specifier() {
   return false;
 }
 
-static bool check_typedef_name() {
+static bool check_typedef_name(void) {
   if (check(TK_IDENTIFIER)) {
     Symbol *symbol = lookup_symbol(peek()->identifier);
     return symbol && symbol->sy_type == SY_TYPE;
@@ -84,7 +84,7 @@ static bool check_typedef_name() {
   return false;
 }
 
-static bool check_type_specifier() {
+static bool check_type_specifier(void) {
   if (check(TK_VOID)) return true;
   if (check(TK_CHAR)) return true;
   if (check(TK_SHORT)) return true;
@@ -100,13 +100,13 @@ static bool check_type_specifier() {
   return false;
 }
 
-static bool check_function_specifier() {
+static bool check_function_specifier(void) {
   if (check(TK_NORETURN)) return true;
 
   return false;
 }
 
-static bool check_declaration_specifier() {
+static bool check_declaration_specifier(void) {
   if (check_storage_class_specifier()) return true;
   if (check_type_specifier()) return true;
   if (check_function_specifier()) return true;
@@ -140,17 +140,17 @@ static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return expr;
 }
 
-static Expr *cast_expression();
-static Expr *assignment_expression();
-static Expr *expression();
-static TypeName *type_name();
+static Expr *cast_expression(void);
+static Expr *assignment_expression(void);
+static Expr *expression(void);
+static TypeName *type_name(void);
 
 // primary-expression :
 //   identifier
 //   integer-constant
 //   string-literal
 //   '(' expression ')'
-static Expr *primary_expression() {
+static Expr *primary_expression(void) {
   Token *token = peek();
 
   if (!check_typedef_name() && read(TK_IDENTIFIER)) {
@@ -300,7 +300,7 @@ static Expr *postfix_expression(Expr *expr) {
 //   '_Alignof' '(' type-name ')'
 // unary-operator :
 //   '&' | '*' | '+' | '-' | '~' | '!'
-static Expr *unary_expression() {
+static Expr *unary_expression(void) {
   Token *token = peek();
 
   if (read(TK_INC))
@@ -355,7 +355,7 @@ static Expr *unary_expression() {
 // cast-expression :
 //   unary-expression
 //   '(' type-name ')' cast-expression
-static Expr *cast_expression() {
+static Expr *cast_expression(void) {
   Token *token = peek();
 
   // If type-specifier follows '(', it is cast-expression.
@@ -592,7 +592,7 @@ static Expr *conditional_expression(Expr *cond) {
 //   unary-expression assignment-operator assignment-expression
 // assignment-operator :
 //   '=' | '*=' | '/=' | '%=' | '+=' | '-='
-static Expr *assignment_expression() {
+static Expr *assignment_expression(void) {
   Expr *expr = cast_expression();
 
   Token *token = peek();
@@ -614,7 +614,7 @@ static Expr *assignment_expression() {
 
 // expression :
 //   assignment-expression (',' assignment-expression)*
-static Expr *expression() {
+static Expr *expression(void) {
   Expr *expr = assignment_expression();
 
   while (1) {
@@ -631,7 +631,7 @@ static Expr *expression() {
 
 // constant-expression :
 //   conditional-expression
-static Expr *constant_expression() {
+static Expr *constant_expression(void) {
   return conditional_expression(NULL);
 }
 
@@ -685,30 +685,30 @@ static bool check_typedef(Vector *specs) {
   return sp_typedef;
 }
 
-static Vector *declaration_specifiers();
-static Vector *specifier_qualifier_list();
-static Specifier *storage_class_specifier();
-static Specifier *type_specifier();
-static Specifier *struct_or_union_specifier();
-static Decl *struct_declaration();
-static Specifier *enum_specifier();
-static Symbol *enumerator();
-static Specifier *typedef_name();
-static Specifier *function_specifier();
+static Vector *declaration_specifiers(void);
+static Vector *specifier_qualifier_list(void);
+static Specifier *storage_class_specifier(void);
+static Specifier *type_specifier(void);
+static Specifier *struct_or_union_specifier(void);
+static Decl *struct_declaration(void);
+static Specifier *enum_specifier(void);
+static Symbol *enumerator(void);
+static Specifier *typedef_name(void);
+static Specifier *function_specifier(void);
 static Symbol *init_declarator(bool sp_typedef);
 static Symbol *declarator(bool sp_typedef);
 static Symbol *direct_declarator(bool sp_typedef);
-static Decl *parameter_declaration();
-static Symbol *param_declarator();
-static Symbol *param_direct_declarator();
-static TypeName *type_name();
-static Symbol *abstract_declarator();
-static Symbol *direct_abstract_declarator();
-static Initializer *initializer();
+static Decl *parameter_declaration(void);
+static Symbol *param_declarator(void);
+static Symbol *param_direct_declarator(void);
+static TypeName *type_name(void);
+static Symbol *abstract_declarator(void);
+static Symbol *direct_abstract_declarator(void);
+static Initializer *initializer(void);
 
 // declaration :
 //   declaration-specifiers (init-declarator)* ';'
-static Decl *declaration() {
+static Decl *declaration(void) {
   Token *token = peek();
 
   Vector *specs = declaration_specifiers();
@@ -729,7 +729,7 @@ static Decl *declaration() {
 
 // declaration-specifiers :
 //   (storage-class-specifier | type-specifier | function-specifier)*
-static Vector *declaration_specifiers() {
+static Vector *declaration_specifiers(void) {
   Vector *specs = vector_new();
   while (1) {
     if (check_storage_class_specifier()) {
@@ -748,7 +748,7 @@ static Vector *declaration_specifiers() {
 
 // specifier-qualifier-list :
 //   (type-specifier | type-qualifier)*
-static Vector *specifier_qualifier_list() {
+static Vector *specifier_qualifier_list(void) {
   Vector *specs = vector_new();
   while (1) {
     if (check_storage_class_specifier()) {
@@ -766,7 +766,7 @@ static Vector *specifier_qualifier_list() {
 // storage-class-specifier :
 //   'typedef'
 //   'extern'
-static Specifier *storage_class_specifier() {
+static Specifier *storage_class_specifier(void) {
   Token *token = peek();
 
   if (read(TK_TYPEDEF))
@@ -790,7 +790,7 @@ static Specifier *storage_class_specifier() {
 //   struct-or-union-specifier
 //   enum-specifier
 //   typedef-name
-static Specifier *type_specifier() {
+static Specifier *type_specifier(void) {
   Token *token = peek();
 
   if (read(TK_VOID))
@@ -825,7 +825,7 @@ static Specifier *type_specifier() {
 // struct-or-union-specifier :
 //   'struct' identifier? '{' struct-declaration (',' struct-declaration)* '}'
 //   'struct' identifier
-static Specifier *struct_or_union_specifier() {
+static Specifier *struct_or_union_specifier(void) {
   Token *token = expect(TK_STRUCT);
 
   if (check(TK_IDENTIFIER)) {
@@ -865,7 +865,7 @@ static Specifier *struct_or_union_specifier() {
 
 // struct-declaration :
 //   specifier-qualifier-list (declarator (',' declarator)*)? ';'
-static Decl *struct_declaration() {
+static Decl *struct_declaration(void) {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
@@ -884,7 +884,7 @@ static Decl *struct_declaration() {
 //   'enum' identifier? '{' enumerator (',' enumerator)* '}'
 //   'enum' identifier? '{' enumerator (',' enumerator)* ',' '}'
 //   'enum' identifier
-static Specifier *enum_specifier() {
+static Specifier *enum_specifier(void) {
   Token *token = expect(TK_ENUM);
 
   if (check(TK_IDENTIFIER)) {
@@ -929,7 +929,7 @@ static Specifier *enum_specifier() {
 // enumerator :
 //   enumeration-constant
 //   enumeration-constant '=' constant-expression
-static Symbol *enumerator() {
+static Symbol *enumerator(void) {
   Token *token = expect(TK_IDENTIFIER);
   Expr *const_expr = read('=') ? constant_expression() : NULL;
 
@@ -943,7 +943,7 @@ static Symbol *enumerator() {
 
 // typedef-name :
 //   identifier
-static Specifier *typedef_name() {
+static Specifier *typedef_name(void) {
   Token *token = expect(TK_IDENTIFIER);
   Symbol *symbol = lookup_symbol(token->identifier);
 
@@ -955,7 +955,7 @@ static Specifier *typedef_name() {
 
 // function-specifier :
 //   '_Noreturn'
-static Specifier *function_specifier() {
+static Specifier *function_specifier(void) {
   Token *token = peek();
 
   if (read(TK_NORETURN))
@@ -1047,7 +1047,7 @@ static Symbol *direct_declarator(bool sp_typedef) {
 // parameter-declaration :
 //   specifier-qualifier-list declarator
 //   specifier-qualifier abstract-declarator?
-static Decl *parameter_declaration() {
+static Decl *parameter_declaration(void) {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
@@ -1058,7 +1058,7 @@ static Decl *parameter_declaration() {
   return param_new(specs, symbol, token);
 }
 
-static Symbol *param_declarator() {
+static Symbol *param_declarator(void) {
   Token *token = peek();
 
   if (read('*')) {
@@ -1071,7 +1071,7 @@ static Symbol *param_declarator() {
   return param_direct_declarator();
 }
 
-static Symbol *param_direct_declarator() {
+static Symbol *param_direct_declarator(void) {
   Token *token = peek();
   Token *ident = read(TK_IDENTIFIER);
 
@@ -1124,7 +1124,7 @@ static Symbol *param_direct_declarator() {
 
 // type-name :
 //   specifier-qualifier-list abstract-declarator?
-static TypeName *type_name() {
+static TypeName *type_name(void) {
   Token *token = peek();
 
   Vector *specs = specifier_qualifier_list();
@@ -1143,7 +1143,7 @@ static TypeName *type_name() {
 // abstract-declarator :
 //   '*' '*'*
 //   ('*' '*'*)? direct-abstract-declarator
-static Symbol *abstract_declarator() {
+static Symbol *abstract_declarator(void) {
   Token *token = peek();
 
   if (read('*')) {
@@ -1165,7 +1165,7 @@ static Symbol *abstract_declarator() {
 
 // direct-abstract-declarator :
 //   direct-abstract-declarator '[' assignment-expression ']'
-static Symbol *direct_abstract_declarator() {
+static Symbol *direct_abstract_declarator(void) {
   Token *token = peek();
 
   Symbol *symbol = calloc(1, sizeof(Symbol));
@@ -1218,7 +1218,7 @@ static Symbol *direct_abstract_declarator() {
 //   assignment-expression
 //   '{' initializer (',' initializer)* '}'
 //   '{' initializer (',' initializer)* ',' '}'
-static Initializer *initializer() {
+static Initializer *initializer(void) {
   Token *token = peek();
 
   if (read('{')) {
@@ -1251,11 +1251,11 @@ static Stmt *stmt_new(NodeType nd_type, Token *token) {
   return stmt;
 }
 
-static Stmt *statement();
+static Stmt *statement(void);
 
 // labbeled-statement :
 //   identifier ':' statement
-static Stmt *labeled_statement() {
+static Stmt *labeled_statement(void) {
   Token *token = expect(TK_IDENTIFIER);
   expect(':');
   Stmt *label_stmt = statement();
@@ -1268,7 +1268,7 @@ static Stmt *labeled_statement() {
 
 // case-statement :
 //   'case' constant-expression ':' statement
-static Stmt *case_statement() {
+static Stmt *case_statement(void) {
   Token *token = expect(TK_CASE);
   Expr *case_const = constant_expression();
   expect(':');
@@ -1282,7 +1282,7 @@ static Stmt *case_statement() {
 
 // default-statement :
 //   'default' ':' statement
-static Stmt *default_statement() {
+static Stmt *default_statement(void) {
   Token *token = expect(TK_DEFAULT);
   expect(':');
   Stmt *default_stmt = statement();
@@ -1294,7 +1294,7 @@ static Stmt *default_statement() {
 
 // compound-statement :
 //   '{' (declaration | statement)* '}'
-static Stmt *compound_statement() {
+static Stmt *compound_statement(void) {
   Token *token = expect('{');
   Vector *block_items = vector_new();
   while (!check('}') && !check(TK_EOF)) {
@@ -1313,7 +1313,7 @@ static Stmt *compound_statement() {
 
 // expression-statement :
 //   expression? ';'
-static Stmt *expression_statement() {
+static Stmt *expression_statement(void) {
   Token *token = peek();
 
   Expr *expr = !check(';') ? expression() : NULL;
@@ -1327,7 +1327,7 @@ static Stmt *expression_statement() {
 // if-statement :
 //   'if' '(' expression ')' statement
 //   'if' '(' expression ')' statement 'else' statement
-static Stmt *if_statement() {
+static Stmt *if_statement(void) {
   Token *token = expect(TK_IF);
   expect('(');
   Expr *if_cond = expression();
@@ -1344,7 +1344,7 @@ static Stmt *if_statement() {
 
 // switch-statement :
 //   'switch' '(' expression ')' statement
-static Stmt *switch_statement() {
+static Stmt *switch_statement(void) {
   Token *token = expect(TK_SWITCH);
   expect('(');
   Expr *switch_cond = expression();
@@ -1359,7 +1359,7 @@ static Stmt *switch_statement() {
 
 // while-statement :
 //   'while' '(' expression ')' statement
-static Stmt *while_statement() {
+static Stmt *while_statement(void) {
   Token *token = expect(TK_WHILE);
   expect('(');
   Expr *while_cond = expression();
@@ -1374,7 +1374,7 @@ static Stmt *while_statement() {
 
 // do-statement :
 //   'do' statement 'while' '(' expression ')' ';'
-static Stmt *do_statement() {
+static Stmt *do_statement(void) {
   Token *token = expect(TK_DO);
   Stmt *do_body = statement();
   expect(TK_WHILE);
@@ -1392,7 +1392,7 @@ static Stmt *do_statement() {
 // for-statement :
 //   'for' '(' expression? ';' expression? ';' expression? ')' statement
 //   'for' '(' declaration expression? ';' expression? ')' statement
-static Stmt *for_statement() {
+static Stmt *for_statement(void) {
   vector_push(symbol_scopes, map_new()); // begin for-statement scope
 
   Token *token = expect(TK_FOR);
@@ -1426,7 +1426,7 @@ static Stmt *for_statement() {
 
 // goto-statmemt :
 //   'goto' identifier ';'
-static Stmt *goto_statement() {
+static Stmt *goto_statement(void) {
   Token *token = expect(TK_GOTO);
   char *goto_label = expect(TK_IDENTIFIER)->identifier;
   expect(';');
@@ -1438,7 +1438,7 @@ static Stmt *goto_statement() {
 
 // continue-statement :
 //   'continue' ';'
-static Stmt *continue_statement() {
+static Stmt *continue_statement(void) {
   Token *token = expect(TK_CONTINUE);
   expect(';');
 
@@ -1447,7 +1447,7 @@ static Stmt *continue_statement() {
 
 // break-statement :
 //   'break' ';'
-static Stmt *break_statement() {
+static Stmt *break_statement(void) {
   Token *token = expect(TK_BREAK);
   expect(';');
 
@@ -1456,7 +1456,7 @@ static Stmt *break_statement() {
 
 // return-statement :
 //   'return' expression? ';'
-static Stmt *return_statement() {
+static Stmt *return_statement(void) {
   Token *token = expect(TK_RETURN);
   Expr *ret = !check(';') ? expression() : NULL;
   expect(';');
@@ -1480,7 +1480,7 @@ static Stmt *return_statement() {
 //   continue-statement
 //   break-statement
 //   return-statement
-static Stmt *statement() {
+static Stmt *statement(void) {
   if (check(TK_IDENTIFIER) && tokens[pos + 1]->tk_type == ':')
     return labeled_statement();
   if (check(TK_CASE))
@@ -1523,7 +1523,7 @@ static Stmt *statement() {
 //   declaration
 // function-definition :
 //   declaration-specifiers declarator compound-statement
-static Node *external_declaration() {
+static Node *external_declaration(void) {
   Token *token = peek();
 
   Vector *specs = declaration_specifiers();
@@ -1588,7 +1588,7 @@ static Node *external_declaration() {
 
 // translation-unit :
 //   external-declaration external-declaration*
-static TransUnit *translation_unit() {
+static TransUnit *translation_unit(void) {
   literals = vector_new();
 
   symbol_scopes = vector_new();

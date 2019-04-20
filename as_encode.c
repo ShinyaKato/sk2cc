@@ -9,7 +9,7 @@ static Reloc *reloc_new(int offset, char *ident, int type, int addend) {
   return reloc;
 }
 
-static Section *section_new() {
+static Section *section_new(void) {
   Section *section = (Section *) calloc(1, sizeof(Section));
   section->bin = binary_new();
   section->relocs = vector_new();
@@ -24,7 +24,7 @@ static Symbol *symbol_new(bool global, int section, int offset) {
   return symbol;
 }
 
-static TransUnit *trans_unit_new() {
+static TransUnit *trans_unit_new(void) {
   TransUnit *trans_unit = (TransUnit *) calloc(1, sizeof(TransUnit));
   trans_unit->text = section_new();
   trans_unit->data = section_new();

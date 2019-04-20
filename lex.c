@@ -59,26 +59,26 @@ static Token *create_token(TokenType tk_type) {
   return token;
 }
 
-static void next_line() {
+static void next_line(void) {
   line_ptr = &src[pos];
   lineno++;
   column = 1;
 }
 
 // skip '\' '\n' and concat previous and next lines
-static void skip_backslash_newline() {
+static void skip_backslash_newline(void) {
   while (src[pos] == '\\' && src[pos + 1] == '\n') {
     pos += 2;
     next_line();
   }
 }
 
-static char peek_char() {
+static char peek_char(void) {
   skip_backslash_newline();
   return src[pos];
 }
 
-static char get_char() {
+static char get_char(void) {
   skip_backslash_newline();
 
   // read the character and add it to the token text
@@ -106,7 +106,7 @@ static bool read_char(char c) {
   return false;
 }
 
-static Map *create_keywords() {
+static Map *create_keywords(void) {
   Map *map = map_new();
 
   map_puti(map, "sizeof", TK_SIZEOF);
@@ -141,7 +141,7 @@ static Map *create_keywords() {
   return map;
 }
 
-static char get_escape_sequence() {
+static char get_escape_sequence(void) {
   if (read_char('\'')) return '\'';
   if (read_char('"')) return '"';
   if (read_char('?')) return '?';
@@ -158,7 +158,7 @@ static char get_escape_sequence() {
   error(loc, "invalid escape sequence.");
 }
 
-static Token *next_token() {
+static Token *next_token(void) {
   skip_backslash_newline();
 
   // store the start position of the next token.

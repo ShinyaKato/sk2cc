@@ -4,7 +4,7 @@ typedef struct map {
   void **values;
 } Map;
 
-extern Map *map_new();
+extern Map *map_new(void);
 extern void map_put(Map *map, char *key, void *value);
 extern void *map_lookup(Map *map, char *key);
 extern void map_puti(Map *map, char *key, int value);

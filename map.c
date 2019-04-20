@@ -1,7 +1,7 @@
 #include "sk2cc.h"
 #include "map.h"
 
-Map *map_new() {
+Map *map_new(void) {
   Map *map = calloc(1, sizeof(Map));
   map->count = 0;
   map->capacity = 64;

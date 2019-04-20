@@ -1,7 +1,7 @@
 #include "sk2cc.h"
 #include "binary.h"
 
-Binary *binary_new() {
+Binary *binary_new(void) {
   int capacity = 256;
   Binary *binary = calloc(1, sizeof(Binary));
   binary->capacity = capacity;

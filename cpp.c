@@ -21,11 +21,11 @@ static Vector *stash_tokens, *stash_pos;
 static Token **tokens;
 static int pos;
 
-static bool has_next() {
+static bool has_next(void) {
   return tokens[pos] != NULL;
 }
 
-static Token *get() {
+static Token *get(void) {
   return tokens[pos++];
 }
 
@@ -61,7 +61,7 @@ static void stash(Vector *_tokens) {
   pos = 0;
 }
 
-static void restore() {
+static void restore(void) {
   tokens = vector_pop(stash_tokens);
   pos = vector_popi(stash_pos);
 }
@@ -69,7 +69,7 @@ static void restore() {
 // macro replacement
 
 static Vector *replace_macro(Vector *tokens, char *filename, int lineno);
-static Vector *preprocessing_unit();
+static Vector *preprocessing_unit(void);
 
 static bool check_file_macro(Token *token) {
   if (token->tk_type == TK_IDENTIFIER) {
@@ -276,7 +276,7 @@ static Vector *replace_macro(Vector *tokens, char *filename, int lineno) {
 
 // directives
 
-static void define_directive() {
+static void define_directive(void) {
   char *identifier = expect(TK_IDENTIFIER)->identifier;
 
   MacroType mc_type;
@@ -322,7 +322,7 @@ static void define_directive() {
   map_put(macros, identifier, macro);
 }
 
-static Vector *include_directive() {
+static Vector *include_directive(void) {
   char *filename = expect(TK_STRING_LITERAL)->string_literal->buffer;
   read(TK_SPACE);
   expect(TK_NEWLINE);
@@ -339,7 +339,7 @@ static Vector *include_directive() {
   return tokens;
 }
 
-static Vector *text_line() {
+static Vector *text_line(void) {
   Vector *text_tokens = vector_new();
 
   while (has_next()) {
@@ -355,7 +355,7 @@ static Vector *text_line() {
   return replace_macro(text_tokens, NULL, 0);
 }
 
-static Vector *group() {
+static Vector *group(void) {
   Vector *tokens = vector_new();
 
   while (has_next()) {
@@ -385,7 +385,7 @@ static Vector *group() {
   return tokens;
 }
 
-static Vector *preprocessing_unit() {
+static Vector *preprocessing_unit(void) {
   return group();
 }
 

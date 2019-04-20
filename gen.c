@@ -15,7 +15,7 @@ static void begin_switch_gen(int *label_break) {
   vector_push(break_labels, label_break);
 }
 
-static void end_switch_gen() {
+static void end_switch_gen(void) {
   vector_pop(break_labels);
 }
 
@@ -24,7 +24,7 @@ static void begin_loop_gen(int *label_continue, int *label_break) {
   vector_push(break_labels, label_break);
 }
 
-static void end_loop_gen() {
+static void end_loop_gen(void) {
   vector_pop(continue_labels);
   vector_pop(break_labels);
 }

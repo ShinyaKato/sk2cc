@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c11 --pedantic-errors -Wall -g
+CFLAGS = -std=c11 --pedantic-errors -Wall -Wstrict-prototypes -g
 
 HEADERS = \
 	string.h vector.h map.h binary.h \
