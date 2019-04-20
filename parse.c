@@ -697,6 +697,7 @@ static Symbol *direct_declarator(bool sp_typedef);
 static Decl *parameter_declaration();
 static TypeName *type_name();
 static Declarator *abstract_declarator();
+static Declarator *direct_abstract_declarator();
 static Initializer *initializer();
 
 // declaration :
@@ -1055,8 +1056,9 @@ static Decl *parameter_declaration() {
 static TypeName *type_name() {
   Token *token = peek();
 
+
   Vector *specs = specifier_qualifier_list();
-  Declarator *decl = check('*') ? abstract_declarator() : NULL;
+  Declarator *decl = check('*') || check('[') || check('(') ? abstract_declarator() : NULL;
 
   TypeName *type_name = calloc(1, sizeof(TypeName));
   type_name->specs = specs;
@@ -1067,14 +1069,64 @@ static TypeName *type_name() {
 
 // abstract-declarator :
 //   '*' '*'*
+//   ('*' '*'*)? direct-abstract-declarator
 static Declarator *abstract_declarator() {
-  Token *token = expect('*');
+  Token *token = peek();
 
-  if (check('*')) {
-    return declarator_new(DECL_POINTER, abstract_declarator(), token);
+  if (read('*')) {
+    if (check('*') || check('[') || check('(')) {
+      return declarator_new(DECL_POINTER, abstract_declarator(), token);
+    }
+    return declarator_new(DECL_POINTER, NULL, token);
   }
 
-  return declarator_new(DECL_POINTER, NULL, token);
+  return direct_abstract_declarator();
+}
+
+// direct-abstract-declarator :
+//   direct-abstract-declarator '[' assignment-expression ']'
+static Declarator *direct_abstract_declarator() {
+  Declarator *decl = NULL;
+
+  while (1) {
+    Token *token = peek();
+
+    if (read('[')) {
+      Expr *size = !check(']') ? assignment_expression() : NULL;
+      expect(']');
+
+      decl = declarator_new(DECL_ARRAY, decl, token);
+      decl->size = size;
+    } else if (read('(')) {
+      Map *proto_scope = map_new(); // begin prototype scope
+      vector_push(symbol_scopes, proto_scope);
+
+      Vector *params = vector_new();
+      bool ellipsis = false;
+      if (!check(')')) {
+        vector_push(params, parameter_declaration());
+        while (read(',')) {
+          if (read(TK_ELLIPSIS)) {
+            ellipsis = true;
+            break;
+          }
+          vector_push(params, parameter_declaration());
+        }
+      }
+      expect(')');
+
+      vector_pop(symbol_scopes); // end prototype scope
+
+      decl = declarator_new(DECL_FUNCTION, decl, token);
+      decl->params = params;
+      decl->ellipsis = ellipsis;
+      decl->proto_scope = proto_scope;
+    } else {
+      break;
+    }
+  }
+
+  return decl;
 }
 
 // initializer :

@@ -114,6 +114,9 @@ void test_expression() {
   expect(sizeof(char *), 8);
   expect(sizeof(int *), 8);
   expect(sizeof(int **), 8);
+  expect(sizeof(int *[4]), 32);
+  expect(sizeof(int *[3][5]), 120);
+  expect(sizeof(int [4]), 16);
   expect(sizeof(struct { char c1, c2; }), 2);
   expect(sizeof(struct { char c1; int n; char c2; }), 12);
   expect(sizeof(struct { char c1, c2; int n; }), 8);
