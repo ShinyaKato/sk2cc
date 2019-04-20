@@ -754,18 +754,23 @@ static Expr *sema_lnot(Expr *expr) {
 
 // convert sizeof to integer-constant
 static Expr *sema_sizeof(Expr *expr) {
-  if (expr->expr) {
-    Type *type = sema_expr(expr->expr)->type;
-    return sema_expr(expr_integer(type->original->size, expr->token));
+  Type *type = expr->expr ? sema_expr(expr->expr)->type : sema_type_name(expr->type_name);
+
+  if (type->original->size == 0) {
+    ERROR(expr->token, "invalid operand of sizeof operator.");
   }
 
-  Type *type = sema_type_name(expr->type_name);
   return sema_expr(expr_integer(type->original->size, expr->token));
 }
 
 // convert alignof to integer-constant
 static Expr *sema_alignof(Expr *expr) {
   Type *type = sema_type_name(expr->type_name);
+
+  if (type->align == 0) {
+    ERROR(expr->token, "invalid operand of _Alignof operator.");
+  }
+
   return sema_expr(expr_integer(type->align, expr->token));
 }
 
