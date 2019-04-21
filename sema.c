@@ -53,7 +53,7 @@ static void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
 static Vector *tag_scopes; // Vector<Map<Type*>*>
 
 static void put_tag(char *tag, Type *type, Token *token) {
-  Map *map = tag_scopes->buffer[tag_scopes->length - 1];
+  Map *map = vector_last(tag_scopes);
   map_put(map, tag, type);
 }
 

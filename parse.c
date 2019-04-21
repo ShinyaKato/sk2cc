@@ -9,7 +9,7 @@ static Vector *symbol_scopes; // Vector<Map<SymbolType*>*>
 static void put_symbol(char *identifier, Symbol *symbol) {
   if (!identifier) return;
 
-  Map *map = symbol_scopes->buffer[symbol_scopes->length - 1];
+  Map *map = vector_last(symbol_scopes);
 
   symbol->prev = map_lookup(map, identifier);
   if (symbol->prev && symbol->prev->sy_type != symbol->sy_type) {
