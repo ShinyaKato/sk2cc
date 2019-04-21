@@ -1261,7 +1261,7 @@ static Stmt *labeled_statement(void) {
   Stmt *label_stmt = statement();
 
   Stmt *stmt = stmt_new(ND_LABEL, token);
-  stmt->label_name = token->identifier;
+  stmt->label_ident = token->identifier;
   stmt->label_stmt = label_stmt;
   return stmt;
 }
@@ -1428,11 +1428,11 @@ static Stmt *for_statement(void) {
 //   'goto' identifier ';'
 static Stmt *goto_statement(void) {
   Token *token = expect(TK_GOTO);
-  char *goto_label = expect(TK_IDENTIFIER)->identifier;
+  char *goto_ident = expect(TK_IDENTIFIER)->identifier;
   expect(';');
 
   Stmt *stmt = stmt_new(ND_GOTO, token);
-  stmt->goto_label = goto_label;
+  stmt->goto_ident = goto_ident;
   return stmt;
 }
 
@@ -1458,11 +1458,11 @@ static Stmt *break_statement(void) {
 //   'return' expression? ';'
 static Stmt *return_statement(void) {
   Token *token = expect(TK_RETURN);
-  Expr *ret = !check(';') ? expression() : NULL;
+  Expr *ret_expr = !check(';') ? expression() : NULL;
   expect(';');
 
   Stmt *stmt = stmt_new(ND_RETURN, token);
-  stmt->ret = ret;
+  stmt->ret_expr = ret_expr;
   return stmt;
 }
 

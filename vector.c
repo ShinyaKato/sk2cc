@@ -30,12 +30,20 @@ void *vector_pop(Vector *vector) {
   return value;
 }
 
+void *vector_last(Vector *vector) {
+  return vector->buffer[vector->length - 1];
+}
+
 void vector_pushi(Vector *vector, int value) {
   vector_push(vector, (void *) (intptr_t) value);
 }
 
 int vector_popi(Vector *vector) {
   return (int) (intptr_t) vector_pop(vector);
+}
+
+int vector_lasti(Vector *vector) {
+  return (int) (intptr_t) vector_last(vector);
 }
 
 void vector_merge(Vector *dest, Vector *src) {

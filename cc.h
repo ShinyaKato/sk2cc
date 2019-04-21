@@ -289,17 +289,15 @@ struct stmt {
   NodeType nd_type;
 
   // labeled statement
-  char *label_name;
+  char *label_ident;
   Stmt *label_stmt;
 
   // case statement
   Expr *case_const;
   Stmt *case_stmt;
-  int case_label;
 
   // default statement
   Stmt *default_stmt;
-  int default_label;
 
   // compound statement (block)
   Vector *block_items; // Vector<Node*> (Decl* or Stmt*)
@@ -332,10 +330,23 @@ struct stmt {
   Stmt *for_body;
 
   // goto statement
-  char *goto_label;
+  char *goto_ident;
+  Stmt *goto_target;
+
+  // continue statement
+  Stmt *continue_target;
+
+  // break statement
+  Stmt *break_target;
 
   // return statement
-  Expr *ret; // optional
+  Expr *ret_expr; // optional
+  Func *ret_func;
+
+  // labels
+  int lbl_label;    // for label, case, default
+  int lbl_continue; // for while, do, for
+  int lbl_break;    // for while, do, for, switch
 
   Token *token;
 };
@@ -348,7 +359,9 @@ struct func {
   Stmt *body;
 
   int stack_size;      // stack size for local variables
-  Vector *label_names; // Vector<char*>
+  Vector *label_stmts; // Vector<Stmt*>
+
+  int lbl_return; // label
 
   Token *token;
 };

@@ -1002,98 +1002,178 @@ static Expr *sema_comma(Expr *expr) {
 }
 
 static Expr *sema_expr(Expr *expr) {
-  if (expr->type) {
-    return expr;
-  }
+  // skip if the expression is already analyzed
+  if (expr->type) return expr;
 
-  if (expr->nd_type == ND_VA_START) {
-    expr = sema_va_start(expr);
-  } else if (expr->nd_type == ND_VA_ARG) {
-    expr = sema_va_arg(expr);
-  } else if (expr->nd_type == ND_VA_END) {
-    expr = sema_va_end(expr);
-  } else if (expr->nd_type == ND_IDENTIFIER) {
-    expr = sema_identifier(expr);
-  } else if (expr->nd_type == ND_INTEGER) {
-    expr = sema_integer(expr);
-  } else if (expr->nd_type == ND_ENUM_CONST) {
-    expr = sema_enum_const(expr);
-  } else if (expr->nd_type == ND_STRING) {
-    expr = sema_string(expr);
-  } else if (expr->nd_type == ND_SUBSCRIPTION) {
-    expr = sema_subscription(expr);
-  } else if (expr->nd_type == ND_CALL) {
-    expr = sema_call(expr);
-  } else if (expr->nd_type == ND_DOT) {
-    expr = sema_dot(expr);
-  } else if (expr->nd_type == ND_ARROW) {
-    expr = sema_arrow(expr);
-  } else if (expr->nd_type == ND_POST_INC) {
-    expr = sema_post_inc(expr);
-  } else if (expr->nd_type == ND_POST_DEC) {
-    expr = sema_post_dec(expr);
-  } else if (expr->nd_type == ND_PRE_INC) {
-    expr = sema_pre_inc(expr);
-  } else if (expr->nd_type == ND_PRE_DEC) {
-    expr = sema_pre_dec(expr);
-  } else if (expr->nd_type == ND_ADDRESS) {
-    expr = sema_address(expr);
-  } else if (expr->nd_type == ND_INDIRECT) {
-    expr = sema_indirect(expr);
-  } else if (expr->nd_type == ND_UPLUS) {
-    expr = sema_uplus(expr);
-  } else if (expr->nd_type == ND_UMINUS) {
-    expr = sema_uminus(expr);
-  } else if (expr->nd_type == ND_NOT) {
-    expr = sema_not(expr);
-  } else if (expr->nd_type == ND_LNOT) {
-    expr = sema_lnot(expr);
-  } else if (expr->nd_type == ND_SIZEOF) {
-    expr = sema_sizeof(expr);
-  } else if (expr->nd_type == ND_ALIGNOF) {
-    expr = sema_alignof(expr);
-  } else if (expr->nd_type == ND_CAST) {
-    expr = sema_cast(expr);
-  } else if (expr->nd_type == ND_MUL || expr->nd_type == ND_DIV) {
-    expr = sema_mul(expr);
-  } else if (expr->nd_type == ND_MOD) {
-    expr = sema_mod(expr);
-  } else if (expr->nd_type == ND_ADD) {
-    expr = sema_add(expr);
-  } else if (expr->nd_type == ND_SUB) {
-    expr = sema_sub(expr);
-  } else if (expr->nd_type == ND_LSHIFT || expr->nd_type == ND_RSHIFT) {
-    expr = sema_shift(expr);
-  } else if (expr->nd_type == ND_LT || expr->nd_type == ND_GT || expr->nd_type == ND_LTE || expr->nd_type == ND_GTE) {
-    expr = sema_relational(expr);
-  } else if (expr->nd_type == ND_EQ || expr->nd_type == ND_NEQ) {
-    expr = sema_equality(expr);
-  } else if (expr->nd_type == ND_AND || expr->nd_type == ND_XOR || expr->nd_type == ND_OR) {
-    expr = sema_bitwise(expr);
-  } else if (expr->nd_type == ND_LAND || expr->nd_type == ND_LOR) {
-    expr = sema_logical(expr);
-  } else if (expr->nd_type == ND_CONDITION) {
-    expr = sema_condition(expr);
-  } else if (expr->nd_type == ND_ASSIGN) {
-    expr = sema_assign(expr);
-  } else if (expr->nd_type == ND_MUL_ASSIGN) {
-    expr = sema_mul_assign(expr);
-  } else if (expr->nd_type == ND_DIV_ASSIGN) {
-    expr = sema_div_assign(expr);
-  } else if (expr->nd_type == ND_MOD_ASSIGN) {
-    expr = sema_mod_assign(expr);
-  } else if (expr->nd_type == ND_ADD_ASSIGN) {
-    expr = sema_add_assign(expr);
-  } else if (expr->nd_type == ND_SUB_ASSIGN) {
-    expr = sema_sub_assign(expr);
-  } else if (expr->nd_type == ND_COMMA) {
-    expr = sema_comma(expr);
-  } else {
+  switch (expr->nd_type) {
+    // builtins
+    case ND_VA_START:
+      expr = sema_va_start(expr);
+      break;
+    case ND_VA_ARG:
+      expr = sema_va_arg(expr);
+      break;
+    case ND_VA_END:
+      expr = sema_va_end(expr);
+      break;
+
+    // primary expressions
+    case ND_IDENTIFIER:
+      expr = sema_identifier(expr);
+      break;
+    case ND_INTEGER:
+      expr = sema_integer(expr);
+      break;
+    case ND_ENUM_CONST:
+      expr = sema_enum_const(expr);
+      break;
+    case ND_STRING:
+      expr = sema_string(expr);
+      break;
+
+    // postfix operators
+    case ND_SUBSCRIPTION:
+      expr = sema_subscription(expr);
+      break;
+    case ND_CALL:
+      expr = sema_call(expr);
+      break;
+    case ND_DOT:
+      expr = sema_dot(expr);
+      break;
+    case ND_ARROW:
+      expr = sema_arrow(expr);
+      break;
+    case ND_POST_INC:
+      expr = sema_post_inc(expr);
+      break;
+    case ND_POST_DEC:
+      expr = sema_post_dec(expr);
+      break;
+
+    // unary operators
+    case ND_PRE_INC:
+      expr = sema_pre_inc(expr);
+      break;
+    case ND_PRE_DEC:
+      expr = sema_pre_dec(expr);
+      break;
+    case ND_ADDRESS:
+      expr = sema_address(expr);
+      break;
+    case ND_INDIRECT:
+      expr = sema_indirect(expr);
+      break;
+    case ND_UPLUS:
+      expr = sema_uplus(expr);
+      break;
+    case ND_UMINUS:
+      expr = sema_uminus(expr);
+      break;
+    case ND_NOT:
+      expr = sema_not(expr);
+      break;
+    case ND_LNOT:
+      expr = sema_lnot(expr);
+      break;
+    case ND_SIZEOF:
+      expr = sema_sizeof(expr);
+      break;
+    case ND_ALIGNOF:
+      expr = sema_alignof(expr);
+      break;
+
+    // cast operators
+    case ND_CAST:
+      expr = sema_cast(expr);
+      break;
+
+    // *, /, % operators
+    case ND_MUL:
+    case ND_DIV:
+      expr = sema_mul(expr);
+      break;
+    case ND_MOD:
+      expr = sema_mod(expr);
+      break;
+
+    // +, - operators
+    case ND_ADD:
+      expr = sema_add(expr);
+      break;
+    case ND_SUB:
+      expr = sema_sub(expr);
+      break;
+
+    // <<, >> operators
+    case ND_LSHIFT:
+    case ND_RSHIFT:
+      expr = sema_shift(expr);
+      break;
+
+    // <, >, <=, >= operators
+    case ND_LT:
+    case ND_GT:
+    case ND_LTE:
+    case ND_GTE:
+      expr = sema_relational(expr);
+      break;
+
+    // ==, != operators
+    case ND_EQ:
+    case ND_NEQ:
+      expr = sema_equality(expr);
+      break;
+
+    // &, ^, | operators
+    case ND_AND:
+    case ND_XOR:
+    case ND_OR:
+      expr = sema_bitwise(expr);
+      break;
+
+    // &&, || operators
+    case ND_LAND:
+    case ND_LOR:
+      expr = sema_logical(expr);
+      break;
+
+    // ?: operator
+    case ND_CONDITION:
+      expr = sema_condition(expr);
+      break;
+
+    // assignment operators
+    case ND_ASSIGN:
+      expr = sema_assign(expr);
+      break;
+    case ND_MUL_ASSIGN:
+      expr = sema_mul_assign(expr);
+      break;
+    case ND_DIV_ASSIGN:
+      expr = sema_div_assign(expr);
+      break;
+    case ND_MOD_ASSIGN:
+      expr = sema_mod_assign(expr);
+      break;
+    case ND_ADD_ASSIGN:
+      expr = sema_add_assign(expr);
+      break;
+    case ND_SUB_ASSIGN:
+      expr = sema_sub_assign(expr);
+      break;
+
+    // comma operator
+    case ND_COMMA:
+      expr = sema_comma(expr);
+      break;
+
     // unreachable
-    internal_error("unknown expression type.");
+    default:
+      internal_error("unknown expression type.");
   }
 
-  // convert array to pointer
+  // lvalue promotion (convert array to pointer)
   if (expr->type->ty_type == TY_ARRAY) {
     Type *pointer = type_pointer(expr->type->array_of);
     pointer->original = expr->type;
@@ -1454,55 +1534,57 @@ static void sema_initializer(Initializer *init, Type *type, bool global) {
 
 // semantics of statement
 
-static Symbol *func_symbol;
-
-static Vector *label_names;
+static Vector *label_stmts;
 static Vector *goto_stmts;
+static Vector *switch_stmts;
+static Vector *continue_targets;
+static Vector *break_targets;
+static Func *ret_func;
 
-static Vector *switch_cases;
-
-static int continue_level;
-static int break_level;
-
-static void begin_switch(void) {
-  vector_push(switch_cases, vector_new());
-  break_level++;
+static void switch_begin(Stmt *stmt) {
+  stmt->switch_cases = vector_new();
+  vector_push(switch_stmts, stmt);
+  vector_push(break_targets, stmt);
 }
 
-static void end_switch(void) {
-  vector_pop(switch_cases);
-  break_level--;
+static void switch_end(void) {
+  vector_pop(switch_stmts);
+  vector_pop(break_targets);
 }
 
-static void begin_loop(void) {
-  continue_level++;
-  break_level++;
+static void loop_begin(Stmt *stmt) {
+  vector_push(tag_scopes, map_new());
+  vector_push(continue_targets, stmt);
+  vector_push(break_targets, stmt);
 }
 
-static void end_loop(void) {
-  continue_level--;
-  break_level--;
+static void loop_end(void) {
+  vector_pop(tag_scopes);
+  vector_pop(continue_targets);
+  vector_pop(break_targets);
 }
 
 static void sema_stmt(Stmt *stmt);
 
 static void sema_label(Stmt *stmt) {
-  for (int i = 0; i < label_names->length; i++) {
-    char *label_name = label_names->buffer[i];
-    if (strcmp(stmt->label_name, label_name) == 0) {
-      ERROR(stmt->token, "duplicated label declaration: %s.", stmt->label_name);
+  for (int i = 0; i < label_stmts->length; i++) {
+    Stmt *label_stmt = label_stmts->buffer[i];
+    char *label_ident = label_stmt->label_ident;
+    if (strcmp(stmt->label_ident, label_ident) == 0) {
+      ERROR(stmt->token, "duplicated label declaration: %s.", stmt->label_ident);
     }
   }
-  vector_push(label_names, stmt->label_name);
+  vector_push(label_stmts, stmt);
 
   sema_stmt(stmt->label_stmt);
 }
 
 static void sema_case(Stmt *stmt) {
-  if (switch_cases->length > 0) {
-    vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
+  if (switch_stmts->length > 0) {
+    Stmt *switch_stmt = vector_last(switch_stmts);
+    vector_push(switch_stmt->switch_cases, stmt);
   } else {
-    ERROR(stmt->token, "'case' should be in switch statement.");
+    ERROR(stmt->token, "'case' should appear in switch statement.");
   }
 
   stmt->case_const = sema_expr(stmt->case_const);
@@ -1511,10 +1593,11 @@ static void sema_case(Stmt *stmt) {
 }
 
 static void sema_default(Stmt *stmt) {
-  if (switch_cases->length > 0) {
-    vector_push(switch_cases->buffer[switch_cases->length - 1], stmt);
+  if (switch_stmts->length > 0) {
+    Stmt *switch_stmt = vector_last(switch_stmts);
+    vector_push(switch_stmt->switch_cases, stmt);
   } else {
-    ERROR(stmt->token, "'default' should be in switch statement.");
+    ERROR(stmt->token, "'default' should appear in switch statement.");
   }
 
   sema_stmt(stmt->default_stmt);
@@ -1536,7 +1619,7 @@ static void sema_if(Stmt *stmt) {
 }
 
 static void sema_switch(Stmt *stmt) {
-  begin_switch();
+  switch_begin(stmt);
 
   stmt->switch_cond = sema_expr(stmt->switch_cond);
   if (check_scalar(stmt->switch_cond->type)) {
@@ -1547,13 +1630,11 @@ static void sema_switch(Stmt *stmt) {
 
   sema_stmt(stmt->switch_body);
 
-  stmt->switch_cases = switch_cases->buffer[switch_cases->length - 1];
-
-  end_switch();
+  switch_end();
 }
 
 static void sema_while(Stmt *stmt) {
-  begin_loop();
+  loop_begin(stmt);
 
   stmt->while_cond = sema_expr(stmt->while_cond);
   if (check_scalar(stmt->while_cond->type)) {
@@ -1564,11 +1645,11 @@ static void sema_while(Stmt *stmt) {
 
   sema_stmt(stmt->while_body);
 
-  end_loop();
+  loop_end();
 }
 
 static void sema_do(Stmt *stmt) {
-  begin_loop();
+  loop_begin(stmt);
 
   stmt->do_cond = sema_expr(stmt->do_cond);
   if (check_scalar(stmt->do_cond->type)) {
@@ -1579,12 +1660,11 @@ static void sema_do(Stmt *stmt) {
 
   sema_stmt(stmt->do_body);
 
-  end_loop();
+  loop_end();
 }
 
 static void sema_for(Stmt *stmt) {
-  vector_push(tag_scopes, map_new());
-  begin_loop();
+  loop_begin(stmt);
 
   if (stmt->for_init) {
     if (stmt->for_init->nd_type == ND_DECL) {
@@ -1610,8 +1690,7 @@ static void sema_for(Stmt *stmt) {
 
   sema_stmt(stmt->for_body);
 
-  vector_pop(tag_scopes);
-  end_loop();
+  loop_end();
 }
 
 static void sema_goto(Stmt *stmt) {
@@ -1619,74 +1698,102 @@ static void sema_goto(Stmt *stmt) {
 }
 
 static void sema_continue(Stmt *stmt) {
-  if (continue_level == 0) {
+  if (continue_targets->length > 0) {
+    stmt->continue_target = vector_last(continue_targets);
+  } else {
     ERROR(stmt->token, "continue statement should appear in loops.");
   }
 }
 
 static void sema_break(Stmt *stmt) {
-  if (break_level == 0) {
+  if (break_targets->length > 0) {
+    stmt->break_target = vector_last(break_targets);
+  } else {
     ERROR(stmt->token, "break statement should appear in loops.");
   }
 }
 
 static void sema_return(Stmt *stmt) {
-  Type *type = func_symbol->type->returning;
+  Type *type = ret_func->symbol->type->returning;
   if (type->ty_type != TY_VOID) {
-    if (stmt->ret) {
-      stmt->ret = insert_cast(type, sema_expr(stmt->ret), stmt->token);
+    if (stmt->ret_expr) {
+      stmt->ret_expr = insert_cast(type, sema_expr(stmt->ret_expr), stmt->token);
     } else {
       ERROR(stmt->token, "'return' without expression in function returning non-void.");
     }
   } else {
-    if (stmt->ret) {
+    if (stmt->ret_expr) {
       ERROR(stmt->token, "'return' with an expression in function returning void.");
     }
   }
+
+  stmt->ret_func = ret_func;
 }
 
 static void sema_stmt(Stmt *stmt) {
-  if (stmt->nd_type == ND_LABEL) {
-    sema_label(stmt);
-  } else if (stmt->nd_type == ND_CASE) {
-    sema_case(stmt);
-  } else if (stmt->nd_type == ND_DEFAULT) {
-    sema_default(stmt);
-  } else if (stmt->nd_type == ND_COMP) {
-    vector_push(tag_scopes, map_new());
-    for (int i = 0; i < stmt->block_items->length; i++) {
-      Node *item = stmt->block_items->buffer[i];
-      if (item->nd_type == ND_DECL) {
-        sema_decl((Decl *) item, false);
-      } else {
-        sema_stmt((Stmt *) item);
+  switch (stmt->nd_type) {
+    case ND_LABEL:
+      sema_label(stmt);
+      break;
+    case ND_CASE:
+      sema_case(stmt);
+      break;
+    case ND_DEFAULT:
+      sema_default(stmt);
+      break;
+
+    case ND_COMP:
+      vector_push(tag_scopes, map_new());
+      for (int i = 0; i < stmt->block_items->length; i++) {
+        Node *item = stmt->block_items->buffer[i];
+        if (item->nd_type == ND_DECL) {
+          sema_decl((Decl *) item, false);
+        } else {
+          sema_stmt((Stmt *) item);
+        }
       }
-    }
-    vector_pop(tag_scopes);
-  } else if (stmt->nd_type == ND_EXPR) {
-    if (stmt->expr) {
-      stmt->expr = sema_expr(stmt->expr);
-    }
-  } else if (stmt->nd_type == ND_IF) {
-    sema_if(stmt);
-  } else if (stmt->nd_type == ND_SWITCH) {
-    sema_switch(stmt);
-  } else if (stmt->nd_type == ND_WHILE) {
-    sema_while(stmt);
-  } else if (stmt->nd_type == ND_DO) {
-    sema_do(stmt);
-  } else if (stmt->nd_type == ND_FOR) {
-    sema_for(stmt);
-  } else if (stmt->nd_type == ND_GOTO) {
-    sema_goto(stmt);
-  } else if (stmt->nd_type == ND_CONTINUE) {
-    sema_continue(stmt);
-  } else if (stmt->nd_type == ND_BREAK) {
-    sema_break(stmt);
-  } else if (stmt->nd_type == ND_RETURN) {
-    sema_return(stmt);
-  } else {
-    internal_error("unknown statement type.");
+      vector_pop(tag_scopes);
+      break;
+
+    case ND_EXPR:
+      if (stmt->expr) {
+        stmt->expr = sema_expr(stmt->expr);
+      }
+      break;
+
+    case ND_IF:
+      sema_if(stmt);
+      break;
+    case ND_SWITCH:
+      sema_switch(stmt);
+      break;
+
+    case ND_WHILE:
+      sema_while(stmt);
+      break;
+    case ND_DO:
+      sema_do(stmt);
+      break;
+    case ND_FOR:
+      sema_for(stmt);
+      break;
+
+    case ND_GOTO:
+      sema_goto(stmt);
+      break;
+    case ND_CONTINUE:
+      sema_continue(stmt);
+      break;
+    case ND_BREAK:
+      sema_break(stmt);
+      break;
+    case ND_RETURN:
+      sema_return(stmt);
+      break;
+
+    // unreachable
+    default:
+      internal_error("unknown statement type.");
   }
 }
 
@@ -1707,39 +1814,48 @@ static void sema_func(Func *func) {
 
   stack_size = func->symbol->type->ellipsis ? 176 : 0;
 
-  func_symbol = func->symbol;
-  label_names = vector_new();
+  // initialize statements
+  label_stmts = vector_new();
   goto_stmts = vector_new();
+  switch_stmts = vector_new();
+  continue_targets = vector_new();
+  break_targets = vector_new();
+  ret_func = func;
+
+  // begin function scope
+  vector_push(tag_scopes, map_new());
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
     Symbol *param = func->symbol->type->params->buffer[i];
     put_variable(NULL, param, false);
   }
 
-  vector_push(tag_scopes, map_new());
   sema_stmt(func->body);
+
+  // end function scope
   vector_pop(tag_scopes);
 
   // check goto statements
   for (int i = 0; i < goto_stmts->length; i++) {
     Stmt *stmt = goto_stmts->buffer[i];
-    bool found = false;
-    for (int j = 0; j < label_names->length; j++) {
-      char *label_name = label_names->buffer[j];
-      if (strcmp(stmt->goto_label, label_name) == 0) {
-        found = true;
+    for (int j = 0; j < label_stmts->length; j++) {
+      Stmt *label_stmt = label_stmts->buffer[j];
+      char *label_ident = label_stmt->label_ident;
+      if (strcmp(stmt->goto_ident, label_ident) == 0) {
+        stmt->goto_target = label_stmt;
       }
     }
-    if (!found) {
-      ERROR(stmt->token, "label: %s is not found.", stmt->goto_label);
+    if (!stmt->goto_target) {
+      ERROR(stmt->token, "label: %s is not found.", stmt->goto_ident);
     }
   }
 
   func->stack_size = stack_size;
-  func->label_names = label_names;
+  func->label_stmts = label_stmts;
 }
 
 static void sema_trans_unit(TransUnit *trans_unit) {
+  tag_scopes = vector_new();
   vector_push(tag_scopes, map_new());
 
   for (int i = 0; i < trans_unit->decls->length; i++) {
@@ -1755,12 +1871,5 @@ static void sema_trans_unit(TransUnit *trans_unit) {
 }
 
 void sema(TransUnit *trans_unit) {
-  tag_scopes = vector_new();
-
-  switch_cases = vector_new();
-
-  continue_level = 0;
-  break_level = 0;
-
   sema_trans_unit(trans_unit);
 }
