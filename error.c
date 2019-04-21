@@ -1,31 +1,21 @@
 #include "cc.h"
 
-noreturn void error(Location *loc, char *format, ...) {
+noreturn void error(Location *loc, char *__file, int __lineno, char *format, ...) {
   char *filename = loc->filename;
   char *line_ptr = loc->line_ptr;
   int lineno = loc->lineno;
   int column = loc->column;
 
-  // replace '\n' with '\0' for displaying location
-  for (int i = 0; line_ptr[i]; i++) {
-    if (line_ptr[i] == '\n') {
-      line_ptr[i] = '\0';
-      break;
-    }
-  }
-
   // error message
   va_list ap;
-  fprintf(stderr, "%s:%d:%d: error: ", filename, lineno, column);
   va_start(ap, format);
+  fprintf(stderr, "%s:%d:%d: error: ", filename, lineno, column);
   vfprintf(stderr, format, ap);
+  fprintf(stderr, " (at %s:%d)\n", __file, __lineno);
   va_end(ap);
-  fprintf(stderr, "\n");
 
-  // location (line)
+  // location
   fprintf(stderr, " %s\n", line_ptr);
-
-  // location (column)
   for (int i = 0; i < column; i++) {
     fprintf(stderr, " ");
   }

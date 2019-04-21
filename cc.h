@@ -528,9 +528,9 @@ struct symbol {
 
 // error.c
 #define ERROR(token, ...) \
-  error((token)->loc, __VA_ARGS__)
+  error((token)->loc, __FILE__, __LINE__, __VA_ARGS__);
 
-extern noreturn void error(Location *loc, char *format, ...);
+extern noreturn void error(Location *loc, char *__file, int __lineno, char *format, ...);
 extern noreturn void internal_error(char *format, ...);
 
 // lex.c

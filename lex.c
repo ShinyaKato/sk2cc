@@ -5,6 +5,7 @@ static char *filename;
 static char *src;
 static int pos;
 
+static char **cur_line;
 static char *line_ptr;
 static int lineno;
 static int column;
@@ -14,11 +15,18 @@ static Location *loc;
 
 static Map *keywords;
 
-static String *read_file(char *filename) {
-  FILE *fp = fopen(filename, "r");
-  if (!fp) {
-    perror(filename);
-    exit(1);
+// read the input source code and replace '\r\n' with '\n'
+static String *read_file(void) {
+  FILE *fp;
+  if (strcmp(filename, "-") == 0) {
+    filename = "stdin";
+    fp = stdin;
+  } else {
+    fp = fopen(filename, "r");
+    if (!fp) {
+      perror(filename);
+      exit(1);
+    }
   }
 
   String *file = string_new();
@@ -33,11 +41,6 @@ static String *read_file(char *filename) {
 
   fclose(fp);
 
-  return file;
-}
-
-// replace '\r\n' with '\n'
-static String *replace_newline(String *file) {
   String *src = string_new();
   for (int i = 0; i < file->length; i++) {
     char c = file->buffer[i];
@@ -51,6 +54,24 @@ static String *replace_newline(String *file) {
   return src;
 }
 
+// prepare lines for error message
+// clone the source code and replace '\n' with '\0' for debugging and error message
+// we can display the line by printf("%s\n", token->line_ptr);
+static char **split_lines(String *file) {
+  String *src = string_new();
+  string_write(src, file->buffer);
+
+  Vector *lines = vector_new();
+  for (int i = 0; i < src->length; i++) {
+    vector_push(lines, &src->buffer[i]);
+
+    while (file->buffer[i] != '\n') i++;
+    src->buffer[i] = '\0';
+  }
+
+  return (char **) lines->buffer;
+}
+
 static Token *create_token(TokenType tk_type) {
   Token *token = calloc(1, sizeof(Token));
   token->tk_type = tk_type;
@@ -60,7 +81,8 @@ static Token *create_token(TokenType tk_type) {
 }
 
 static void next_line(void) {
-  line_ptr = &src[pos];
+  cur_line++;
+  line_ptr = *cur_line;
   lineno++;
   column = 1;
 }
@@ -93,7 +115,7 @@ static char get_char(void) {
 
 static char expect_char(char c) {
   if (peek_char() != c) {
-    error(loc, "%c is expected.", c);
+    error(loc, __FILE__, __LINE__, "%c is expected.", c);
   }
   return get_char();
 }
@@ -155,7 +177,7 @@ static char get_escape_sequence(void) {
   if (read_char('t')) return '\t';
   if (read_char('0')) return '\0';
 
-  error(loc, "invalid escape sequence.");
+  error(loc, __FILE__, __LINE__, "invalid escape sequence.");
 }
 
 static Token *next_token(void) {
@@ -178,7 +200,7 @@ static Token *next_token(void) {
   // get first character
   char c = get_char();
 
-  // nwe-line and white-space
+  // new-line and white-space
   if (c == '\n') {
     return create_token(TK_NEWLINE);
   }
@@ -294,20 +316,21 @@ static Token *next_token(void) {
     }
   }
 
-  error(loc, "failed to tokenize.");
+  error(loc, __FILE__, __LINE__, "failed to tokenize.");
 }
 
 Vector *tokenize(char *_filename) {
   filename = _filename;
 
   // read the input file
-  String *file = read_file(filename);
+  String *file = read_file();
 
   // initialization
-  src = replace_newline(file)->buffer;
+  src = file->buffer;
   pos = 0;
 
-  line_ptr = src;
+  cur_line = split_lines(file);
+  line_ptr = *cur_line;
   lineno = 1;
   column = 1;
 
@@ -334,14 +357,6 @@ Vector *tokenize(char *_filename) {
 
     vector_push(pp_tokens, token);
     if (token->tk_type == TK_EOF) break;
-  }
-
-  // replace '\n' with '\0' for debugging
-  // we can display the line by printf("%s\n", token->line_ptr);
-  for (int i = 0; src[i]; i++) {
-    if (src[i] == '\n') {
-      src[i] = '\0';
-    }
   }
 
   return pp_tokens;
