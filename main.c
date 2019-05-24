@@ -8,7 +8,7 @@ int main(int argc, char **argv) {
 
   if (argc >= 2 && strcmp(argv[1], "--as") == 0) {
     if (argc != 4) {
-      fprintf(stderr, "usage: %s --as [input file]\n", command);
+      fprintf(stderr, "usage: %s --as [input file] [output file]\n", command);
       exit(1);
     }
 
