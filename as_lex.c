@@ -1,5 +1,18 @@
 #include "as.h"
 
+#define LEX_ERROR(...) \
+  do { \
+    as_error(file, token_lineno, token_column, line, __FILE__, __LINE__, __VA_ARGS__); \
+  } while (0)
+
+static char *file;
+static int lineno;
+static int column;
+static char *line;
+
+static int token_lineno;
+static int token_column;
+
 static Vector *read_file(char *file) {
   Vector *source = vector_new();
 
@@ -28,11 +41,12 @@ static Vector *read_file(char *file) {
   return source;
 }
 
-static Token *token_new(char *file, int lineno, int column, char *line) {
+static Token *create_token(TokenType type) {
   Token *token = (Token *) calloc(1, sizeof(Token));
+  token->type = type;
   token->file = file;
-  token->lineno = lineno;
-  token->column = column;
+  token->lineno = token_lineno;
+  token->column = token_column;
   token->line = line;
   return token;
 }
@@ -56,122 +70,151 @@ static char *regs[16][4] = {
   { "r15b", "r15w", "r15d", "r15" },
 };
 
-static RegType regtype(char *reg, Token *token) {
+static RegType regtype(char *reg) {
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 4; j++) {
       if (strcmp(reg, regs[i][j]) == 0) return j;
     }
   }
-  ERROR(token, "invalid register: %s.", reg);
+
+  LEX_ERROR("invalid register: %s.", reg);
 }
 
-static Reg regcode(char *reg, Token *token) {
+static Reg regcode(char *reg) {
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 4; j++) {
       if (strcmp(reg, regs[i][j]) == 0) return i;
     }
   }
-  ERROR(token, "invalid register: %s.", reg);
+
+  LEX_ERROR("invalid register: %s.", reg);
 }
 
-Vector *as_tokenize(char *file) {
-  Vector *source = read_file(file);
+char escape_sequence(void) {
+  switch (line[column++]) {
+    case '"': return '"';
+    case '\\': return '\\';
+    case 'n': return '\n';
+    case '0': return '\0';
+  }
 
-  Vector *lines = vector_new();
+  LEX_ERROR("invalid escape sequence.");
+}
 
-  for (int lineno = 0; lineno < source->length; lineno++) {
-    Vector *tokens = vector_new();
-    char *line = source->buffer[lineno];
+Token *next_token(void) {
+  char c = line[column++];
+  token_lineno = lineno;
+  token_column = column;
 
-    for (int column = 0; line[column] != '\0';) {
-      while (line[column] == ' ' || line[column] == '\t') column++;
-      if (line[column] == '\0') break;
-
-      Token *token = token_new(file, lineno, column, line);
-      char c = line[column++];
-      if (c == '.' || c == '_' || isalpha(c)) {
-        String *text = string_new();
-        string_push(text, c);
-        while (line[column] == '.' || line[column] == '_' || isalnum(line[column])) {
-          string_push(text, line[column++]);
-        }
-        token->type = TOK_IDENT;
-        token->ident = text->buffer;
-      } else if (c == '%') {
-        String *text = string_new();
-        while (isalnum(line[column])) {
-          string_push(text, line[column++]);
-        }
-        if (strcmp(text->buffer, "rip") == 0) {
-          token->type = TOK_RIP;
-        } else {
-          token->type = TOK_REG;
-          token->regtype = regtype(text->buffer, token);
-          token->regcode = regcode(text->buffer, token);
-        }
-      } else if (c == '+' || c == '-' || isdigit(c)) {
-        int sign = c == '-' ? -1 : 1;
-        int num = isdigit(c) ? (c - '0') : 0;
-        while (isdigit(line[column])) {
-          num = num * 10 + (line[column++] - '0');
-        }
-        token->type = TOK_NUM;
-        token->num = sign * num;
-      } else if (c == '$') {
-        unsigned int imm = 0;
-        if (!isdigit(line[column])) {
-          ERROR(token, "invalid immediate.");
-        }
-        while (isdigit(line[column])) {
-          imm = imm * 10 + (line[column++] - '0');
-        }
-        token->type = TOK_IMM;
-        token->imm = imm;
-      } else if (c == '"') {
-        String *text = string_new();
-        while (1) {
-          char c = line[column++];
-          if (c == '"') break;
-          if (c == '\\') {
-            switch (line[column++]) {
-              case '"':
-                string_push(text, '"');
-                break;
-              case '\\':
-                string_push(text, '\\');
-                break;
-              case 'n':
-                string_push(text, '\n');
-                break;
-              case '0':
-                string_push(text, '\0');
-                break;
-              default:
-                ERROR(token, "invalid escape character.");
-            }
-          } else {
-            string_push(text, c);
-          }
-        }
-        token->type = TOK_STR;
-        token->length = text->length;
-        token->string = text->buffer;
-      } else if (c == ',') {
-        token->type = TOK_COMMA;
-      } else if (c == '(') {
-        token->type = TOK_LPAREN;
-      } else if (c == ')') {
-        token->type = TOK_RPAREN;
-      } else if (c == ':') {
-        token->type = TOK_SEMICOLON;
-      } else {
-        ERROR(token, "invalid character: %c.", c);
-      }
-
-      vector_push(tokens, token);
+  if (c == '.' || c == '_' || isalpha(c)) {
+    String *text = string_new();
+    string_push(text, c);
+    while (line[column] == '.' || line[column] == '_' || isalnum(line[column])) {
+      string_push(text, line[column++]);
     }
 
-    vector_push(lines, tokens);
+    Token *token = create_token(TOK_IDENT);
+    token->ident = text->buffer;
+    return token;
+  }
+
+  if (c == '%') {
+    String *text = string_new();
+    while (isalnum(line[column])) {
+      string_push(text, line[column++]);
+    }
+
+    if (strcmp(text->buffer, "rip") == 0) {
+      return create_token(TOK_RIP);
+    }
+
+    Token *token = create_token(TOK_REG);
+    token->regtype = regtype(text->buffer);
+    token->regcode = regcode(text->buffer);
+    return token;
+  }
+
+  if (c == '+' || c == '-' || isdigit(c)) {
+    int sign = c == '-' ? -1 : 1;
+    int num = isdigit(c) ? (c - '0') : 0;
+    while (isdigit(line[column])) {
+      num = num * 10 + (line[column++] - '0');
+    }
+
+    Token *token = create_token(TOK_NUM);
+    token->num = sign * num;
+    return token;
+  }
+
+  if (c == '$') {
+    unsigned int imm = 0;
+    if (!isdigit(line[column])) {
+      LEX_ERROR("invalid immediate.");
+    }
+    while (isdigit(line[column])) {
+      imm = imm * 10 + (line[column++] - '0');
+    }
+
+    Token *token = create_token(TOK_IMM);
+    token->imm = imm;
+    return token;
+  }
+
+  if (c == '"') {
+    String *text = string_new();
+    while (1) {
+      char c = line[column++];
+      if (c == '"') break;
+      if (c == '\\') c = escape_sequence();
+      string_push(text, c);
+    }
+
+    Token *token = create_token(TOK_STR);
+    token->length = text->length;
+    token->string = text->buffer;
+    return token;
+  }
+
+  if (c == ',') {
+    return create_token(TOK_COMMA);
+  }
+
+  if (c == '(') {
+    return create_token(TOK_LPAREN);
+  }
+
+  if (c == ')') {
+    return create_token(TOK_RPAREN);
+  }
+
+  if (c == ':') {
+    return create_token(TOK_SEMICOLON);
+  }
+
+  LEX_ERROR("unexpected character: %c.", c);
+}
+
+Vector *next_line(void) {
+  Vector *tokens = vector_new();
+
+  for (column = 0; line[column] != '\0';) {
+    while (line[column] == ' ' || line[column] == '\t') column++;
+    if (line[column] == '\0') break;
+
+    vector_push(tokens, next_token());
+  }
+
+  return tokens;
+}
+
+Vector *as_tokenize(char *_file) {
+  file = _file;
+
+  Vector *source = read_file(file);
+  Vector *lines = vector_new();
+  for (lineno = 0; lineno < source->length; lineno++) {
+    line = source->buffer[lineno];
+    vector_push(lines, next_line());
   }
 
   return lines;
