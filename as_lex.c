@@ -70,7 +70,7 @@ static Token *create_token(TokenType type) {
   return token;
 }
 
-static RegType regtype(char *reg) {
+static RegSize regtype(char *reg) {
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 4; j++) {
       if (strcmp(reg, regs[i][j]) == 0) return j;
@@ -80,7 +80,7 @@ static RegType regtype(char *reg) {
   as_error(loc, __FILE__, __LINE__, "unknown register: %s.", reg);
 }
 
-static Reg regcode(char *reg) {
+static RegCode regcode(char *reg) {
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 4; j++) {
       if (strcmp(reg, regs[i][j]) == 0) return i;

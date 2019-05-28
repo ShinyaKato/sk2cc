@@ -116,7 +116,7 @@ static void gen_dir(Dir *dir) {
   }
 }
 
-static void gen_rex(bool w, Reg reg, Reg index, Reg base, bool required) {
+static void gen_rex(bool w, RegCode reg, RegCode index, RegCode base, bool required) {
   bool r = reg & 0x08;
   bool x = index & 0x08;
   bool b = base & 0x08;
@@ -133,7 +133,7 @@ static void gen_opcode(Byte opcode) {
   binary_push(bin, opcode);
 }
 
-static void gen_opcode_reg(Byte opcode, Reg reg) {
+static void gen_opcode_reg(Byte opcode, RegCode reg) {
   binary_push(bin, opcode | (reg & 0x07));
 }
 
@@ -144,18 +144,18 @@ typedef enum mod {
   MOD_REG = 3,
 } Mod;
 
-static Mod mod_mem(int disp, Reg base) {
+static Mod mod_mem(int disp, RegCode base) {
   bool bp = base == REG_BP || base == REG_R13;
   if (!bp && disp == 0) return MOD_DISP0;
   if (-128 <= disp && disp < 128) return MOD_DISP8;
   return MOD_DISP32;
 }
 
-static void gen_mod_rm(Mod mod, Reg reg, Reg rm) {
+static void gen_mod_rm(Mod mod, RegCode reg, RegCode rm) {
   binary_push(bin, ((mod & 0x03) << 6) | ((reg & 0x07) << 3) | (rm & 0x07));
 }
 
-static void gen_sib(Scale scale, Reg index, Reg base) {
+static void gen_sib(Scale scale, RegCode index, RegCode base) {
   binary_push(bin, ((scale & 0x03) << 6) | ((index & 0x07) << 3) | (base & 0x07));
 }
 
@@ -196,7 +196,7 @@ static void gen_rel32(char *ident) {
   gen_imm32(0);
 }
 
-static void gen_ops(Reg reg, Op *rm) {
+static void gen_ops(RegCode reg, Op *rm) {
   if (rm->type == OP_REG) {
     gen_mod_rm(MOD_REG, reg, rm->regcode);
   } else if (rm->type == OP_MEM) {

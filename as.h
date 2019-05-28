@@ -7,14 +7,19 @@
 #include "binary.h"
 
 // struct and enum declaration
-typedef enum reg_type {
-  REG_BYTE,
-  REG_WORD,
-  REG_LONG,
-  REG_QUAD,
-} RegType;
 
-typedef enum reg {
+// register size
+typedef enum {
+  REG_BYTE, // 8-bit
+  REG_WORD, // 16-bit
+  REG_LONG, // 32-bit
+  REG_QUAD, // 64-bit
+} RegSize;
+
+// register code
+// the values of constants are important
+// because they are used in the instruction encoding.
+typedef enum {
   REG_AX,
   REG_CX,
   REG_DX,
@@ -31,95 +36,127 @@ typedef enum reg {
   REG_R13,
   REG_R14,
   REG_R15,
-} Reg;
+} RegCode;
 
-typedef enum token_type {
-  TK_IDENT,
-  TK_RIP,
-  TK_REG,
-  TK_NUM,
-  TK_IMM,
-  TK_STR,
-  TK_COMMA,
-  TK_LPAREN,
-  TK_RPAREN,
-  TK_SEMICOLON,
+// token type
+typedef enum {
+  TK_IDENT,     // identifier
+  TK_RIP,       // RIP register
+  TK_REG,       // register
+  TK_NUM,       // number (displacement, scale, etc.)
+  TK_IMM,       // immediate value
+  TK_STR,       // string (.ascii directive, etc.)
+  TK_COMMA,     // ','
+  TK_LPAREN,    // '('
+  TK_RPAREN,    // ')'
+  TK_SEMICOLON, // ';'
 } TokenType;
 
+// source code location
+// this informatino is used for error report.
 typedef struct location {
   char *filename; // source file name
   char *line_ptr; // pointer to the line head
-  int lineno;     // 1-indexed
-  int column;     // 1-indexed
+  int lineno;     // 0-indexed
+  int column;     // 0-indexed
 } Location;
 
-typedef struct token {
-  TokenType type;
+// token
+typedef struct {
+  TokenType type; // token type
+
+  // identifier
   char *ident;
-  RegType regtype;
-  Reg regcode;
+
+  // register
+  RegSize regtype;
+  RegCode regcode;
+
+  // number
   int num;
+
+  // immediate value
   unsigned int imm;
+
+  // string
   char *string;
   int length;
-  Location *loc;
+
+  Location *loc; // location information
 } Token;
 
-typedef struct label {
+// label
+typedef struct {
   char *ident;
   Token *token;
 } Label;
 
-typedef enum dir_type {
-  DIR_TEXT,
-  DIR_DATA,
-  DIR_SECTION,
-  DIR_GLOBAL,
-  DIR_ZERO,
-  DIR_LONG,
-  DIR_QUAD,
-  DIR_ASCII,
+// directive type
+typedef enum {
+  DIR_TEXT,    // .text
+  DIR_DATA,    // .data
+  DIR_SECTION, // .section
+  DIR_GLOBAL,  // .global
+  DIR_ZERO,    // .zero
+  DIR_LONG,    // .long
+  DIR_QUAD,    // .quad
+  DIR_ASCII,   // .ascii
 } DirType;
 
-typedef struct dir {
-  DirType type;
-  char *ident;
-  int num;
-  char *string;
-  int length;
+// directive
+typedef struct {
+  DirType type; // directive type
+  char *ident;  // identifier
+  int num;      // number
+  char *string; // string
+  int length;   // string length
   Token *token;
 } Dir;
 
-typedef enum scale {
-  SCALE1 = 0,
-  SCALE2 = 1,
-  SCALE4 = 2,
-  SCALE8 = 3,
+// scale of memory operand
+// the values of constants are important
+// because they are used in instruction encoding.
+typedef enum {
+  SCALE1,
+  SCALE2,
+  SCALE4,
+  SCALE8,
 } Scale;
 
-typedef enum op_type {
-  OP_REG,
-  OP_MEM,
-  OP_SYM,
-  OP_IMM,
+typedef enum {
+  OP_REG, // register operand
+  OP_MEM, // memory operand
+  OP_SYM, // symbol operand
+  OP_IMM, // immediate operand
 } OpType;
 
-typedef struct op {
-  OpType type;
-  RegType regtype;
-  Reg regcode;
-  bool rip;
-  bool sib;
-  Scale scale;
-  Reg index;
-  Reg base;
-  int disp;
-  char *ident;
+// operand
+typedef struct {
+  OpType type; // operand type
+
+  // register operand
+  RegSize regtype; // register type
+  RegCode regcode;     // register code
+
+  // memory operand
+  bool rip;      // RIP-relative addressing?
+  bool sib;      // needs scale-index-base byte?
+  Scale scale;   // scale
+  RegCode index; // index register code
+  RegCode base;  // base register code
+  int disp;      // address displacement
+
+  // symbol operand
+  char *ident; // identifier
+
+  // immediate operand
   unsigned int imm;
+
   Token *token;
 } Op;
 
-typedef enum inst_type {
+// instruction type
+typedef enum {
   INST_PUSH,
   INST_POP,
   INST_MOV,
@@ -159,54 +196,70 @@ typedef enum inst_type {
   INST_RET,
 } InstType;
 
-typedef enum inst_suffix {
+// instructino suffix
+typedef enum {
   INST_BYTE,
   INST_WORD,
   INST_LONG,
   INST_QUAD,
 } InstSuffix;
 
-typedef struct inst {
-  InstType type;
-  InstSuffix suffix;
+// instruction
+typedef struct {
+  InstType type;     // instruction type
+  InstSuffix suffix; // instruction suffix
+
+  // instruction with one operand
   Op *op;
+
+  // instruction with two operands
   Op *src;
   Op *dest;
+
   Token *token;
 } Inst;
 
-typedef enum stmt_type {
+// assembly statement type
+// a statement is one of label, directive or instruction.
+typedef enum {
   STMT_LABEL,
   STMT_DIR,
   STMT_INST,
 } StmtType;
 
-typedef struct stmt {
+// assembly statement
+typedef struct {
   StmtType type;
   Label *label;
   Dir *dir;
   Inst *inst;
 } Stmt;
 
-typedef struct reloc {
+// relocation
+// some relocs are resolved when generating object file.
+// others are stored in the relocation table of object file and resolved by a linker.
+typedef struct {
   int offset;
   char *ident;
   int type;
   int addend;
 } Reloc;
 
-typedef struct section {
+// section
+typedef struct {
   Binary *bin;
   Vector *relocs;
 } Section;
 
-typedef struct symbol {
-  bool global;
-  int section;
-  int offset;
+// symbol
+typedef struct {
+  bool global; // a global symbol can be referenced by other object files
+  int section; // section index
+  int offset;  // offset int the section
 } Symbol;
 
-typedef struct trans_unit {
+// translation unit
+typedef struct {
   Section *text;
   Section *data;
   Section *rodata;

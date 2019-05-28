@@ -66,21 +66,21 @@ static Op *op_new(OpType type, Token *token) {
   return op;
 }
 
-static Op *op_reg(RegType regtype, Reg regcode, Token *token) {
+static Op *op_reg(RegSize regtype, RegCode regcode, Token *token) {
   Op *op = op_new(OP_REG, token);
   op->regtype = regtype;
   op->regcode = regcode;
   return op;
 }
 
-static Op *op_mem_base(Reg base, Reg disp, Token *token) {
+static Op *op_mem_base(RegCode base, RegCode disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->base = base;
   op->disp = disp;
   return op;
 }
 
-static Op *op_mem_sib(Scale scale, Reg index, Reg base, Reg disp, Token *token) {
+static Op *op_mem_sib(Scale scale, RegCode index, RegCode base, RegCode disp, Token *token) {
   Op *op = op_new(OP_MEM, token);
   op->sib = true;
   op->scale = scale;
@@ -175,8 +175,8 @@ static Vector *parse_ops(Token **token) {
 
     switch ((*token)->type) {
       case TK_REG: {
-        RegType regtype = (*token)->regtype;
-        Reg regcode = (*token)->regcode;
+        RegSize regtype = (*token)->regtype;
+        RegCode regcode = (*token)->regcode;
         token++;
         vector_push(ops, op_reg(regtype, regcode, op_head));
       }
@@ -191,7 +191,7 @@ static Vector *parse_ops(Token **token) {
         if ((*token)->regtype != REG_QUAD) {
           ERROR(*token, "64-bit register is expected.");
         }
-        Reg base = (*token++)->regcode;
+        RegCode base = (*token++)->regcode;
         if ((*token)->type == TK_COMMA) {
           token++;
           EXPECT(*token, TK_REG, "register is expected.");
@@ -201,7 +201,7 @@ static Vector *parse_ops(Token **token) {
           if ((*token)->regcode == REG_SP) {
             ERROR(*token, "cannot use rsp as index.");
           }
-          Reg index = (*token++)->regcode;
+          RegCode index = (*token++)->regcode;
           if ((*token)->type == TK_COMMA) {
             token++;
             EXPECT(*token, TK_NUM, "scale is expected.");
