@@ -7,7 +7,7 @@ static Label *label_new(char *ident, Token *token) {
   return label;
 }
 
-static Dir *dir_new(DirType type, Token *token) {
+static Dir *dir_new(StmtType type, Token *token) {
   Dir *dir = (Dir *) calloc(1, sizeof(Dir));
   dir->type = type;
   dir->token = token;
@@ -15,45 +15,45 @@ static Dir *dir_new(DirType type, Token *token) {
 }
 
 static Dir *dir_text(Token *token) {
-  return dir_new(DIR_TEXT, token);
+  return dir_new(ST_TEXT, token);
 }
 
 static Dir *dir_data(Token *token) {
-  return dir_new(DIR_DATA, token);
+  return dir_new(ST_DATA, token);
 }
 
 static Dir *dir_section(char *ident, Token *token) {
-  Dir *dir = dir_new(DIR_SECTION, token);
+  Dir *dir = dir_new(ST_SECTION, token);
   dir->ident = ident;
   return dir;
 }
 
 static Dir *dir_global(char *ident, Token *token) {
-  Dir *dir = dir_new(DIR_GLOBAL, token);
+  Dir *dir = dir_new(ST_GLOBAL, token);
   dir->ident = ident;
   return dir;
 }
 
 static Dir *dir_zero(int num, Token *token) {
-  Dir *dir = dir_new(DIR_ZERO, token);
+  Dir *dir = dir_new(ST_ZERO, token);
   dir->num = num;
   return dir;
 }
 
 static Dir *dir_long(int num, Token *token) {
-  Dir *dir = dir_new(DIR_LONG, token);
+  Dir *dir = dir_new(ST_LONG, token);
   dir->num = num;
   return dir;
 }
 
 static Dir *dir_quad(char *ident, Token *token) {
-  Dir *dir = dir_new(DIR_QUAD, token);
+  Dir *dir = dir_new(ST_QUAD, token);
   dir->ident = ident;
   return dir;
 }
 
 static Dir *dir_ascii(String *string, Token *token) {
-  Dir *dir = dir_new(DIR_ASCII, token);
+  Dir *dir = dir_new(ST_ASCII, token);
   dir->string = string;
   return dir;
 }
@@ -108,7 +108,7 @@ static Op *op_imm(int imm, Token *token) {
   return op;
 }
 
-static Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
+static Inst *inst_new(StmtType type, InstSuffix suffix, Token *token) {
   Inst *inst = (Inst *) calloc(1, sizeof(Inst));
   inst->type = type;
   inst->suffix = suffix;
@@ -116,45 +116,21 @@ static Inst *inst_new(InstType type, InstSuffix suffix, Token *token) {
   return inst;
 }
 
-static Inst *inst_op0(InstType type, InstSuffix suffix, Token *token) {
+static Inst *inst_op0(StmtType type, InstSuffix suffix, Token *token) {
   return inst_new(type, suffix, token);
 }
 
-static Inst *inst_op1(InstType type, InstSuffix suffix, Op *op, Token *token) {
+static Inst *inst_op1(StmtType type, InstSuffix suffix, Op *op, Token *token) {
   Inst *inst = inst_new(type, suffix, token);
   inst->op = op;
   return inst;
 }
 
-static Inst *inst_op2(InstType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
+static Inst *inst_op2(StmtType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
   Inst *inst = inst_new(type, suffix, token);
   inst->src = src;
   inst->dest = dest;
   return inst;
-}
-
-static Stmt *stmt_new(StmtType type) {
-  Stmt *stmt = (Stmt *) calloc(1, sizeof(Stmt));
-  stmt->type = type;
-  return stmt;
-}
-
-static Stmt *stmt_label(Label *label) {
-  Stmt *stmt = stmt_new(STMT_LABEL);
-  stmt->label = label;
-  return stmt;
-}
-
-static Stmt *stmt_dir(Dir *dir) {
-  Stmt *stmt = stmt_new(STMT_DIR);
-  stmt->dir = dir;
-  return stmt;
-}
-
-static Stmt *stmt_inst(Inst *inst) {
-  Stmt *stmt = stmt_new(STMT_INST);
-  stmt->inst = inst;
-  return stmt;
 }
 
 #define EXPECT(token, expect_type, ...) \
@@ -267,7 +243,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG || op->regtype != REG_QUAD) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
-    return inst_op1(INST_PUSH, INST_QUAD, op, inst);
+    return inst_op1(ST_PUSH, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "popq") == 0) {
@@ -278,7 +254,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG || op->regtype != REG_QUAD) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
-    return inst_op1(INST_POP, INST_QUAD, op, inst);
+    return inst_op1(ST_POP, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "movq") == 0) {
@@ -298,7 +274,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOV, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movl") == 0) {
@@ -318,7 +294,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_LONG, src, dest, inst);
+    return inst_op2(ST_MOV, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movw") == 0) {
@@ -338,7 +314,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_WORD, src, dest, inst);
+    return inst_op2(ST_MOV, INST_WORD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movb") == 0) {
@@ -358,7 +334,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
+    return inst_op2(ST_MOV, INST_BYTE, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movzbq") == 0) {
@@ -375,7 +351,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVZB, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOVZB, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movzbl") == 0) {
@@ -392,7 +368,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVZB, INST_LONG, src, dest, inst);
+    return inst_op2(ST_MOVZB, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movzbw") == 0) {
@@ -409,7 +385,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVZB, INST_WORD, src, dest, inst);
+    return inst_op2(ST_MOVZB, INST_WORD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movzwq") == 0) {
@@ -426,7 +402,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVZW, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOVZW, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movzwl") == 0) {
@@ -443,7 +419,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVZW, INST_LONG, src, dest, inst);
+    return inst_op2(ST_MOVZW, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movsbq") == 0) {
@@ -460,7 +436,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSB, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOVSB, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movsbl") == 0) {
@@ -477,7 +453,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSB, INST_LONG, src, dest, inst);
+    return inst_op2(ST_MOVSB, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movsbw") == 0) {
@@ -494,7 +470,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSB, INST_WORD, src, dest, inst);
+    return inst_op2(ST_MOVSB, INST_WORD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movswq") == 0) {
@@ -511,7 +487,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSW, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOVSW, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movswl") == 0) {
@@ -528,7 +504,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSW, INST_LONG, src, dest, inst);
+    return inst_op2(ST_MOVSW, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "movslq") == 0) {
@@ -545,7 +521,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_MOVSL, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_MOVSL, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "leaq") == 0) {
@@ -562,7 +538,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->regtype != REG_QUAD) {
       ERROR(dest->token, "only 64-bit register is supported.");
     }
-    return inst_op2(INST_LEA, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_LEA, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "negq") == 0) {
@@ -576,7 +552,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_NEG, INST_QUAD, op, inst);
+    return inst_op1(ST_NEG, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "negl") == 0) {
@@ -590,7 +566,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_NEG, INST_LONG, op, inst);
+    return inst_op1(ST_NEG, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "notq") == 0) {
@@ -604,7 +580,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_NOT, INST_QUAD, op, inst);
+    return inst_op1(ST_NOT, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "notl") == 0) {
@@ -618,7 +594,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_NOT, INST_LONG, op, inst);
+    return inst_op1(ST_NOT, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "addq") == 0) {
@@ -638,7 +614,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_ADD, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_ADD, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "addl") == 0) {
@@ -658,7 +634,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_ADD, INST_LONG, src, dest, inst);
+    return inst_op2(ST_ADD, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "subq") == 0) {
@@ -678,7 +654,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SUB, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_SUB, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "subl") == 0) {
@@ -698,7 +674,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SUB, INST_LONG, src, dest, inst);
+    return inst_op2(ST_SUB, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "mulq") == 0) {
@@ -712,7 +688,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_MUL, INST_QUAD, op, inst);
+    return inst_op1(ST_MUL, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "mull") == 0) {
@@ -726,7 +702,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_MUL, INST_LONG, op, inst);
+    return inst_op1(ST_MUL, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "imulq") == 0) {
@@ -740,7 +716,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_IMUL, INST_QUAD, op, inst);
+    return inst_op1(ST_IMUL, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "imull") == 0) {
@@ -754,7 +730,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_IMUL, INST_LONG, op, inst);
+    return inst_op1(ST_IMUL, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "divq") == 0) {
@@ -768,7 +744,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_DIV, INST_QUAD, op, inst);
+    return inst_op1(ST_DIV, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "divl") == 0) {
@@ -782,7 +758,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_DIV, INST_LONG, op, inst);
+    return inst_op1(ST_DIV, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "idivq") == 0) {
@@ -796,7 +772,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_IDIV, INST_QUAD, op, inst);
+    return inst_op1(ST_IDIV, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "idivl") == 0) {
@@ -810,7 +786,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_IDIV, INST_LONG, op, inst);
+    return inst_op1(ST_IDIV, INST_LONG, op, inst);
   }
 
   if (strcmp(inst->ident, "andq") == 0) {
@@ -830,7 +806,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_AND, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_AND, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "andl") == 0) {
@@ -850,7 +826,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_AND, INST_LONG, src, dest, inst);
+    return inst_op2(ST_AND, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "xorq") == 0) {
@@ -870,7 +846,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_XOR, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_XOR, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "xorl") == 0) {
@@ -890,7 +866,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_XOR, INST_LONG, src, dest, inst);
+    return inst_op2(ST_XOR, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "orq") == 0) {
@@ -910,7 +886,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_OR, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_OR, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "orl") == 0) {
@@ -930,7 +906,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_OR, INST_LONG, src, dest, inst);
+    return inst_op2(ST_OR, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "salq") == 0) {
@@ -947,7 +923,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SAL, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_SAL, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "sall") == 0) {
@@ -964,7 +940,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SAL, INST_LONG, src, dest, inst);
+    return inst_op2(ST_SAL, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "sarq") == 0) {
@@ -981,7 +957,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SAR, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_SAR, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "sarl") == 0) {
@@ -998,7 +974,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_SAR, INST_LONG, src, dest, inst);
+    return inst_op2(ST_SAR, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "cmpq") == 0) {
@@ -1018,7 +994,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_CMP, INST_QUAD, src, dest, inst);
+    return inst_op2(ST_CMP, INST_QUAD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "cmpl") == 0) {
@@ -1038,7 +1014,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_CMP, INST_LONG, src, dest, inst);
+    return inst_op2(ST_CMP, INST_LONG, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "cmpw") == 0) {
@@ -1059,7 +1035,7 @@ static Inst *parse_inst(Token **token) {
       ERROR(dest->token, "operand type mismatched.");
     }
 
-    return inst_op2(INST_CMP, INST_WORD, src, dest, inst);
+    return inst_op2(ST_CMP, INST_WORD, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "cmpb") == 0) {
@@ -1079,7 +1055,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
       ERROR(dest->token, "operand type mismatched.");
     }
-    return inst_op2(INST_CMP, INST_BYTE, src, dest, inst);
+    return inst_op2(ST_CMP, INST_BYTE, src, dest, inst);
   }
 
   if (strcmp(inst->ident, "sete") == 0) {
@@ -1093,7 +1069,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETE, INST_BYTE, op, inst);
+    return inst_op1(ST_SETE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setne") == 0) {
@@ -1107,7 +1083,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETNE, INST_BYTE, op, inst);
+    return inst_op1(ST_SETNE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setb") == 0) {
@@ -1121,7 +1097,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETB, INST_BYTE, op, inst);
+    return inst_op1(ST_SETB, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setl") == 0) {
@@ -1135,7 +1111,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETL, INST_BYTE, op, inst);
+    return inst_op1(ST_SETL, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setg") == 0) {
@@ -1149,7 +1125,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETG, INST_BYTE, op, inst);
+    return inst_op1(ST_SETG, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setbe") == 0) {
@@ -1163,7 +1139,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETBE, INST_BYTE, op, inst);
+    return inst_op1(ST_SETBE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setle") == 0) {
@@ -1177,7 +1153,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETLE, INST_BYTE, op, inst);
+    return inst_op1(ST_SETLE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "setge") == 0) {
@@ -1191,7 +1167,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
-    return inst_op1(INST_SETGE, INST_BYTE, op, inst);
+    return inst_op1(ST_SETGE, INST_BYTE, op, inst);
   }
 
   if (strcmp(inst->ident, "jmp") == 0) {
@@ -1202,7 +1178,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
-    return inst_op1(INST_JMP, INST_QUAD, op, inst);
+    return inst_op1(ST_JMP, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "je") == 0) {
@@ -1213,7 +1189,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
-    return inst_op1(INST_JE, INST_QUAD, op, inst);
+    return inst_op1(ST_JE, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "jne") == 0) {
@@ -1224,7 +1200,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
-    return inst_op1(INST_JNE, INST_QUAD, op, inst);
+    return inst_op1(ST_JNE, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "call") == 0) {
@@ -1235,21 +1211,21 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_SYM) {
       ERROR(op->token, "only symbol is supported.");
     }
-    return inst_op1(INST_CALL, INST_QUAD, op, inst);
+    return inst_op1(ST_CALL, INST_QUAD, op, inst);
   }
 
   if (strcmp(inst->ident, "leave") == 0) {
     if (ops->length != 0) {
       ERROR(inst, "'%s' expects no operand.", inst->ident);
     }
-    return inst_op0(INST_LEAVE, INST_QUAD, inst);
+    return inst_op0(ST_LEAVE, INST_QUAD, inst);
   }
 
   if (strcmp(inst->ident, "ret") == 0) {
     if (ops->length != 0) {
       ERROR(inst, "'%s' expects no operand.", inst->ident);
     }
-    return inst_op0(INST_RET, INST_QUAD, inst);
+    return inst_op0(ST_RET, INST_QUAD, inst);
   }
 
   ERROR(inst, "unknown instruction '%s'.", inst->ident);
@@ -1273,19 +1249,19 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[2], "invalid symbol declaration.");
       }
       char *ident = token[0]->ident;
-      vector_push(stmts, stmt_label(label_new(ident, token[0])));
+      vector_push(stmts, label_new(ident, token[0]));
       continue;
     }
 
     // .text directive
     if (strcmp(token[0]->ident, ".text") == 0) {
-      vector_push(stmts, stmt_dir(dir_text(token[0])));
+      vector_push(stmts, dir_text(token[0]));
       continue;
     }
 
     // .data directive
     if (strcmp(token[0]->ident, ".data") == 0) {
-      vector_push(stmts, stmt_dir(dir_data(token[0])));
+      vector_push(stmts, dir_data(token[0]));
       continue;
     }
 
@@ -1302,7 +1278,7 @@ Vector *as_parse(Vector *lines) {
       if (strcmp(ident, ".rodata") != 0) {
         ERROR(token[0], "only '.rodata' is supported.");
       }
-      vector_push(stmts, stmt_dir(dir_section(ident, token[0])));
+      vector_push(stmts, dir_section(ident, token[0]));
       continue;
     }
 
@@ -1315,7 +1291,7 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       char *ident = token[1]->ident;
-      vector_push(stmts, stmt_dir(dir_global(ident, token[1])));
+      vector_push(stmts, dir_global(ident, token[1]));
       continue;
     }
 
@@ -1329,7 +1305,7 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       int num = token[1]->num;
-      vector_push(stmts, stmt_dir(dir_zero(num, token[0])));
+      vector_push(stmts, dir_zero(num, token[0]));
       continue;
     }
 
@@ -1343,7 +1319,7 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       int num = token[1]->num;
-      vector_push(stmts, stmt_dir(dir_long(num, token[0])));
+      vector_push(stmts, dir_long(num, token[0]));
       continue;
     }
 
@@ -1357,7 +1333,7 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       char *ident = token[1]->ident;
-      vector_push(stmts, stmt_dir(dir_quad(ident, token[1])));
+      vector_push(stmts, dir_quad(ident, token[1]));
       continue;
     }
 
@@ -1371,12 +1347,12 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "invalid directive.");
       }
       String *string = token[1]->string;
-      vector_push(stmts, stmt_dir(dir_ascii(string, token[1])));
+      vector_push(stmts, dir_ascii(string, token[1]));
       continue;
     }
 
     // instruction
-    vector_push(stmts, stmt_inst(parse_inst(token)));
+    vector_push(stmts, parse_inst(token));
   }
 
   return stmts;

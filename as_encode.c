@@ -39,6 +39,8 @@ static Vector *relocs;
 static Map *symbols;
 static int current;
 
+// encode label
+
 static void gen_label(Label *label) {
   Symbol *symbol = map_lookup(symbols, label->ident);
   if (!symbol) {
@@ -51,70 +53,62 @@ static void gen_label(Label *label) {
   }
 }
 
-static void gen_dir(Dir *dir) {
-  switch (dir->type) {
-    case DIR_TEXT: {
-      bin = trans_unit->text->bin;
-      relocs = trans_unit->text->relocs;
-      current = TEXT;
-    }
-    break;
+// encode directives
 
-    case DIR_DATA: {
-      bin = trans_unit->data->bin;
-      relocs = trans_unit->data->relocs;
-      current = DATA;
-    }
-    break;
+static void gen_text(Dir *dir) {
+  bin = trans_unit->text->bin;
+  relocs = trans_unit->text->relocs;
+  current = TEXT;
+}
 
-    case DIR_SECTION: {
-      bin = trans_unit->rodata->bin;
-      relocs = trans_unit->rodata->relocs;
-      current = RODATA;
-    }
-    break;
+static void gen_data(Dir *dir) {
+  bin = trans_unit->data->bin;
+  relocs = trans_unit->data->relocs;
+  current = DATA;
+}
 
-    case DIR_GLOBAL: {
-      Symbol *symbol = map_lookup(symbols, dir->ident);
-      if (!symbol) {
-        map_put(symbols, dir->ident, symbol_new(true, UNDEF, 0));
-      } else {
-        symbol->global = true;
-      }
-    }
-    break;
+static void gen_section(Dir *dir) {
+  bin = trans_unit->rodata->bin;
+  relocs = trans_unit->rodata->relocs;
+  current = RODATA;
+}
 
-    case DIR_ZERO: {
-      for (int i = 0; i < dir->num; i++) {
-        binary_push(bin, 0);
-      }
-    }
-    break;
-
-    case DIR_LONG: {
-      binary_push(bin, (((unsigned int) dir->num) >> 0) & 0xff);
-      binary_push(bin, (((unsigned int) dir->num) >> 8) & 0xff);
-      binary_push(bin, (((unsigned int) dir->num) >> 16) & 0xff);
-      binary_push(bin, (((unsigned int) dir->num) >> 24) & 0xff);
-    }
-    break;
-
-    case DIR_QUAD: {
-      vector_push(relocs, reloc_new(bin->length, dir->ident, R_X86_64_64, 0));
-      for (int i = 0; i < 8; i++) {
-        binary_push(bin, 0);
-      }
-    }
-    break;
-
-    case DIR_ASCII: {
-      for (int i = 0; i < dir->string->length; i++) {
-        binary_push(bin, dir->string->buffer[i]);
-      }
-    }
-    break;
+static void gen_global(Dir *dir) {
+  Symbol *symbol = map_lookup(symbols, dir->ident);
+  if (!symbol) {
+    map_put(symbols, dir->ident, symbol_new(true, UNDEF, 0));
+  } else {
+    symbol->global = true;
   }
 }
+
+static void gen_zero(Dir *dir) {
+  for (int i = 0; i < dir->num; i++) {
+    binary_push(bin, 0);
+  }
+}
+
+static void gen_long(Dir *dir) {
+  binary_push(bin, (((unsigned int) dir->num) >> 0) & 0xff);
+  binary_push(bin, (((unsigned int) dir->num) >> 8) & 0xff);
+  binary_push(bin, (((unsigned int) dir->num) >> 16) & 0xff);
+  binary_push(bin, (((unsigned int) dir->num) >> 24) & 0xff);
+}
+
+static void gen_quad(Dir *dir) {
+  vector_push(relocs, reloc_new(bin->length, dir->ident, R_X86_64_64, 0));
+  for (int i = 0; i < 8; i++) {
+    binary_push(bin, 0);
+  }
+}
+
+static void gen_ascii(Dir *dir) {
+  for (int i = 0; i < dir->string->length; i++) {
+    binary_push(bin, dir->string->buffer[i]);
+  }
+}
+
+// encode instructions
 
 static void gen_rex(bool w, RegCode reg, RegCode index, RegCode base, bool required) {
   bool r = reg & 0x08;
@@ -1428,48 +1422,6 @@ static void gen_ret(Inst *inst) {
   gen_opcode(0xc3);
 }
 
-static void gen_inst(Inst *inst) {
-  switch (inst->type) {
-    case INST_PUSH: gen_push(inst); break;
-    case INST_POP: gen_pop(inst); break;
-    case INST_MOV: gen_mov(inst); break;
-    case INST_MOVZB: gen_movzb(inst); break;
-    case INST_MOVZW: gen_movzw(inst); break;
-    case INST_MOVSB: gen_movsb(inst); break;
-    case INST_MOVSW: gen_movsw(inst); break;
-    case INST_MOVSL: gen_movsl(inst); break;
-    case INST_LEA: gen_lea(inst); break;
-    case INST_NEG: gen_neg(inst); break;
-    case INST_NOT: gen_not(inst); break;
-    case INST_ADD: gen_add(inst); break;
-    case INST_SUB: gen_sub(inst); break;
-    case INST_MUL: gen_mul(inst); break;
-    case INST_IMUL: gen_imul(inst); break;
-    case INST_DIV: gen_div(inst); break;
-    case INST_IDIV: gen_idiv(inst); break;
-    case INST_AND: gen_and(inst); break;
-    case INST_XOR: gen_xor(inst); break;
-    case INST_OR: gen_or(inst); break;
-    case INST_SAL: gen_sal(inst); break;
-    case INST_SAR: gen_sar(inst); break;
-    case INST_CMP: gen_cmp(inst); break;
-    case INST_SETE: gen_sete(inst); break;
-    case INST_SETNE: gen_setne(inst); break;
-    case INST_SETB: gen_setb(inst); break;
-    case INST_SETL: gen_setl(inst); break;
-    case INST_SETG: gen_setg(inst); break;
-    case INST_SETBE: gen_setbe(inst); break;
-    case INST_SETLE: gen_setle(inst); break;
-    case INST_SETGE: gen_setge(inst); break;
-    case INST_JMP: gen_jmp(inst); break;
-    case INST_JE: gen_je(inst); break;
-    case INST_JNE: gen_jne(inst); break;
-    case INST_CALL: gen_call(inst); break;
-    case INST_LEAVE: gen_leave(inst); break;
-    case INST_RET: gen_ret(inst); break;
-  }
-}
-
 TransUnit *as_encode(Vector *stmts) {
   trans_unit = trans_unit_new();
   bin = trans_unit->text->bin;
@@ -1480,9 +1432,57 @@ TransUnit *as_encode(Vector *stmts) {
   for (int i = 0; i < stmts->length; i++) {
     Stmt *stmt = stmts->buffer[i];
     switch (stmt->type) {
-      case STMT_LABEL: gen_label(stmt->label); break;
-      case STMT_DIR: gen_dir(stmt->dir); break;
-      case STMT_INST: gen_inst(stmt->inst); break;
+      // label
+      case ST_LABEL: gen_label((Label *) stmt); break;
+
+      // directives
+      case ST_TEXT: gen_text((Dir *) stmt); break;
+      case ST_DATA: gen_data((Dir *) stmt); break;
+      case ST_SECTION: gen_section((Dir *) stmt); break;
+      case ST_GLOBAL: gen_global((Dir *) stmt); break;
+      case ST_ZERO: gen_zero((Dir *) stmt); break;
+      case ST_LONG: gen_long((Dir *) stmt); break;
+      case ST_QUAD: gen_quad((Dir *) stmt); break;
+      case ST_ASCII: gen_ascii((Dir *) stmt); break;
+
+      // instructions
+      case ST_PUSH: gen_push((Inst *) stmt); break;
+      case ST_POP: gen_pop((Inst *) stmt); break;
+      case ST_MOV: gen_mov((Inst *) stmt); break;
+      case ST_MOVZB: gen_movzb((Inst *) stmt); break;
+      case ST_MOVZW: gen_movzw((Inst *) stmt); break;
+      case ST_MOVSB: gen_movsb((Inst *) stmt); break;
+      case ST_MOVSW: gen_movsw((Inst *) stmt); break;
+      case ST_MOVSL: gen_movsl((Inst *) stmt); break;
+      case ST_LEA: gen_lea((Inst *) stmt); break;
+      case ST_NEG: gen_neg((Inst *) stmt); break;
+      case ST_NOT: gen_not((Inst *) stmt); break;
+      case ST_ADD: gen_add((Inst *) stmt); break;
+      case ST_SUB: gen_sub((Inst *) stmt); break;
+      case ST_MUL: gen_mul((Inst *) stmt); break;
+      case ST_IMUL: gen_imul((Inst *) stmt); break;
+      case ST_DIV: gen_div((Inst *) stmt); break;
+      case ST_IDIV: gen_idiv((Inst *) stmt); break;
+      case ST_AND: gen_and((Inst *) stmt); break;
+      case ST_XOR: gen_xor((Inst *) stmt); break;
+      case ST_OR: gen_or((Inst *) stmt); break;
+      case ST_SAL: gen_sal((Inst *) stmt); break;
+      case ST_SAR: gen_sar((Inst *) stmt); break;
+      case ST_CMP: gen_cmp((Inst *) stmt); break;
+      case ST_SETE: gen_sete((Inst *) stmt); break;
+      case ST_SETNE: gen_setne((Inst *) stmt); break;
+      case ST_SETB: gen_setb((Inst *) stmt); break;
+      case ST_SETL: gen_setl((Inst *) stmt); break;
+      case ST_SETG: gen_setg((Inst *) stmt); break;
+      case ST_SETBE: gen_setbe((Inst *) stmt); break;
+      case ST_SETLE: gen_setle((Inst *) stmt); break;
+      case ST_SETGE: gen_setge((Inst *) stmt); break;
+      case ST_JMP: gen_jmp((Inst *) stmt); break;
+      case ST_JE: gen_je((Inst *) stmt); break;
+      case ST_JNE: gen_jne((Inst *) stmt); break;
+      case ST_CALL: gen_call((Inst *) stmt); break;
+      case ST_LEAVE: gen_leave((Inst *) stmt); break;
+      case ST_RET: gen_ret((Inst *) stmt); break;
     }
   }
 

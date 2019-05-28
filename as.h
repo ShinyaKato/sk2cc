@@ -84,30 +84,78 @@ typedef struct {
   Location *loc; // location information
 } Token;
 
+// statement type
+typedef enum {
+  // label
+  ST_LABEL,
+
+  // directives
+  ST_TEXT,
+  ST_DATA,
+  ST_SECTION,
+  ST_GLOBAL,
+  ST_ZERO,
+  ST_LONG,
+  ST_QUAD,
+  ST_ASCII,
+
+  // instructions
+  ST_PUSH,
+  ST_POP,
+  ST_MOV,
+  ST_MOVZB,
+  ST_MOVZW,
+  ST_MOVSB,
+  ST_MOVSW,
+  ST_MOVSL,
+  ST_LEA,
+  ST_NEG,
+  ST_NOT,
+  ST_ADD,
+  ST_SUB,
+  ST_MUL,
+  ST_IMUL,
+  ST_DIV,
+  ST_IDIV,
+  ST_AND,
+  ST_XOR,
+  ST_OR,
+  ST_SAL,
+  ST_SAR,
+  ST_CMP,
+  ST_SETE,
+  ST_SETNE,
+  ST_SETB,
+  ST_SETL,
+  ST_SETG,
+  ST_SETBE,
+  ST_SETLE,
+  ST_SETGE,
+  ST_JMP,
+  ST_JE,
+  ST_JNE,
+  ST_CALL,
+  ST_LEAVE,
+  ST_RET,
+} StmtType;
+
+typedef struct {
+  StmtType type;
+} Stmt;
+
 // label
 typedef struct {
+  StmtType type;
   char *ident;
   Token *token;
 } Label;
 
-// directive type
-typedef enum {
-  DIR_TEXT,    // .text
-  DIR_DATA,    // .data
-  DIR_SECTION, // .section
-  DIR_GLOBAL,  // .global
-  DIR_ZERO,    // .zero
-  DIR_LONG,    // .long
-  DIR_QUAD,    // .quad
-  DIR_ASCII,   // .ascii
-} DirType;
-
 // directive
 typedef struct {
-  DirType type;   // directive type
-  char *ident;    // identifier
-  int num;        // number
-  String *string; // string
+  StmtType type; // directive type
+  char *ident;      // identifier
+  int num;          // number
+  String *string;   // string
   Token *token;
 } Dir;
 
@@ -153,47 +201,6 @@ typedef struct {
   Token *token;
 } Op;
 
-// instruction type
-typedef enum {
-  INST_PUSH,
-  INST_POP,
-  INST_MOV,
-  INST_MOVZB,
-  INST_MOVZW,
-  INST_MOVSB,
-  INST_MOVSW,
-  INST_MOVSL,
-  INST_LEA,
-  INST_NEG,
-  INST_NOT,
-  INST_ADD,
-  INST_SUB,
-  INST_MUL,
-  INST_IMUL,
-  INST_DIV,
-  INST_IDIV,
-  INST_AND,
-  INST_XOR,
-  INST_OR,
-  INST_SAL,
-  INST_SAR,
-  INST_CMP,
-  INST_SETE,
-  INST_SETNE,
-  INST_SETB,
-  INST_SETL,
-  INST_SETG,
-  INST_SETBE,
-  INST_SETLE,
-  INST_SETGE,
-  INST_JMP,
-  INST_JE,
-  INST_JNE,
-  INST_CALL,
-  INST_LEAVE,
-  INST_RET,
-} InstType;
-
 // instructino suffix
 typedef enum {
   INST_BYTE,
@@ -204,7 +211,7 @@ typedef enum {
 
 // instruction
 typedef struct {
-  InstType type;     // instruction type
+  StmtType type;  // instruction type
   InstSuffix suffix; // instruction suffix
 
   // instruction with one operand
@@ -216,22 +223,6 @@ typedef struct {
 
   Token *token;
 } Inst;
-
-// assembly statement type
-// a statement is one of label, directive or instruction.
-typedef enum {
-  STMT_LABEL,
-  STMT_DIR,
-  STMT_INST,
-} StmtType;
-
-// assembly statement
-typedef struct {
-  StmtType type;
-  Label *label;
-  Dir *dir;
-  Inst *inst;
-} Stmt;
 
 // relocation
 // some relocs are resolved when generating object file.
