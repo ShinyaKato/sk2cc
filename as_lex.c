@@ -1,17 +1,30 @@
 #include "as.h"
 
-#define LEX_ERROR(...) \
-  do { \
-    as_error(file, token_lineno, token_column, line, __FILE__, __LINE__, __VA_ARGS__); \
-  } while (0)
+static char *regs[16][4] = {
+  { "al", "ax", "eax", "rax" },
+  { "cl", "cx", "ecx", "rcx" },
+  { "dl", "dx", "edx", "rdx" },
+  { "bl", "bx", "ebx", "rbx" },
+  { "spl", "sp", "esp", "rsp" },
+  { "bpl", "bp", "ebp", "rbp" },
+  { "sil", "si", "esi", "rsi" },
+  { "dil", "di", "edi", "rdi" },
+  { "r8b", "r8w", "r8d", "r8" },
+  { "r9b", "r9w", "r9d", "r9" },
+  { "r10b", "r10w", "r10d", "r10" },
+  { "r11b", "r11w", "r11d", "r11" },
+  { "r12b", "r12w", "r12d", "r12" },
+  { "r13b", "r13w", "r13d", "r13" },
+  { "r14b", "r14w", "r14d", "r14" },
+  { "r15b", "r15w", "r15d", "r15" },
+};
 
-static char *file;
+static char *filename;
+static char *line_ptr;
 static int lineno;
 static int column;
-static char *line;
 
-static int token_lineno;
-static int token_column;
+Location *loc;
 
 static Vector *read_file(char *file) {
   Vector *source = vector_new();
@@ -41,34 +54,21 @@ static Vector *read_file(char *file) {
   return source;
 }
 
+static Location *create_location(void) {
+  Location *loc = calloc(1, sizeof(Location));
+  loc->filename = filename;
+  loc->line_ptr = line_ptr;
+  loc->lineno = lineno;
+  loc->column = column;
+  return loc;
+}
+
 static Token *create_token(TokenType type) {
   Token *token = (Token *) calloc(1, sizeof(Token));
   token->type = type;
-  token->file = file;
-  token->lineno = token_lineno;
-  token->column = token_column;
-  token->line = line;
+  token->loc = loc;
   return token;
 }
-
-static char *regs[16][4] = {
-  { "al", "ax", "eax", "rax" },
-  { "cl", "cx", "ecx", "rcx" },
-  { "dl", "dx", "edx", "rdx" },
-  { "bl", "bx", "ebx", "rbx" },
-  { "spl", "sp", "esp", "rsp" },
-  { "bpl", "bp", "ebp", "rbp" },
-  { "sil", "si", "esi", "rsi" },
-  { "dil", "di", "edi", "rdi" },
-  { "r8b", "r8w", "r8d", "r8" },
-  { "r9b", "r9w", "r9d", "r9" },
-  { "r10b", "r10w", "r10d", "r10" },
-  { "r11b", "r11w", "r11d", "r11" },
-  { "r12b", "r12w", "r12d", "r12" },
-  { "r13b", "r13w", "r13d", "r13" },
-  { "r14b", "r14w", "r14d", "r14" },
-  { "r15b", "r15w", "r15d", "r15" },
-};
 
 static RegType regtype(char *reg) {
   for (int i = 0; i < 16; i++) {
@@ -77,7 +77,7 @@ static RegType regtype(char *reg) {
     }
   }
 
-  LEX_ERROR("invalid register: %s.", reg);
+  as_error(loc, __FILE__, __LINE__, "unknown register: %s.", reg);
 }
 
 static Reg regcode(char *reg) {
@@ -87,30 +87,28 @@ static Reg regcode(char *reg) {
     }
   }
 
-  LEX_ERROR("invalid register: %s.", reg);
+  as_error(loc, __FILE__, __LINE__, "unknown register: %s.", reg);
 }
 
 char escape_sequence(void) {
-  switch (line[column++]) {
+  switch (line_ptr[column++]) {
     case '"': return '"';
     case '\\': return '\\';
     case 'n': return '\n';
     case '0': return '\0';
   }
 
-  LEX_ERROR("invalid escape sequence.");
+  as_error(loc, __FILE__, __LINE__, "invalid escape sequence.");
 }
 
 Token *next_token(void) {
-  char c = line[column++];
-  token_lineno = lineno;
-  token_column = column;
+  char c = line_ptr[column++];
 
   if (c == '.' || c == '_' || isalpha(c)) {
     String *text = string_new();
     string_push(text, c);
-    while (line[column] == '.' || line[column] == '_' || isalnum(line[column])) {
-      string_push(text, line[column++]);
+    while (line_ptr[column] == '.' || line_ptr[column] == '_' || isalnum(line_ptr[column])) {
+      string_push(text, line_ptr[column++]);
     }
 
     Token *token = create_token(TOK_IDENT);
@@ -120,8 +118,8 @@ Token *next_token(void) {
 
   if (c == '%') {
     String *text = string_new();
-    while (isalnum(line[column])) {
-      string_push(text, line[column++]);
+    while (isalnum(line_ptr[column])) {
+      string_push(text, line_ptr[column++]);
     }
 
     if (strcmp(text->buffer, "rip") == 0) {
@@ -137,8 +135,8 @@ Token *next_token(void) {
   if (c == '+' || c == '-' || isdigit(c)) {
     int sign = c == '-' ? -1 : 1;
     int num = isdigit(c) ? (c - '0') : 0;
-    while (isdigit(line[column])) {
-      num = num * 10 + (line[column++] - '0');
+    while (isdigit(line_ptr[column])) {
+      num = num * 10 + (line_ptr[column++] - '0');
     }
 
     Token *token = create_token(TOK_NUM);
@@ -148,11 +146,11 @@ Token *next_token(void) {
 
   if (c == '$') {
     unsigned int imm = 0;
-    if (!isdigit(line[column])) {
-      LEX_ERROR("invalid immediate.");
+    if (!isdigit(line_ptr[column])) {
+      as_error(loc, __FILE__, __LINE__, "invalid immediate.");
     }
-    while (isdigit(line[column])) {
-      imm = imm * 10 + (line[column++] - '0');
+    while (isdigit(line_ptr[column])) {
+      imm = imm * 10 + (line_ptr[column++] - '0');
     }
 
     Token *token = create_token(TOK_IMM);
@@ -163,7 +161,7 @@ Token *next_token(void) {
   if (c == '"') {
     String *text = string_new();
     while (1) {
-      char c = line[column++];
+      char c = line_ptr[column++];
       if (c == '"') break;
       if (c == '\\') c = escape_sequence();
       string_push(text, c);
@@ -175,45 +173,35 @@ Token *next_token(void) {
     return token;
   }
 
-  if (c == ',') {
-    return create_token(TOK_COMMA);
-  }
+  if (c == ',') return create_token(TOK_COMMA);
+  if (c == '(') return create_token(TOK_LPAREN);
+  if (c == ')') return create_token(TOK_RPAREN);
+  if (c == ':') return create_token(TOK_SEMICOLON);
 
-  if (c == '(') {
-    return create_token(TOK_LPAREN);
-  }
-
-  if (c == ')') {
-    return create_token(TOK_RPAREN);
-  }
-
-  if (c == ':') {
-    return create_token(TOK_SEMICOLON);
-  }
-
-  LEX_ERROR("unexpected character: %c.", c);
+  as_error(loc, __FILE__, __LINE__,  "failed to tokenize.");
 }
 
 Vector *next_line(void) {
   Vector *tokens = vector_new();
 
-  for (column = 0; line[column] != '\0';) {
-    while (line[column] == ' ' || line[column] == '\t') column++;
-    if (line[column] == '\0') break;
+  for (column = 0; line_ptr[column] != '\0';) {
+    while (line_ptr[column] == ' ' || line_ptr[column] == '\t') column++;
+    if (line_ptr[column] == '\0') break;
 
+    loc = create_location();
     vector_push(tokens, next_token());
   }
 
   return tokens;
 }
 
-Vector *as_tokenize(char *_file) {
-  file = _file;
+Vector *as_tokenize(char *_filename) {
+  filename = _filename;
 
-  Vector *source = read_file(file);
+  Vector *source = read_file(filename);
   Vector *lines = vector_new();
   for (lineno = 0; lineno < source->length; lineno++) {
-    line = source->buffer[lineno];
+    line_ptr = source->buffer[lineno];
     vector_push(lines, next_line());
   }
 

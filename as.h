@@ -46,6 +46,13 @@ typedef enum token_type {
   TOK_SEMICOLON,
 } TokenType;
 
+typedef struct location {
+  char *filename; // source file name
+  char *line_ptr; // pointer to the line head
+  int lineno;     // 1-indexed
+  int column;     // 1-indexed
+} Location;
+
 typedef struct token {
   TokenType type;
   char *ident;
@@ -55,10 +62,7 @@ typedef struct token {
   unsigned int imm;
   char *string;
   int length;
-  char *file;
-  int lineno;
-  int column;
-  char *line;
+  Location *loc;
 } Token;
 
 typedef struct label {
@@ -212,11 +216,10 @@ typedef struct trans_unit {
 // as_error.c
 #define ERROR(token, ...) \
   do { \
-    Token *t = (token); \
-    as_error(t->file, t->lineno, t->column, t->line, __FILE__, __LINE__, __VA_ARGS__); \
+    as_error((token)->loc,  __FILE__, __LINE__, __VA_ARGS__); \
   } while (0)
 
-extern noreturn void as_error(char *file, int lineno, int column, char *line, char *__file, int __lineno, char *format, ...);
+extern noreturn void as_error(Location *loc, char *file, int lineno, char *format, ...);
 
 // as_lex.c
 extern Vector *as_tokenize(char *file);
