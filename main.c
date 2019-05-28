@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     compile(input, true);
   } else {
     if (argc != 2) {
-      fprintf(stderr, "usage: %s [input  file]\n", command);
+      fprintf(stderr, "usage: %s [input file]\n", command);
       exit(1);
     }
 
