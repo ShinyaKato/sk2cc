@@ -79,8 +79,7 @@ typedef struct {
   unsigned int imm;
 
   // string
-  char *string;
-  int length;
+  String *string;
 
   Location *loc; // location information
 } Token;
@@ -105,11 +104,10 @@ typedef enum {
 
 // directive
 typedef struct {
-  DirType type; // directive type
-  char *ident;  // identifier
-  int num;      // number
-  char *string; // string
-  int length;   // string length
+  DirType type;   // directive type
+  char *ident;    // identifier
+  int num;        // number
+  String *string; // string
   Token *token;
 } Dir;
 

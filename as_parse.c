@@ -52,10 +52,9 @@ static Dir *dir_quad(char *ident, Token *token) {
   return dir;
 }
 
-static Dir *dir_ascii(char *string, int length, Token *token) {
+static Dir *dir_ascii(String *string, Token *token) {
   Dir *dir = dir_new(DIR_ASCII, token);
   dir->string = string;
-  dir->length = length;
   return dir;
 }
 
@@ -1371,9 +1370,8 @@ Vector *as_parse(Vector *lines) {
       if (token[2]) {
         ERROR(token[0], "invalid directive.");
       }
-      int length = token[1]->length;
-      char *string = token[1]->string;
-      vector_push(stmts, stmt_dir(dir_ascii(string, length, token[1])));
+      String *string = token[1]->string;
+      vector_push(stmts, stmt_dir(dir_ascii(string, token[1])));
       continue;
     }
 

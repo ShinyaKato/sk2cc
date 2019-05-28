@@ -168,8 +168,7 @@ Token *next_token(void) {
     }
 
     Token *token = create_token(TK_STR);
-    token->length = text->length;
-    token->string = text->buffer;
+    token->string = text;
     return token;
   }
 

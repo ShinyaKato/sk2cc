@@ -108,8 +108,8 @@ static void gen_dir(Dir *dir) {
     break;
 
     case DIR_ASCII: {
-      for (int i = 0; i < dir->length; i++) {
-        binary_push(bin, dir->string[i]);
+      for (int i = 0; i < dir->string->length; i++) {
+        binary_push(bin, dir->string->buffer[i]);
       }
     }
     break;
