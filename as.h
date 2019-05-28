@@ -8,29 +8,29 @@
 
 // struct and enum declaration
 typedef enum reg_type {
-  REG8,
-  REG16,
-  REG32,
-  REG64,
+  REG_BYTE,
+  REG_WORD,
+  REG_LONG,
+  REG_QUAD,
 } RegType;
 
 typedef enum reg {
-  AX = 0,
-  CX = 1,
-  DX = 2,
-  BX = 3,
-  SP = 4,
-  BP = 5,
-  SI = 6,
-  DI = 7,
-  R8 = 8,
-  R9 = 9,
-  R10 = 10,
-  R11 = 11,
-  R12 = 12,
-  R13 = 13,
-  R14 = 14,
-  R15 = 15,
+  REG_AX,
+  REG_CX,
+  REG_DX,
+  REG_BX,
+  REG_SP,
+  REG_BP,
+  REG_SI,
+  REG_DI,
+  REG_R8,
+  REG_R9,
+  REG_R10,
+  REG_R11,
+  REG_R12,
+  REG_R13,
+  REG_R14,
+  REG_R15,
 } Reg;
 
 typedef enum token_type {

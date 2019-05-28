@@ -188,17 +188,17 @@ static Vector *parse_ops(Token **token) {
         int disp = (*token)->type == TK_NUM ? (*token++)->num : 0;
         EXPECT(*token++, TK_LPAREN, "'(' is expected.");
         EXPECT(*token, TK_REG, "register is expected.");
-        if ((*token)->regtype != REG64) {
+        if ((*token)->regtype != REG_QUAD) {
           ERROR(*token, "64-bit register is expected.");
         }
         Reg base = (*token++)->regcode;
         if ((*token)->type == TK_COMMA) {
           token++;
           EXPECT(*token, TK_REG, "register is expected.");
-          if ((*token)->regtype != REG64) {
+          if ((*token)->regtype != REG_QUAD) {
             ERROR(*token, "64-bit register is expected.");
           }
-          if ((*token)->regcode == SP) {
+          if ((*token)->regcode == REG_SP) {
             ERROR(*token, "cannot use rsp as index.");
           }
           Reg index = (*token++)->regcode;
@@ -265,7 +265,7 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
     Op *op = ops->buffer[0];
-    if (op->type != OP_REG || op->regtype != REG64) {
+    if (op->type != OP_REG || op->regtype != REG_QUAD) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
     return inst_op1(INST_PUSH, INST_QUAD, op, inst);
@@ -276,7 +276,7 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 1 operand.", inst->ident);
     }
     Op *op = ops->buffer[0];
-    if (op->type != OP_REG || op->regtype != REG64) {
+    if (op->type != OP_REG || op->regtype != REG_QUAD) {
       ERROR(op->token, "only 64-bits register is supported.");
     }
     return inst_op1(INST_POP, INST_QUAD, op, inst);
@@ -293,10 +293,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_QUAD, src, dest, inst);
@@ -313,10 +313,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_LONG, src, dest, inst);
@@ -333,10 +333,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG16) {
+    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_WORD, src, dest, inst);
@@ -353,10 +353,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG8) {
+    if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOV, INST_BYTE, src, dest, inst);
@@ -370,10 +370,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVZB, INST_QUAD, src, dest, inst);
@@ -387,10 +387,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVZB, INST_LONG, src, dest, inst);
@@ -404,10 +404,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG16) {
+    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVZB, INST_WORD, src, dest, inst);
@@ -421,10 +421,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVZW, INST_QUAD, src, dest, inst);
@@ -438,10 +438,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVZW, INST_LONG, src, dest, inst);
@@ -455,10 +455,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSB, INST_QUAD, src, dest, inst);
@@ -472,10 +472,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSB, INST_LONG, src, dest, inst);
@@ -489,10 +489,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG16) {
+    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSB, INST_WORD, src, dest, inst);
@@ -506,10 +506,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSW, INST_QUAD, src, dest, inst);
@@ -523,10 +523,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSW, INST_LONG, src, dest, inst);
@@ -540,10 +540,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type != OP_REG && src->type != OP_MEM) {
       ERROR(src->token, "register or memory operand is expected.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_MOVSL, INST_QUAD, src, dest, inst);
@@ -560,7 +560,7 @@ static Inst *parse_inst(Token **token) {
     if (dest->type != OP_REG) {
       ERROR(dest->token, "second operand should be register operand.");
     }
-    if (dest->regtype != REG64) {
+    if (dest->regtype != REG_QUAD) {
       ERROR(dest->token, "only 64-bit register is supported.");
     }
     return inst_op2(INST_LEA, INST_QUAD, src, dest, inst);
@@ -574,7 +574,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_NEG, INST_QUAD, op, inst);
@@ -588,7 +588,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_NEG, INST_LONG, op, inst);
@@ -602,7 +602,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_NOT, INST_QUAD, op, inst);
@@ -616,7 +616,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_NOT, INST_LONG, op, inst);
@@ -633,10 +633,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_ADD, INST_QUAD, src, dest, inst);
@@ -653,10 +653,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_ADD, INST_LONG, src, dest, inst);
@@ -673,10 +673,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SUB, INST_QUAD, src, dest, inst);
@@ -693,10 +693,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SUB, INST_LONG, src, dest, inst);
@@ -710,7 +710,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_MUL, INST_QUAD, op, inst);
@@ -724,7 +724,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_MUL, INST_LONG, op, inst);
@@ -738,7 +738,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_IMUL, INST_QUAD, op, inst);
@@ -752,7 +752,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_IMUL, INST_LONG, op, inst);
@@ -766,7 +766,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_DIV, INST_QUAD, op, inst);
@@ -780,7 +780,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_DIV, INST_LONG, op, inst);
@@ -794,7 +794,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG64) {
+    if (op->type == OP_REG && op->regtype != REG_QUAD) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_IDIV, INST_QUAD, op, inst);
@@ -808,7 +808,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG32) {
+    if (op->type == OP_REG && op->regtype != REG_LONG) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_IDIV, INST_LONG, op, inst);
@@ -825,10 +825,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_AND, INST_QUAD, src, dest, inst);
@@ -845,10 +845,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_AND, INST_LONG, src, dest, inst);
@@ -865,10 +865,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_XOR, INST_QUAD, src, dest, inst);
@@ -885,10 +885,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_XOR, INST_LONG, src, dest, inst);
@@ -905,10 +905,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_OR, INST_QUAD, src, dest, inst);
@@ -925,10 +925,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_OR, INST_LONG, src, dest, inst);
@@ -939,13 +939,13 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
     Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAL, INST_QUAD, src, dest, inst);
@@ -956,13 +956,13 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
     Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAL, INST_LONG, src, dest, inst);
@@ -973,13 +973,13 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
     Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAR, INST_QUAD, src, dest, inst);
@@ -990,13 +990,13 @@ static Inst *parse_inst(Token **token) {
       ERROR(inst, "'%s' expects 2 operand.", inst->ident);
     }
     Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG8 || src->regcode != CX) {
+    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
       ERROR(src->token, "only %%cl is supported.");
     }
     if (dest->type != OP_REG && dest->type != OP_MEM) {
       ERROR(dest->token, "register or memory operand is expected.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_SAR, INST_LONG, src, dest, inst);
@@ -1013,10 +1013,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG64) {
+    if (src->type == OP_REG && src->regtype != REG_QUAD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG64) {
+    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_CMP, INST_QUAD, src, dest, inst);
@@ -1033,10 +1033,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG32) {
+    if (src->type == OP_REG && src->regtype != REG_LONG) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG32) {
+    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_CMP, INST_LONG, src, dest, inst);
@@ -1053,10 +1053,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG16) {
+    if (src->type == OP_REG && src->regtype != REG_WORD) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG16) {
+    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
       ERROR(dest->token, "operand type mismatched.");
     }
 
@@ -1074,10 +1074,10 @@ static Inst *parse_inst(Token **token) {
     if (src->type == OP_MEM && dest->type == OP_MEM) {
       ERROR(inst, "both of source and destination cannot be memory operands.");
     }
-    if (src->type == OP_REG && src->regtype != REG8) {
+    if (src->type == OP_REG && src->regtype != REG_BYTE) {
       ERROR(src->token, "operand type mismatched.");
     }
-    if (dest->type == OP_REG && dest->regtype != REG8) {
+    if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
       ERROR(dest->token, "operand type mismatched.");
     }
     return inst_op2(INST_CMP, INST_BYTE, src, dest, inst);
@@ -1091,7 +1091,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETE, INST_BYTE, op, inst);
@@ -1105,7 +1105,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETNE, INST_BYTE, op, inst);
@@ -1119,7 +1119,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETB, INST_BYTE, op, inst);
@@ -1133,7 +1133,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETL, INST_BYTE, op, inst);
@@ -1147,7 +1147,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETG, INST_BYTE, op, inst);
@@ -1161,7 +1161,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETBE, INST_BYTE, op, inst);
@@ -1175,7 +1175,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETLE, INST_BYTE, op, inst);
@@ -1189,7 +1189,7 @@ static Inst *parse_inst(Token **token) {
     if (op->type != OP_REG && op->type != OP_MEM) {
       ERROR(inst, "register or memory operand is expected.");
     }
-    if (op->type == OP_REG && op->regtype != REG8) {
+    if (op->type == OP_REG && op->regtype != REG_BYTE) {
       ERROR(inst, "operand type mismatched.");
     }
     return inst_op1(INST_SETGE, INST_BYTE, op, inst);
@@ -1263,20 +1263,36 @@ Vector *as_parse(Vector *lines) {
     Vector *line = lines->buffer[i];
     Token **token = (Token **) line->buffer;
 
+    // skip if the line has no token.
+    // otherwise, the first token should be identifier.
     if (line->length == 0) continue;
     EXPECT(token[0], TK_IDENT, "identifier is expected.");
 
+    // label
     if (token[1] && token[1]->type == TK_SEMICOLON) {
       if (token[2]) {
         ERROR(token[2], "invalid symbol declaration.");
       }
       char *ident = token[0]->ident;
       vector_push(stmts, stmt_label(label_new(ident, token[0])));
-    } else if (strcmp(token[0]->ident, ".text") == 0) {
+      continue;
+    }
+
+    // .text directive
+    if (strcmp(token[0]->ident, ".text") == 0) {
       vector_push(stmts, stmt_dir(dir_text(token[0])));
-    } else if (strcmp(token[0]->ident, ".data") == 0) {
+      continue;
+    }
+
+    // .data directive
+    if (strcmp(token[0]->ident, ".data") == 0) {
       vector_push(stmts, stmt_dir(dir_data(token[0])));
-    } else if (strcmp(token[0]->ident, ".section") == 0) {
+      continue;
+    }
+
+    // .section directive
+    // only .rodata is supported.
+    if (strcmp(token[0]->ident, ".section") == 0) {
       if (!token[1] || token[1]->type != TK_IDENT) {
         ERROR(token[0], "identifier is expected.");
       }
@@ -1288,7 +1304,11 @@ Vector *as_parse(Vector *lines) {
         ERROR(token[0], "only '.rodata' is supported.");
       }
       vector_push(stmts, stmt_dir(dir_section(ident, token[0])));
-    } else if (strcmp(token[0]->ident, ".global") == 0) {
+      continue;
+    }
+
+    // .global directive
+    if (strcmp(token[0]->ident, ".global") == 0) {
       if (!token[1] || token[1]->type != TK_IDENT) {
         ERROR(token[0], "identifier is expected.");
       }
@@ -1297,7 +1317,11 @@ Vector *as_parse(Vector *lines) {
       }
       char *ident = token[1]->ident;
       vector_push(stmts, stmt_dir(dir_global(ident, token[1])));
-    } else if (strcmp(token[0]->ident, ".zero") == 0) {
+      continue;
+    }
+
+    // .zero directive
+    if (strcmp(token[0]->ident, ".zero") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.zero' directive expects integer constant.");
       }
@@ -1307,7 +1331,11 @@ Vector *as_parse(Vector *lines) {
       }
       int num = token[1]->num;
       vector_push(stmts, stmt_dir(dir_zero(num, token[0])));
-    } else if (strcmp(token[0]->ident, ".long") == 0) {
+      continue;
+    }
+
+    // .long directive
+    if (strcmp(token[0]->ident, ".long") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.long' directive expects integer constant.");
       }
@@ -1317,7 +1345,11 @@ Vector *as_parse(Vector *lines) {
       }
       int num = token[1]->num;
       vector_push(stmts, stmt_dir(dir_long(num, token[0])));
-    } else if (strcmp(token[0]->ident, ".quad") == 0) {
+      continue;
+    }
+
+    // .quad directive
+    if (strcmp(token[0]->ident, ".quad") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.quad' directive expects string literal.");
       }
@@ -1327,7 +1359,11 @@ Vector *as_parse(Vector *lines) {
       }
       char *ident = token[1]->ident;
       vector_push(stmts, stmt_dir(dir_quad(ident, token[1])));
-    } else if (strcmp(token[0]->ident, ".ascii") == 0) {
+      continue;
+    }
+
+    // .ascii directive
+    if (strcmp(token[0]->ident, ".ascii") == 0) {
       if (!token[1]) {
         ERROR(token[0], "'.ascii' directive expects string literal.");
       }
@@ -1338,9 +1374,11 @@ Vector *as_parse(Vector *lines) {
       int length = token[1]->length;
       char *string = token[1]->string;
       vector_push(stmts, stmt_dir(dir_ascii(string, length, token[1])));
-    } else {
-      vector_push(stmts, stmt_inst(parse_inst(token)));
+      continue;
     }
+
+    // instruction
+    vector_push(stmts, stmt_inst(parse_inst(token)));
   }
 
   return stmts;

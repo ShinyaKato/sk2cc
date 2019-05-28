@@ -145,7 +145,7 @@ typedef enum mod {
 } Mod;
 
 static Mod mod_mem(int disp, Reg base) {
-  bool bp = base == BP || base == R13;
+  bool bp = base == REG_BP || base == REG_R13;
   if (!bp && disp == 0) return MOD_DISP0;
   if (-128 <= disp && disp < 128) return MOD_DISP8;
   return MOD_DISP32;
@@ -204,7 +204,7 @@ static void gen_ops(Reg reg, Op *rm) {
       Mod mod = mod_mem(rm->disp, rm->base);
       if (!rm->sib) {
         gen_mod_rm(mod, reg, rm->base);
-        if (rm->base == SP || rm->base == R12) {
+        if (rm->base == REG_SP || rm->base == REG_R12) {
           gen_sib(0, 4, rm->base);
         }
       } else {
