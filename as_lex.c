@@ -111,7 +111,7 @@ Token *next_token(void) {
       string_push(text, line_ptr[column++]);
     }
 
-    Token *token = create_token(TOK_IDENT);
+    Token *token = create_token(TK_IDENT);
     token->ident = text->buffer;
     return token;
   }
@@ -123,10 +123,10 @@ Token *next_token(void) {
     }
 
     if (strcmp(text->buffer, "rip") == 0) {
-      return create_token(TOK_RIP);
+      return create_token(TK_RIP);
     }
 
-    Token *token = create_token(TOK_REG);
+    Token *token = create_token(TK_REG);
     token->regtype = regtype(text->buffer);
     token->regcode = regcode(text->buffer);
     return token;
@@ -139,7 +139,7 @@ Token *next_token(void) {
       num = num * 10 + (line_ptr[column++] - '0');
     }
 
-    Token *token = create_token(TOK_NUM);
+    Token *token = create_token(TK_NUM);
     token->num = sign * num;
     return token;
   }
@@ -153,7 +153,7 @@ Token *next_token(void) {
       imm = imm * 10 + (line_ptr[column++] - '0');
     }
 
-    Token *token = create_token(TOK_IMM);
+    Token *token = create_token(TK_IMM);
     token->imm = imm;
     return token;
   }
@@ -167,16 +167,16 @@ Token *next_token(void) {
       string_push(text, c);
     }
 
-    Token *token = create_token(TOK_STR);
+    Token *token = create_token(TK_STR);
     token->length = text->length;
     token->string = text->buffer;
     return token;
   }
 
-  if (c == ',') return create_token(TOK_COMMA);
-  if (c == '(') return create_token(TOK_LPAREN);
-  if (c == ')') return create_token(TOK_RPAREN);
-  if (c == ':') return create_token(TOK_SEMICOLON);
+  if (c == ',') return create_token(TK_COMMA);
+  if (c == '(') return create_token(TK_LPAREN);
+  if (c == ')') return create_token(TK_RPAREN);
+  if (c == ':') return create_token(TK_SEMICOLON);
 
   as_error(loc, __FILE__, __LINE__,  "failed to tokenize.");
 }

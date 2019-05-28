@@ -34,16 +34,16 @@ typedef enum reg {
 } Reg;
 
 typedef enum token_type {
-  TOK_IDENT,
-  TOK_RIP,
-  TOK_REG,
-  TOK_NUM,
-  TOK_IMM,
-  TOK_STR,
-  TOK_COMMA,
-  TOK_LPAREN,
-  TOK_RPAREN,
-  TOK_SEMICOLON,
+  TK_IDENT,
+  TK_RIP,
+  TK_REG,
+  TK_NUM,
+  TK_IMM,
+  TK_STR,
+  TK_COMMA,
+  TK_LPAREN,
+  TK_RPAREN,
+  TK_SEMICOLON,
 } TokenType;
 
 typedef struct location {
