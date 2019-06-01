@@ -19,7 +19,7 @@ typedef unsigned long long size_t;
       fprintf(stderr, "%s:%d assertion failed.\n", __FILE__, __LINE__); \
       exit(1); \
     } \
-  } while(0)
+  } while (0)
 
 // stdbool.h
 #define bool _Bool
