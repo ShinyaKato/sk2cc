@@ -133,28 +133,51 @@ static Inst *inst_op2(StmtType type, InstSuffix suffix, Op *src, Op *dest, Token
   return inst;
 }
 
-#define EXPECT(token, expect_type, ...) \
-  do { \
-    Token *t = (token); \
-    if (t->type != (expect_type)) { \
-      ERROR(t, __VA_ARGS__); \
-    } \
-  } while (0)
+// tokens
 
-static Vector *parse_ops(Token **token) {
+static Token **tokens;
+static int pos;
+
+static Token *peek(void) {
+  return tokens[pos];
+}
+
+static Token *check(TokenType type) {
+  if (tokens[pos]->type == type) {
+    return tokens[pos];
+  }
+  return NULL;
+}
+
+static Token *read(TokenType type) {
+  if (tokens[pos]->type == type) {
+    return tokens[pos++];
+  }
+  return NULL;
+}
+
+static Token *expect(TokenType type) {
+  if (tokens[pos]->type == type) {
+    return tokens[pos++];
+  }
+  ERROR(tokens[pos], "unexpected token.");
+}
+
+// parser
+
+static Vector *parse_ops(void) {
   Vector *ops = vector_new();
 
-  if (!(*token)) return ops;
-
+  if (!peek()) return ops;
   do {
-    Token *op_head = *token;
+    Token *token = peek();
 
-    switch ((*token)->type) {
+    switch (peek()->type) {
       // register operand
       case TK_REG: {
-        Token *reg = *token++;
+        Token *reg = expect(TK_REG);
 
-        Op *op = op_reg(reg->regtype, reg->regcode, op_head);
+        Op *op = op_reg(reg->regtype, reg->regcode, token);
         vector_push(ops, op);
 
         break;
@@ -165,95 +188,81 @@ static Vector *parse_ops(Token **token) {
       case TK_LPAREN:
       case TK_NUM: {
         // disp is 0 if it is omitted
-        int disp = (*token)->type == TK_NUM ? (*token++)->num : 0;
+        int disp = check(TK_NUM) ? expect(TK_NUM)->num : 0;
 
-        EXPECT(*token++, TK_LPAREN, "'(' is expected.");
+        expect(TK_LPAREN);
 
         // read base register (should be 64-bit)
-        Token *base = *token++;
-        EXPECT(base, TK_REG, "register is expected.");
+        Token *base = expect(TK_REG);
         if (base->regtype != REG_QUAD) {
-          ERROR(*token, "64-bit register is expected.");
+          ERROR(base, "64-bit register is expected.");
         }
 
         // memory operand like 'disp(base)'
-        if ((*token)->type == TK_RPAREN) {
-          token++;
-
-          Op *op = op_mem_base(base->regcode, disp, op_head);
+        if (read(TK_RPAREN)) {
+          Op *op = op_mem_base(base->regcode, disp, token);
           vector_push(ops, op);
 
           break;
         }
 
-        if ((*token)->type == TK_COMMA) {
-          token++;
-
+        if (read(TK_COMMA)) {
           // read index register (should be 64-bit)
           // rsp is unacceptable as index register in x86 instruction encoding
-          Token *index = *token++;
-          EXPECT(index, TK_REG, "register is expected.");
+          Token *index = expect(TK_REG);
           if (index->regtype != REG_QUAD) {
-            ERROR(*token, "64-bit register is expected.");
+            ERROR(token, "64-bit register is expected.");
           }
           if (index->regcode == REG_SP) {
-            ERROR(*token, "cannot use rsp as index.");
+            ERROR(token, "cannot use rsp as index.");
           }
 
           // memory operand like 'disp(base, index)'
-          if ((*token)->type == TK_RPAREN) {
-            token++;
-
-            Op *op = op_mem_sib(SCALE1, index->regcode, base->regcode, disp, op_head);
+          if (read(TK_RPAREN)) {
+            Op *op = op_mem_sib(SCALE1, index->regcode, base->regcode, disp, token);
             vector_push(ops, op);
 
             break;
           }
 
           // memory operand like 'disp(base, index, scale)'
-          if ((*token)->type == TK_COMMA) {
-            token++;
-
+          if (read(TK_COMMA)) {
             // read scale
-            Token *scale = *token++;
-            EXPECT(scale, TK_NUM, "scale is expected.");
-
             // scale should be one of 1, 2, 4, 8
+            Token *scale = expect(TK_NUM);
             Scale scale_val;
             switch (scale->num) {
               case 1: scale_val = SCALE1; break;
               case 2: scale_val = SCALE2; break;
               case 4: scale_val = SCALE4; break;
               case 8: scale_val = SCALE8; break;
-              default:
+              default: {
                 ERROR(scale, "one of 1, 2, 4, 8 is expected.");
+              }
             }
 
-            EXPECT(*token++, TK_RPAREN, "')' is expected.");
+            expect(TK_RPAREN);
 
-            Op *op = op_mem_sib(scale_val, index->regcode, base->regcode, disp, op_head);
+            Op *op = op_mem_sib(scale_val, index->regcode, base->regcode, disp, token);
             vector_push(ops, op);
 
             break;
           }
         }
 
-        ERROR(*token, "',' or ')' is expected.");
+        ERROR(peek(), "',' or ')' is expected.");
       }
 
       // RIP-relative operand or symbol operand
       case TK_IDENT: {
-        char *sym = (*token++)->ident;
+        char *sym = expect(TK_IDENT)->ident;
 
-        if (*token && (*token)->type == TK_LPAREN) {
-          token++;
-
-          EXPECT(*token++, TK_RIP, "%rip is expected");
-          EXPECT(*token++, TK_RPAREN, "')' is expected.");
-
-          vector_push(ops, op_rip_rel(sym, op_head));
+        if (peek() && read(TK_LPAREN)) {
+          expect(TK_RIP);
+          expect(TK_RPAREN);
+          vector_push(ops, op_rip_rel(sym, token));
         } else {
-          vector_push(ops, op_sym(sym, op_head));
+          vector_push(ops, op_sym(sym, token));
         }
 
         break;
@@ -261,24 +270,23 @@ static Vector *parse_ops(Token **token) {
 
       // immediate operand
       case TK_IMM: {
-        int imm = (*token++)->imm;
-        vector_push(ops, op_imm(imm, op_head));
+        int imm = expect(TK_IMM)->imm;
+        vector_push(ops, op_imm(imm, token));
 
         break;
       }
 
       default: {
-        ERROR(*token, "invalid operand.");
+        ERROR(token, "invalid operand.");
       }
     }
-  } while (*token && (*token++)->type == TK_COMMA);
+  } while (peek() && read(TK_COMMA));
 
   return ops;
 }
 
-static Inst *parse_inst(Token **token) {
-  Token *inst = *token++;
-  Vector *ops = parse_ops(token);
+static Inst *parse_inst(Token *inst) {
+  Vector *ops = parse_ops();
 
   if (strcmp(inst->ident, "pushq") == 0) {
     if (ops->length != 1) {
@@ -1276,128 +1284,86 @@ static Inst *parse_inst(Token **token) {
   ERROR(inst, "unknown instruction '%s'.", inst->ident);
 }
 
+Stmt *parse_stmt(void) {
+  // the first token should be identifier.
+  Token *token = expect(TK_IDENT);
+
+  // label
+  if (peek() && read(TK_SEMICOLON)) {
+    return (Stmt *) label_new(token->ident, token);
+  }
+
+  // .text directive
+  if (strcmp(token->ident, ".text") == 0) {
+    return (Stmt *) dir_text(token);
+  }
+
+  // .data directive
+  if (strcmp(token->ident, ".data") == 0) {
+    return (Stmt *) dir_data(token);
+  }
+
+  // .section directive
+  // only .rodata is supported.
+  if (strcmp(token->ident, ".section") == 0) {
+    char *ident = expect(TK_IDENT)->ident;
+    if (strcmp(ident, ".rodata") != 0) {
+      ERROR(token, "only '.rodata' is supported.");
+    }
+    return (Stmt *) dir_section(ident, token);
+  }
+
+  // .global directive
+  if (strcmp(token->ident, ".global") == 0) {
+    char *ident = expect(TK_IDENT)->ident;
+    return (Stmt *) dir_global(ident, token);
+  }
+
+  // .zero directive
+  if (strcmp(token->ident, ".zero") == 0) {
+    int num = expect(TK_NUM)->num;
+    return (Stmt *) dir_zero(num, token);
+  }
+
+  // .long directive
+  if (strcmp(token->ident, ".long") == 0) {
+    int num = expect(TK_NUM)->num;
+    return (Stmt *) dir_long(num, token);
+  }
+
+  // .quad directive
+  if (strcmp(token->ident, ".quad") == 0) {
+    char *ident = expect(TK_IDENT)->ident;
+    return (Stmt *) dir_quad(ident, token);
+  }
+
+  // .ascii directive
+  if (strcmp(token->ident, ".ascii") == 0) {
+    String *string = expect(TK_STR)->string;
+    return (Stmt *) dir_ascii(string, token);
+  }
+
+  // instruction
+  return (Stmt *) parse_inst(token);
+}
+
 Vector *as_parse(Vector *lines) {
   Vector *stmts = vector_new();
 
   for (int i = 0; i < lines->length; i++) {
     Vector *line = lines->buffer[i];
-    Token **token = (Token **) line->buffer;
 
     // skip if the line has no token.
-    // otherwise, the first token should be identifier.
     if (line->length == 0) continue;
-    EXPECT(token[0], TK_IDENT, "identifier is expected.");
 
-    // label
-    if (token[1] && token[1]->type == TK_SEMICOLON) {
-      if (token[2]) {
-        ERROR(token[2], "invalid symbol declaration.");
-      }
-      char *ident = token[0]->ident;
-      vector_push(stmts, label_new(ident, token[0]));
-      continue;
+    tokens = (Token **) line->buffer;
+    pos = 0;
+
+    Stmt *stmt = parse_stmt();
+    if (peek()) {
+      ERROR(peek(), "invalid statement.");
     }
-
-    // .text directive
-    if (strcmp(token[0]->ident, ".text") == 0) {
-      vector_push(stmts, dir_text(token[0]));
-      continue;
-    }
-
-    // .data directive
-    if (strcmp(token[0]->ident, ".data") == 0) {
-      vector_push(stmts, dir_data(token[0]));
-      continue;
-    }
-
-    // .section directive
-    // only .rodata is supported.
-    if (strcmp(token[0]->ident, ".section") == 0) {
-      if (!token[1] || token[1]->type != TK_IDENT) {
-        ERROR(token[0], "identifier is expected.");
-      }
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      char *ident = token[1]->ident;
-      if (strcmp(ident, ".rodata") != 0) {
-        ERROR(token[0], "only '.rodata' is supported.");
-      }
-      vector_push(stmts, dir_section(ident, token[0]));
-      continue;
-    }
-
-    // .global directive
-    if (strcmp(token[0]->ident, ".global") == 0) {
-      if (!token[1] || token[1]->type != TK_IDENT) {
-        ERROR(token[0], "identifier is expected.");
-      }
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      char *ident = token[1]->ident;
-      vector_push(stmts, dir_global(ident, token[1]));
-      continue;
-    }
-
-    // .zero directive
-    if (strcmp(token[0]->ident, ".zero") == 0) {
-      if (!token[1]) {
-        ERROR(token[0], "'.zero' directive expects integer constant.");
-      }
-      EXPECT(token[1], TK_NUM, "'.zero' directive expects integer constant.");
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      int num = token[1]->num;
-      vector_push(stmts, dir_zero(num, token[0]));
-      continue;
-    }
-
-    // .long directive
-    if (strcmp(token[0]->ident, ".long") == 0) {
-      if (!token[1]) {
-        ERROR(token[0], "'.long' directive expects integer constant.");
-      }
-      EXPECT(token[1], TK_NUM, "'.long' directive expects integer constant.");
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      int num = token[1]->num;
-      vector_push(stmts, dir_long(num, token[0]));
-      continue;
-    }
-
-    // .quad directive
-    if (strcmp(token[0]->ident, ".quad") == 0) {
-      if (!token[1]) {
-        ERROR(token[0], "'.quad' directive expects string literal.");
-      }
-      EXPECT(token[1], TK_IDENT, "'.quad' directive expects string literal.");
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      char *ident = token[1]->ident;
-      vector_push(stmts, dir_quad(ident, token[1]));
-      continue;
-    }
-
-    // .ascii directive
-    if (strcmp(token[0]->ident, ".ascii") == 0) {
-      if (!token[1]) {
-        ERROR(token[0], "'.ascii' directive expects string literal.");
-      }
-      EXPECT(token[1], TK_STR, "'.ascii' directive expects string literal.");
-      if (token[2]) {
-        ERROR(token[0], "invalid directive.");
-      }
-      String *string = token[1]->string;
-      vector_push(stmts, dir_ascii(string, token[1]));
-      continue;
-    }
-
-    // instruction
-    vector_push(stmts, parse_inst(token));
+    vector_push(stmts, stmt);
   }
 
   return stmts;
