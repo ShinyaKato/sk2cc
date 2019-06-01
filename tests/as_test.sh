@@ -455,6 +455,26 @@ main:
   ret
 EOS
 
+expect 12 << EOS
+  .section .rodata
+.S0: .ascii "Hello World\n\0"
+
+  .data
+  .global hello
+hello: .quad .S0
+
+  .text
+  .global main
+main:
+  pushq %rbp
+  movq %rsp, %rbp
+  movq hello(%rip), %rdi
+  xorl %eax, %eax
+  call printf
+  leave
+  ret
+EOS
+
 gcc string.c vector.c map.c binary.c as_error.c as_lex.c as_parse.c as_encode.c as_gen.c tests/as_driver.c -o tmp/as_driver || exit 1
 
 encoding_failed() {

@@ -1356,8 +1356,17 @@ Vector *as_parse(Vector *_tokens) {
   pos = 0;
 
   while (!check(TK_EOF)) {
+    if (read(TK_NEWLINE)) continue;
+
     Stmt *stmt = parse_stmt();
+
+    // label statement can be followed by another statement
+    if (stmt->type == ST_LABEL && !check(TK_NEWLINE)) {
+      vector_push(stmts, stmt);
+      continue;
+    }
     expect(TK_NEWLINE);
+
     vector_push(stmts, stmt);
   }
 
