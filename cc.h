@@ -544,7 +544,6 @@ struct symbol {
   error((token)->loc, __FILE__, __LINE__, __VA_ARGS__);
 
 extern noreturn void error(Location *loc, char *__file, int __lineno, char *format, ...);
-extern noreturn void internal_error(char *format, ...);
 
 // lex.c
 extern Vector *tokenize(char *input_filename);

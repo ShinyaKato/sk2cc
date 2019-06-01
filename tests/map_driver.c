@@ -1,4 +1,3 @@
-#include <assert.h>
 #include "../sk2cc.h"
 #include "../map.h"
 

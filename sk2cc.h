@@ -12,6 +12,15 @@ typedef unsigned long long uint64_t;
 
 typedef unsigned long long size_t;
 
+// assert.h
+#define assert(x) \
+  do { \
+    if (!(x)) { \
+      fprintf(stderr, "%s:%d assertion failed.\n", __FILE__, __LINE__); \
+      exit(1); \
+    } \
+  } while(0)
+
 // stdbool.h
 #define bool _Bool
 #define false 0

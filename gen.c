@@ -749,9 +749,8 @@ static void gen_expr(Expr *expr) {
       gen_comma(expr);
       break;
 
-    // unreachable
     default:
-      internal_error("unknown expression type.");
+      assert(false); // unreachable
   }
 }
 
@@ -986,9 +985,8 @@ static void gen_stmt(Stmt *stmt) {
       gen_return(stmt);
       break;
 
-    // unreachable
     default:
-      internal_error("unknown statement type.");
+      assert(false); // unreachable
   }
 }
 

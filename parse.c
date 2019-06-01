@@ -776,8 +776,7 @@ static Specifier *storage_class_specifier(void) {
   if (read(TK_STATIC))
     return specifier_new(SP_STATIC, token);
 
-  // unreachable
-  internal_error("invalid storage-class-specifier.");
+  assert(false); // unreachable
 }
 
 // type-specifier :
@@ -818,8 +817,7 @@ static Specifier *type_specifier(void) {
   if (check_typedef_name())
     return typedef_name();
 
-  // unreachable
-  internal_error("invalid type-specifier.");
+  assert(false); // unreachable
 }
 
 // struct-or-union-specifier :
@@ -961,8 +959,7 @@ static Specifier *function_specifier(void) {
   if (read(TK_NORETURN))
     return specifier_new(SP_NORETURN, token);
 
-  // unreachable
-  internal_error("unknown function-specifier.");
+  assert(false); // unreachable
 }
 
 // init-declarator :

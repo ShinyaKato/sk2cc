@@ -1168,9 +1168,8 @@ static Expr *sema_expr(Expr *expr) {
       expr = sema_comma(expr);
       break;
 
-    // unreachable
     default:
-      internal_error("unknown expression type.");
+      assert(false); // unreachable
   }
 
   // lvalue promotion (convert array to pointer)
@@ -1505,7 +1504,7 @@ static Type *sema_declarator(Declarator *decl, Type *type) {
     return sema_declarator(decl->decl, func);
   }
 
-  internal_error("invalid declarator");
+  assert(false); // unreachable
 }
 
 static Type *sema_type_name(TypeName *type_name) {
@@ -1791,9 +1790,8 @@ static void sema_stmt(Stmt *stmt) {
       sema_return(stmt);
       break;
 
-    // unreachable
     default:
-      internal_error("unknown statement type.");
+      assert(false); // unreachable
   }
 }
 
