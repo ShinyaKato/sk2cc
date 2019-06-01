@@ -90,7 +90,7 @@ static RegCode regcode(char *reg) {
   as_error(loc, __FILE__, __LINE__, "unknown register: %s.", reg);
 }
 
-char escape_sequence(void) {
+static char escape_sequence(void) {
   switch (line_ptr[column++]) {
     case '"': return '"';
     case '\\': return '\\';
@@ -101,7 +101,7 @@ char escape_sequence(void) {
   as_error(loc, __FILE__, __LINE__, "invalid escape sequence.");
 }
 
-Token *next_token(void) {
+static Token *next_token(void) {
   char c = line_ptr[column++];
 
   if (c == '.' || c == '_' || isalpha(c)) {
@@ -180,7 +180,7 @@ Token *next_token(void) {
   as_error(loc, __FILE__, __LINE__,  "failed to tokenize.");
 }
 
-Vector *next_line(void) {
+static Vector *next_line(void) {
   Vector *tokens = vector_new();
 
   for (column = 0; line_ptr[column] != '\0';) {
