@@ -238,7 +238,7 @@ static Op *parse_memory(void) {
 static Op *parse_symbol(void) {
   Token *token = expect(TK_IDENT);
 
-  if (peek() && read(TK_LPAREN)) {
+  if (read(TK_LPAREN)) {
     expect(TK_RIP);
     expect(TK_RPAREN);
 
@@ -258,7 +258,7 @@ static Op *parse_immediate(void) {
 static Vector *parse_ops(void) {
   Vector *ops = vector_new();
 
-  if (!peek()) return ops;
+  if (check(TK_NEWLINE)) return ops;
   do {
     switch (peek()->type) {
       case TK_REG: {
@@ -282,7 +282,7 @@ static Vector *parse_ops(void) {
         ERROR(peek(), "invalid operand.");
       }
     }
-  } while (peek() && read(TK_COMMA));
+  } while (read(TK_COMMA));
 
   return ops;
 }
@@ -1291,7 +1291,7 @@ Stmt *parse_stmt(void) {
   Token *token = expect(TK_IDENT);
 
   // label
-  if (peek() && read(TK_SEMICOLON)) {
+  if (read(TK_SEMICOLON)) {
     return (Stmt *) label_new(token->ident, token);
   }
 
@@ -1349,22 +1349,15 @@ Stmt *parse_stmt(void) {
   return (Stmt *) parse_inst(token);
 }
 
-Vector *as_parse(Vector *lines) {
+Vector *as_parse(Vector *_tokens) {
   Vector *stmts = vector_new();
 
-  for (int i = 0; i < lines->length; i++) {
-    Vector *line = lines->buffer[i];
+  tokens = (Token **) _tokens->buffer;
+  pos = 0;
 
-    // skip if the line has no token.
-    if (line->length == 0) continue;
-
-    tokens = (Token **) line->buffer;
-    pos = 0;
-
+  while (!check(TK_EOF)) {
     Stmt *stmt = parse_stmt();
-    if (peek()) {
-      ERROR(peek(), "invalid statement.");
-    }
+    expect(TK_NEWLINE);
     vector_push(stmts, stmt);
   }
 

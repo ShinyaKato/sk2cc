@@ -50,13 +50,15 @@ typedef enum {
   TK_LPAREN,    // '('
   TK_RPAREN,    // ')'
   TK_SEMICOLON, // ';'
+  TK_NEWLINE,   // '\n'
+  TK_EOF,       // end of file
 } TokenType;
 
 // source code location
 // this informatino is used for error report.
 typedef struct location {
   char *filename; // source file name
-  char *line_ptr; // pointer to the line head
+  char *line;     // pointer to the line head
   int lineno;     // 0-indexed
   int column;     // 0-indexed
 } Location;
@@ -267,7 +269,7 @@ extern noreturn void as_error(Location *loc, char *file, int lineno, char *forma
 extern Vector *as_tokenize(char *file);
 
 // as_parse.c
-extern Vector *as_parse(Vector *lines);
+extern Vector *as_parse(Vector *tokens);
 
 // as_encode.c
 extern TransUnit *as_encode(Vector *stmts);
