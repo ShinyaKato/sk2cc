@@ -6,7 +6,6 @@ static char *src;
 static int pos;
 
 static char **cur_line;
-static char *line_ptr;
 static int lineno;
 static int column;
 
@@ -16,7 +15,7 @@ static Location *loc;
 static Map *keywords;
 
 // read the input source code and replace '\r\n' with '\n'
-static String *read_file(void) {
+static char *read_file(void) {
   FILE *fp;
   if (strcmp(filename, "-") == 0) {
     filename = "stdin";
@@ -51,21 +50,21 @@ static String *read_file(void) {
     string_push(src, c);
   }
 
-  return src;
+  return src->buffer;
 }
 
 // prepare lines for error message
 // clone the source code and replace '\n' with '\0' for debugging and error message
-// we can display the line by printf("%s\n", token->line_ptr);
-static char **split_lines(String *file) {
+// we can display the line by printf("%s\n", token->line);
+static char **split_lines(char *orig_src) {
   String *src = string_new();
-  string_write(src, file->buffer);
+  string_write(src, orig_src);
 
   Vector *lines = vector_new();
   for (int i = 0; i < src->length; i++) {
     vector_push(lines, &src->buffer[i]);
 
-    while (file->buffer[i] != '\n') i++;
+    while (src->buffer[i] != '\n') i++;
     src->buffer[i] = '\0';
   }
 
@@ -82,7 +81,6 @@ static Token *create_token(TokenType tk_type) {
 
 static void next_line(void) {
   cur_line++;
-  line_ptr = *cur_line;
   lineno++;
   column = 1;
 }
@@ -186,7 +184,7 @@ static Token *next_token(void) {
   // store the start position of the next token.
   loc = calloc(1, sizeof(Location));
   loc->filename = filename;
-  loc->line_ptr = line_ptr;
+  loc->line = *cur_line;
   loc->lineno = lineno;
   loc->column = column;
 
@@ -323,14 +321,11 @@ Vector *tokenize(char *_filename) {
   filename = _filename;
 
   // read the input file
-  String *file = read_file();
-
-  // initialization
-  src = file->buffer;
+  src = read_file();
   pos = 0;
 
-  cur_line = split_lines(file);
-  line_ptr = *cur_line;
+  // initialization
+  cur_line = split_lines(src);
   lineno = 1;
   column = 1;
 

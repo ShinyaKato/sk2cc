@@ -32,7 +32,7 @@ typedef struct symbol Symbol;
 // Location
 struct location {
   char *filename; // source file name
-  char *line_ptr; // pointer to the line head
+  char *line;     // pointer to the line head
   int lineno;     // 1-indexed
   int column;     // 1-indexed
 };
