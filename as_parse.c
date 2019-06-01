@@ -165,119 +165,121 @@ static Token *expect(TokenType type) {
 
 // parser
 
+// register operand
+static Op *parse_reg(void) {
+  Token *token = expect(TK_REG);
+
+  return op_reg(token->regtype, token->regcode, token);
+}
+
+// memory operand
+//   syntax: disp? '(' base (',' index (',' scale)?)? ')'
+static Op *parse_memory(void) {
+  Token *token = peek();
+
+  // disp is 0 if it is omitted
+  int disp = check(TK_NUM) ? expect(TK_NUM)->num : 0;
+
+  expect(TK_LPAREN);
+
+  // read base register (should be 64-bit)
+  Token *base = expect(TK_REG);
+  if (base->regtype != REG_QUAD) {
+    ERROR(base, "64-bit register is expected.");
+  }
+
+  // memory operand like 'disp(base)'
+  if (read(TK_RPAREN)) {
+    return op_mem_base(base->regcode, disp, token);
+  }
+
+  if (read(TK_COMMA)) {
+    // read index register (should be 64-bit)
+    // rsp is unacceptable as index register in x86 instruction encoding
+    Token *index = expect(TK_REG);
+    if (index->regtype != REG_QUAD) {
+      ERROR(token, "64-bit register is expected.");
+    }
+    if (index->regcode == REG_SP) {
+      ERROR(token, "cannot use rsp as index.");
+    }
+
+    // memory operand like 'disp(base, index)'
+    if (read(TK_RPAREN)) {
+      return op_mem_sib(SCALE1, index->regcode, base->regcode, disp, token);
+    }
+
+    // memory operand like 'disp(base, index, scale)'
+    if (read(TK_COMMA)) {
+      // read scale
+      // scale should be one of 1, 2, 4, 8
+      Token *scale = expect(TK_NUM);
+      Scale scale_val;
+      switch (scale->num) {
+        case 1: scale_val = SCALE1; break;
+        case 2: scale_val = SCALE2; break;
+        case 4: scale_val = SCALE4; break;
+        case 8: scale_val = SCALE8; break;
+        default: {
+          ERROR(scale, "one of 1, 2, 4, 8 is expected.");
+        }
+      }
+
+      expect(TK_RPAREN);
+
+      return op_mem_sib(scale_val, index->regcode, base->regcode, disp, token);
+    }
+  }
+
+  ERROR(peek(), "',' or ')' is expected.");
+}
+
+// symbol operand (including RIP-relative)
+static Op *parse_symbol(void) {
+  Token *token = expect(TK_IDENT);
+
+  if (peek() && read(TK_LPAREN)) {
+    expect(TK_RIP);
+    expect(TK_RPAREN);
+
+    return op_rip_rel(token->ident, token);
+  }
+
+  return op_sym(token->ident, token);
+}
+
+// immediate operand
+static Op *parse_immediate(void) {
+  Token *token = expect(TK_IMM);
+
+  return op_imm(token->imm, token);
+}
+
 static Vector *parse_ops(void) {
   Vector *ops = vector_new();
 
   if (!peek()) return ops;
   do {
-    Token *token = peek();
-
     switch (peek()->type) {
-      // register operand
       case TK_REG: {
-        Token *reg = expect(TK_REG);
-
-        Op *op = op_reg(reg->regtype, reg->regcode, token);
-        vector_push(ops, op);
-
+        vector_push(ops, parse_reg());
         break;
       }
-
-      // memory operand
-      //   syntax: disp? '(' base (',' index (',' scale)?)? ')'
       case TK_LPAREN:
       case TK_NUM: {
-        // disp is 0 if it is omitted
-        int disp = check(TK_NUM) ? expect(TK_NUM)->num : 0;
-
-        expect(TK_LPAREN);
-
-        // read base register (should be 64-bit)
-        Token *base = expect(TK_REG);
-        if (base->regtype != REG_QUAD) {
-          ERROR(base, "64-bit register is expected.");
-        }
-
-        // memory operand like 'disp(base)'
-        if (read(TK_RPAREN)) {
-          Op *op = op_mem_base(base->regcode, disp, token);
-          vector_push(ops, op);
-
-          break;
-        }
-
-        if (read(TK_COMMA)) {
-          // read index register (should be 64-bit)
-          // rsp is unacceptable as index register in x86 instruction encoding
-          Token *index = expect(TK_REG);
-          if (index->regtype != REG_QUAD) {
-            ERROR(token, "64-bit register is expected.");
-          }
-          if (index->regcode == REG_SP) {
-            ERROR(token, "cannot use rsp as index.");
-          }
-
-          // memory operand like 'disp(base, index)'
-          if (read(TK_RPAREN)) {
-            Op *op = op_mem_sib(SCALE1, index->regcode, base->regcode, disp, token);
-            vector_push(ops, op);
-
-            break;
-          }
-
-          // memory operand like 'disp(base, index, scale)'
-          if (read(TK_COMMA)) {
-            // read scale
-            // scale should be one of 1, 2, 4, 8
-            Token *scale = expect(TK_NUM);
-            Scale scale_val;
-            switch (scale->num) {
-              case 1: scale_val = SCALE1; break;
-              case 2: scale_val = SCALE2; break;
-              case 4: scale_val = SCALE4; break;
-              case 8: scale_val = SCALE8; break;
-              default: {
-                ERROR(scale, "one of 1, 2, 4, 8 is expected.");
-              }
-            }
-
-            expect(TK_RPAREN);
-
-            Op *op = op_mem_sib(scale_val, index->regcode, base->regcode, disp, token);
-            vector_push(ops, op);
-
-            break;
-          }
-        }
-
-        ERROR(peek(), "',' or ')' is expected.");
+        vector_push(ops, parse_memory());
+        break;
       }
-
-      // RIP-relative operand or symbol operand
       case TK_IDENT: {
-        char *sym = expect(TK_IDENT)->ident;
-
-        if (peek() && read(TK_LPAREN)) {
-          expect(TK_RIP);
-          expect(TK_RPAREN);
-          vector_push(ops, op_rip_rel(sym, token));
-        } else {
-          vector_push(ops, op_sym(sym, token));
-        }
-
+        vector_push(ops, parse_symbol());
         break;
       }
-
-      // immediate operand
       case TK_IMM: {
-        int imm = expect(TK_IMM)->imm;
-        vector_push(ops, op_imm(imm, token));
-
+        vector_push(ops, parse_immediate());
         break;
       }
-
       default: {
-        ERROR(token, "invalid operand.");
+        ERROR(peek(), "invalid operand.");
       }
     }
   } while (peek() && read(TK_COMMA));
