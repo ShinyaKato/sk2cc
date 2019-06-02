@@ -14,50 +14,6 @@ static Dir *dir_new(StmtType type, Token *token) {
   return dir;
 }
 
-static Dir *dir_text(Token *token) {
-  return dir_new(ST_TEXT, token);
-}
-
-static Dir *dir_data(Token *token) {
-  return dir_new(ST_DATA, token);
-}
-
-static Dir *dir_section(char *ident, Token *token) {
-  Dir *dir = dir_new(ST_SECTION, token);
-  dir->ident = ident;
-  return dir;
-}
-
-static Dir *dir_global(char *ident, Token *token) {
-  Dir *dir = dir_new(ST_GLOBAL, token);
-  dir->ident = ident;
-  return dir;
-}
-
-static Dir *dir_zero(int num, Token *token) {
-  Dir *dir = dir_new(ST_ZERO, token);
-  dir->num = num;
-  return dir;
-}
-
-static Dir *dir_long(int num, Token *token) {
-  Dir *dir = dir_new(ST_LONG, token);
-  dir->num = num;
-  return dir;
-}
-
-static Dir *dir_quad(char *ident, Token *token) {
-  Dir *dir = dir_new(ST_QUAD, token);
-  dir->ident = ident;
-  return dir;
-}
-
-static Dir *dir_ascii(String *string, Token *token) {
-  Dir *dir = dir_new(ST_ASCII, token);
-  dir->string = string;
-  return dir;
-}
-
 static Op *op_new(OpType type, Token *token) {
   Op *op = (Op *) calloc(1, sizeof(Op));
   op->type = type;
@@ -1297,12 +1253,12 @@ Stmt *parse_stmt(void) {
 
   // .text directive
   if (strcmp(token->ident, ".text") == 0) {
-    return (Stmt *) dir_text(token);
+    return (Stmt *) dir_new(ST_TEXT, token);
   }
 
   // .data directive
   if (strcmp(token->ident, ".data") == 0) {
-    return (Stmt *) dir_data(token);
+    return (Stmt *) dir_new(ST_DATA, token);
   }
 
   // .section directive
@@ -1312,37 +1268,49 @@ Stmt *parse_stmt(void) {
     if (strcmp(ident, ".rodata") != 0) {
       ERROR(token, "only '.rodata' is supported.");
     }
-    return (Stmt *) dir_section(ident, token);
+    Dir *dir = dir_new(ST_SECTION, token);
+    dir->ident = ident;
+    return (Stmt *) dir;
   }
 
   // .global directive
   if (strcmp(token->ident, ".global") == 0) {
     char *ident = expect(TK_IDENT)->ident;
-    return (Stmt *) dir_global(ident, token);
+    Dir *dir = dir_new(ST_GLOBAL, token);
+    dir->ident = ident;
+    return (Stmt *) dir;
   }
 
   // .zero directive
   if (strcmp(token->ident, ".zero") == 0) {
     int num = expect(TK_NUM)->num;
-    return (Stmt *) dir_zero(num, token);
+    Dir *dir = dir_new(ST_ZERO, token);
+    dir->num = num;
+    return (Stmt *) dir;
   }
 
   // .long directive
   if (strcmp(token->ident, ".long") == 0) {
     int num = expect(TK_NUM)->num;
-    return (Stmt *) dir_long(num, token);
+    Dir *dir = dir_new(ST_LONG, token);
+    dir->num = num;
+    return (Stmt *) dir;
   }
 
   // .quad directive
   if (strcmp(token->ident, ".quad") == 0) {
     char *ident = expect(TK_IDENT)->ident;
-    return (Stmt *) dir_quad(ident, token);
+    Dir *dir = dir_new(ST_QUAD, token);
+    dir->ident = ident;
+    return (Stmt *) dir;
   }
 
   // .ascii directive
   if (strcmp(token->ident, ".ascii") == 0) {
     String *string = expect(TK_STR)->string;
-    return (Stmt *) dir_ascii(string, token);
+    Dir *dir = dir_new(ST_ASCII, token);
+    dir->string = string;
+    return (Stmt *) dir;
   }
 
   // instruction
