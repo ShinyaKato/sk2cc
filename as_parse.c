@@ -121,6 +121,70 @@ static Token *expect(TokenType type) {
 
 // parser
 
+static Map *dirs;
+
+static Map *create_dirs(void) {
+  Map *map = map_new();
+
+  map_puti(map, ".text", ST_TEXT);
+  map_puti(map, ".data", ST_DATA);
+  map_puti(map, ".section", ST_SECTION);
+  map_puti(map, ".global", ST_GLOBAL);
+  map_puti(map, ".zero", ST_ZERO);
+  map_puti(map, ".long", ST_LONG);
+  map_puti(map, ".quad", ST_QUAD);
+  map_puti(map, ".ascii", ST_ASCII);
+
+  return map;
+}
+
+static Stmt *parse_dir(StmtType dir_type, Token *token) {
+  switch (dir_type) {
+    case ST_TEXT: return (Stmt *) dir_new(ST_TEXT, token);
+    case ST_DATA: return (Stmt *) dir_new(ST_DATA, token);
+    case ST_SECTION: {
+      char *ident = expect(TK_IDENT)->ident;
+      if (strcmp(ident, ".rodata") != 0) {
+        ERROR(token, "only '.rodata' is supported.");
+      }
+      Dir *dir = dir_new(ST_SECTION, token);
+      dir->ident = ident;
+      return (Stmt *) dir;
+    }
+    case ST_GLOBAL: {
+      char *ident = expect(TK_IDENT)->ident;
+      Dir *dir = dir_new(ST_GLOBAL, token);
+      dir->ident = ident;
+      return (Stmt *) dir;
+    }
+    case ST_ZERO: {
+      int num = expect(TK_NUM)->num;
+      Dir *dir = dir_new(ST_ZERO, token);
+      dir->num = num;
+      return (Stmt *) dir;
+    }
+    case ST_LONG: {
+      int num = expect(TK_NUM)->num;
+      Dir *dir = dir_new(ST_LONG, token);
+      dir->num = num;
+      return (Stmt *) dir;
+    }
+    case ST_QUAD: {
+      char *ident = expect(TK_IDENT)->ident;
+      Dir *dir = dir_new(ST_QUAD, token);
+      dir->ident = ident;
+      return (Stmt *) dir;
+    }
+    case ST_ASCII: {
+      String *string = expect(TK_STR)->string;
+      Dir *dir = dir_new(ST_ASCII, token);
+      dir->string = string;
+      return (Stmt *) dir;
+    }
+    default: assert(false); // unreachable
+  }
+}
+
 // register operand
 static Op *parse_reg(void) {
   Token *token = expect(TK_REG);
@@ -1251,69 +1315,13 @@ Stmt *parse_stmt(void) {
     return (Stmt *) label_new(token->ident, token);
   }
 
-  // .text directive
-  if (strcmp(token->ident, ".text") == 0) {
-    return (Stmt *) dir_new(ST_TEXT, token);
+  // directives
+  StmtType dir_type = map_lookupi(dirs, token->ident);
+  if (dir_type) {
+    return (Stmt *) parse_dir(dir_type, token);
   }
 
-  // .data directive
-  if (strcmp(token->ident, ".data") == 0) {
-    return (Stmt *) dir_new(ST_DATA, token);
-  }
-
-  // .section directive
-  // only .rodata is supported.
-  if (strcmp(token->ident, ".section") == 0) {
-    char *ident = expect(TK_IDENT)->ident;
-    if (strcmp(ident, ".rodata") != 0) {
-      ERROR(token, "only '.rodata' is supported.");
-    }
-    Dir *dir = dir_new(ST_SECTION, token);
-    dir->ident = ident;
-    return (Stmt *) dir;
-  }
-
-  // .global directive
-  if (strcmp(token->ident, ".global") == 0) {
-    char *ident = expect(TK_IDENT)->ident;
-    Dir *dir = dir_new(ST_GLOBAL, token);
-    dir->ident = ident;
-    return (Stmt *) dir;
-  }
-
-  // .zero directive
-  if (strcmp(token->ident, ".zero") == 0) {
-    int num = expect(TK_NUM)->num;
-    Dir *dir = dir_new(ST_ZERO, token);
-    dir->num = num;
-    return (Stmt *) dir;
-  }
-
-  // .long directive
-  if (strcmp(token->ident, ".long") == 0) {
-    int num = expect(TK_NUM)->num;
-    Dir *dir = dir_new(ST_LONG, token);
-    dir->num = num;
-    return (Stmt *) dir;
-  }
-
-  // .quad directive
-  if (strcmp(token->ident, ".quad") == 0) {
-    char *ident = expect(TK_IDENT)->ident;
-    Dir *dir = dir_new(ST_QUAD, token);
-    dir->ident = ident;
-    return (Stmt *) dir;
-  }
-
-  // .ascii directive
-  if (strcmp(token->ident, ".ascii") == 0) {
-    String *string = expect(TK_STR)->string;
-    Dir *dir = dir_new(ST_ASCII, token);
-    dir->string = string;
-    return (Stmt *) dir;
-  }
-
-  // instruction
+  // instructions
   return (Stmt *) parse_inst(token);
 }
 
@@ -1322,6 +1330,10 @@ Vector *as_parse(Vector *_tokens) {
 
   tokens = (Token **) _tokens->buffer;
   pos = 0;
+
+  if (!dirs) {
+    dirs = create_dirs();
+  }
 
   while (!check(TK_EOF)) {
     if (read(TK_NEWLINE)) continue;
