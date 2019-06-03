@@ -64,28 +64,12 @@ static Op *op_imm(int imm, Token *token) {
   return op;
 }
 
-static Inst *inst_new(StmtType type, InstSuffix suffix, Token *token) {
+static Inst *inst_new(StmtType type, InstSuffix suffix, Vector *ops, Token *token) {
   Inst *inst = (Inst *) calloc(1, sizeof(Inst));
   inst->type = type;
   inst->suffix = suffix;
+  inst->ops = ops;
   inst->token = token;
-  return inst;
-}
-
-static Inst *inst_op0(StmtType type, InstSuffix suffix, Token *token) {
-  return inst_new(type, suffix, token);
-}
-
-static Inst *inst_op1(StmtType type, InstSuffix suffix, Op *op, Token *token) {
-  Inst *inst = inst_new(type, suffix, token);
-  inst->op = op;
-  return inst;
-}
-
-static Inst *inst_op2(StmtType type, InstSuffix suffix, Op *src, Op *dest, Token *token) {
-  Inst *inst = inst_new(type, suffix, token);
-  inst->src = src;
-  inst->dest = dest;
   return inst;
 }
 
@@ -121,7 +105,13 @@ static Token *expect(TokenType type) {
 
 // parser
 
+typedef struct {
+  StmtType type;
+  InstSuffix suffix;
+} InstTypeSuffix;
+
 static Map *dirs;
+static Map *insts;
 
 static Map *create_dirs(void) {
   Map *map = map_new();
@@ -134,6 +124,73 @@ static Map *create_dirs(void) {
   map_puti(map, ".long", ST_LONG);
   map_puti(map, ".quad", ST_QUAD);
   map_puti(map, ".ascii", ST_ASCII);
+
+  return map;
+}
+
+static void put_insts(Map *map, char *inst, StmtType type) {
+  char suffix_char[4] = { 'b', 'w', 'l', 'q' };
+  InstSuffix suffix[4] = { INST_BYTE, INST_WORD, INST_LONG, INST_QUAD };
+
+  for (int i = 0; i < 4; i++) {
+    String *key = string_new();
+    string_write(key, inst);
+    string_push(key, suffix_char[i]);
+
+    InstTypeSuffix *value = calloc(1, sizeof(InstTypeSuffix));
+    value->type = type;
+    value->suffix = suffix[i];
+
+    map_put(map, key->buffer, value);
+  }
+
+  InstTypeSuffix *value = calloc(1, sizeof(InstTypeSuffix));
+  value->type = type;
+  value->suffix = -1;
+
+  map_put(map, inst, value);
+}
+
+static Map *create_insts(void) {
+  Map *map = map_new();
+
+  put_insts(map, "push", ST_PUSH);
+  put_insts(map, "pop", ST_POP);
+  put_insts(map, "mov", ST_MOV);
+  put_insts(map, "movzb", ST_MOVZB);
+  put_insts(map, "movzw", ST_MOVZW);
+  put_insts(map, "movsb", ST_MOVSB);
+  put_insts(map, "movsw", ST_MOVSW);
+  put_insts(map, "movsl", ST_MOVSL);
+  put_insts(map, "lea", ST_LEA);
+  put_insts(map, "neg", ST_NEG);
+  put_insts(map, "not", ST_NOT);
+  put_insts(map, "add", ST_ADD);
+  put_insts(map, "sub", ST_SUB);
+  put_insts(map, "mul", ST_MUL);
+  put_insts(map, "imul", ST_IMUL);
+  put_insts(map, "div", ST_DIV);
+  put_insts(map, "idiv", ST_IDIV);
+  put_insts(map, "and", ST_AND);
+  put_insts(map, "xor", ST_XOR);
+  put_insts(map, "or", ST_OR);
+  put_insts(map, "sal", ST_SAL);
+  put_insts(map, "sar", ST_SAR);
+  put_insts(map, "cmp", ST_CMP);
+  put_insts(map, "sete", ST_SETE);
+  put_insts(map, "setne", ST_SETNE);
+  put_insts(map, "setb", ST_SETB);
+  put_insts(map, "setl", ST_SETL);
+  put_insts(map, "setg", ST_SETG);
+  put_insts(map, "setbe", ST_SETBE);
+  put_insts(map, "setle", ST_SETLE);
+  put_insts(map, "setge", ST_SETGE);
+  put_insts(map, "jmp", ST_JMP);
+  put_insts(map, "je", ST_JE);
+  put_insts(map, "jne", ST_JNE);
+  put_insts(map, "call", ST_CALL);
+  put_insts(map, "leave", ST_LEAVE);
+  put_insts(map, "ret", ST_RET);
 
   return map;
 }
@@ -307,1003 +364,10 @@ static Vector *parse_ops(void) {
   return ops;
 }
 
-static Inst *parse_inst(Token *inst) {
+static Inst *parse_inst(StmtType type, StmtType suffix, Token *token) {
   Vector *ops = parse_ops();
 
-  if (strcmp(inst->ident, "pushq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG || op->regtype != REG_QUAD) {
-      ERROR(op->token, "only 64-bits register is supported.");
-    }
-    return inst_op1(ST_PUSH, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "popq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG || op->regtype != REG_QUAD) {
-      ERROR(op->token, "only 64-bits register is supported.");
-    }
-    return inst_op1(ST_POP, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "movq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOV, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOV, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movw") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOV, INST_WORD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movb") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOV, INST_BYTE, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movzbq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVZB, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movzbl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVZB, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movzbw") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVZB, INST_WORD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movzwq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVZW, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movzwl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVZW, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movsbq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSB, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movsbl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSB, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movsbw") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSB, INST_WORD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movswq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSW, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movswl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSW, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "movslq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG && src->type != OP_MEM) {
-      ERROR(src->token, "register or memory operand is expected.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_MOVSL, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "leaq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_MEM) {
-      ERROR(src->token, "first operand should be memory operand.");
-    }
-    if (dest->type != OP_REG) {
-      ERROR(dest->token, "second operand should be register operand.");
-    }
-    if (dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "only 64-bit register is supported.");
-    }
-    return inst_op2(ST_LEA, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "negq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_NEG, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "negl") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_NEG, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "notq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_NOT, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "notl") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_NOT, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "addq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_ADD, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "addl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_ADD, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "subq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SUB, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "subl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SUB, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "mulq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_MUL, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "mull") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_MUL, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "imulq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_IMUL, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "imull") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_IMUL, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "divq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_DIV, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "divl") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_DIV, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "idivq") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_QUAD) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_IDIV, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "idivl") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_LONG) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_IDIV, INST_LONG, op, inst);
-  }
-
-  if (strcmp(inst->ident, "andq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_AND, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "andl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_AND, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "xorq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_XOR, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "xorl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_XOR, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "orq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_OR, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "orl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_OR, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "salq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
-      ERROR(src->token, "only %%cl is supported.");
-    }
-    if (dest->type != OP_REG && dest->type != OP_MEM) {
-      ERROR(dest->token, "register or memory operand is expected.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SAL, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "sall") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
-      ERROR(src->token, "only %%cl is supported.");
-    }
-    if (dest->type != OP_REG && dest->type != OP_MEM) {
-      ERROR(dest->token, "register or memory operand is expected.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SAL, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "sarq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
-      ERROR(src->token, "only %%cl is supported.");
-    }
-    if (dest->type != OP_REG && dest->type != OP_MEM) {
-      ERROR(dest->token, "register or memory operand is expected.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SAR, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "sarl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operand.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (src->type != OP_REG || src->regtype != REG_BYTE || src->regcode != REG_CX) {
-      ERROR(src->token, "only %%cl is supported.");
-    }
-    if (dest->type != OP_REG && dest->type != OP_MEM) {
-      ERROR(dest->token, "register or memory operand is expected.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_SAR, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "cmpq") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_QUAD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_QUAD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_CMP, INST_QUAD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "cmpl") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_LONG) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_LONG) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_CMP, INST_LONG, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "cmpw") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_WORD) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_WORD) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-
-    return inst_op2(ST_CMP, INST_WORD, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "cmpb") == 0) {
-    if (ops->length != 2) {
-      ERROR(inst, "'%s' expects 2 operands.", inst->ident);
-    }
-    Op *src = ops->buffer[0], *dest = ops->buffer[1];
-    if (dest->type == OP_IMM) {
-      ERROR(dest->token, "destination cannot be an immediate.");
-    }
-    if (src->type == OP_MEM && dest->type == OP_MEM) {
-      ERROR(inst, "both of source and destination cannot be memory operands.");
-    }
-    if (src->type == OP_REG && src->regtype != REG_BYTE) {
-      ERROR(src->token, "operand type mismatched.");
-    }
-    if (dest->type == OP_REG && dest->regtype != REG_BYTE) {
-      ERROR(dest->token, "operand type mismatched.");
-    }
-    return inst_op2(ST_CMP, INST_BYTE, src, dest, inst);
-  }
-
-  if (strcmp(inst->ident, "sete") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETE, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setne") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETNE, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setb") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETB, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setl") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETL, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setg") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETG, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setbe") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETBE, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setle") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETLE, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "setge") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_REG && op->type != OP_MEM) {
-      ERROR(inst, "register or memory operand is expected.");
-    }
-    if (op->type == OP_REG && op->regtype != REG_BYTE) {
-      ERROR(inst, "operand type mismatched.");
-    }
-    return inst_op1(ST_SETGE, INST_BYTE, op, inst);
-  }
-
-  if (strcmp(inst->ident, "jmp") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_SYM) {
-      ERROR(op->token, "only symbol is supported.");
-    }
-    return inst_op1(ST_JMP, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "je") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_SYM) {
-      ERROR(op->token, "only symbol is supported.");
-    }
-    return inst_op1(ST_JE, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "jne") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_SYM) {
-      ERROR(op->token, "only symbol is supported.");
-    }
-    return inst_op1(ST_JNE, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "call") == 0) {
-    if (ops->length != 1) {
-      ERROR(inst, "'%s' expects 1 operand.", inst->ident);
-    }
-    Op *op = ops->buffer[0];
-    if (op->type != OP_SYM) {
-      ERROR(op->token, "only symbol is supported.");
-    }
-    return inst_op1(ST_CALL, INST_QUAD, op, inst);
-  }
-
-  if (strcmp(inst->ident, "leave") == 0) {
-    if (ops->length != 0) {
-      ERROR(inst, "'%s' expects no operand.", inst->ident);
-    }
-    return inst_op0(ST_LEAVE, INST_QUAD, inst);
-  }
-
-  if (strcmp(inst->ident, "ret") == 0) {
-    if (ops->length != 0) {
-      ERROR(inst, "'%s' expects no operand.", inst->ident);
-    }
-    return inst_op0(ST_RET, INST_QUAD, inst);
-  }
-
-  ERROR(inst, "unknown instruction '%s'.", inst->ident);
+  return inst_new(type, suffix, ops, token);
 }
 
 Stmt *parse_stmt(void) {
@@ -1322,7 +386,12 @@ Stmt *parse_stmt(void) {
   }
 
   // instructions
-  return (Stmt *) parse_inst(token);
+  InstTypeSuffix *inst = map_lookup(insts, token->ident);
+  if (inst) {
+    return (Stmt *) parse_inst(inst->type, inst->suffix, token);
+  }
+
+  ERROR(token, "invalid assembler statement.");
 }
 
 Vector *as_parse(Vector *_tokens) {
@@ -1333,6 +402,9 @@ Vector *as_parse(Vector *_tokens) {
 
   if (!dirs) {
     dirs = create_dirs();
+  }
+  if (!insts) {
+    insts = create_insts();
   }
 
   while (!check(TK_EOF)) {

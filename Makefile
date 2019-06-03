@@ -8,7 +8,7 @@ HEADERS = \
 SRCS = \
 	vector.c string.c map.c binary.c \
 	error.c lex.c cpp.c parse.c sema.c gen.c cc.c \
-	as_error.c as_lex.c as_parse.c as_encode.c as_gen.c as.c \
+	as_error.c as_lex.c as_parse.c as_sema.c as_encode.c as_gen.c as.c \
 	main.c
 
 DIR = tmp

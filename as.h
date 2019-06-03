@@ -217,6 +217,7 @@ typedef struct {
   InstSuffix suffix; // instruction suffix
 
   // instruction with one operand
+  Vector *ops; // Vector<Op*>
   Op *op;
 
   // instruction with two operands
@@ -270,6 +271,9 @@ extern Vector *as_tokenize(char *file);
 
 // as_parse.c
 extern Vector *as_parse(Vector *tokens);
+
+// as_sema.c
+extern void as_sema(Vector *stmts);
 
 // as_encode.c
 extern TransUnit *as_encode(Vector *stmts);

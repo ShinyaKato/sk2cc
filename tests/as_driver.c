@@ -1,10 +1,9 @@
 #include "../as.h"
 
 int main(int argc, char *argv[]) {
-  char *input = "/dev/stdin";
-
-  Vector *lines = as_tokenize(input);
-  Vector *stmts = as_parse(lines);
+  Vector *tokens = as_tokenize("-");
+  Vector *stmts = as_parse(tokens);
+  as_sema(stmts);
   TransUnit *trans_unit = as_encode(stmts);
 
   Binary *text = trans_unit->text->bin;

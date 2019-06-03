@@ -475,7 +475,11 @@ main:
   ret
 EOS
 
-gcc string.c vector.c map.c binary.c as_error.c as_lex.c as_parse.c as_encode.c as_gen.c tests/as_driver.c -o tmp/as_driver || exit 1
+gcc -o tmp/as_driver \
+  string.c vector.c map.c binary.c \
+  as_error.c as_lex.c as_parse.c as_sema.c as_encode.c as_gen.c \
+  tests/as_driver.c \
+  || exit 1
 
 encoding_failed() {
   asm=$1
