@@ -67,21 +67,34 @@ static void gen_expr(Expr *expr);
   } while (0)
 
 static void gen_lvalue(Expr *expr) {
-  if (expr->nd_type == ND_IDENTIFIER) {
-    Symbol *symbol = expr->symbol;
-    if (symbol->link == LN_EXTERNAL || symbol->link == LN_INTERNAL) {
-      printf("  leaq %s(%%rip), %%rax\n", symbol->identifier);
-    } else if (symbol->link == LN_NONE) {
-      printf("  leaq %d(%%rbp), %%rax\n", -symbol->offset);
+  switch (expr->nd_type) {
+    case ND_IDENTIFIER: {
+      switch (expr->symbol->link) {
+        case LN_EXTERNAL:
+        case LN_INTERNAL: {
+          printf("  leaq %s(%%rip), %%rax\n", expr->symbol->identifier);
+          break;
+        }
+        case LN_NONE: {
+          printf("  leaq %d(%%rbp), %%rax\n", -expr->symbol->offset);
+          break;
+        }
+      }
+      GEN_PUSH("rax");
+      break;
     }
-    GEN_PUSH("rax");
-  } else if (expr->nd_type == ND_INDIRECT) {
-    gen_expr(expr->expr);
-  } else if (expr->nd_type == ND_DOT) {
-    gen_lvalue(expr->expr);
-    GEN_POP("rax");
-    printf("  leaq %d(%%rax), %%rax\n", expr->offset);
-    GEN_PUSH("rax");
+    case ND_INDIRECT: {
+      gen_expr(expr->expr);
+      break;
+    }
+    case ND_DOT: {
+      gen_lvalue(expr->expr);
+      GEN_POP("rax");
+      printf("  leaq %d(%%rax), %%rax\n", expr->offset);
+      GEN_PUSH("rax");
+      break;
+    }
+    default: assert(false);
   }
 }
 
