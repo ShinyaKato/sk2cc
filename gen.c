@@ -1,6 +1,53 @@
 #include "cc.h"
 
-static char *arg_reg[] = { "rdi", "rsi", "rdx", "rcx", "r8", "r9" };
+typedef enum {
+  REG_BYTE,
+  REG_WORD,
+  REG_LONG,
+  REG_QUAD,
+} RegSize;
+
+typedef enum {
+  REG_AX,
+  REG_CX,
+  REG_DX,
+  REG_BX,
+  REG_SP,
+  REG_BP,
+  REG_SI,
+  REG_DI,
+  REG_R8,
+  REG_R9,
+  REG_R10,
+  REG_R11,
+  REG_R12,
+  REG_R13,
+  REG_R14,
+  REG_R15,
+} RegCode;
+
+static char *reg[16][4] = {
+  { "al", "ax", "eax", "rax" },
+  { "cl", "cx", "ecx", "rcx" },
+  { "dl", "dx", "edx", "rdx" },
+  { "bl", "bx", "ebx", "rbx" },
+  { "spl", "sp", "esp", "rsp" },
+  { "bpl", "bp", "ebp", "rbp" },
+  { "sil", "si", "esi", "rsi" },
+  { "dil", "di", "edi", "rdi" },
+  { "r8b", "r8w", "r8d", "r8" },
+  { "r9b", "r9w", "r9d", "r9" },
+  { "r10b", "r10w", "r10d", "r10" },
+  { "r11b", "r11w", "r11d", "r11" },
+  { "r12b", "r12w", "r12d", "r12" },
+  { "r13b", "r13w", "r13d", "r13" },
+  { "r14b", "r14w", "r14d", "r14" },
+  { "r15b", "r15w", "r15d", "r15" },
+};
+
+// rdi, rsi, rdx, rcx, r8, r9
+// currently initializer with enum constant is not supported.
+static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
 
 static int lbl_no;
 
@@ -116,23 +163,36 @@ static void gen_load(Type *type) {
   GEN_PUSH("rax");
 }
 
-static void gen_store(Type *type) {
-  GEN_POP("rax");
-  GEN_POP("rbx");
+static void gen_store_by_addr(RegCode value, RegCode addr, Type *type) {
   if (type->ty_type == TY_BOOL) {
-    printf("  movb %%al, (%%rbx)\n");
+    printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
   } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movb %%al, (%%rbx)\n");
+    printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
   } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movw %%ax, (%%rbx)\n");
+    printf("  movw %%%s, (%%%s)\n", reg[value][REG_WORD], reg[addr][REG_QUAD]);
   } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-    printf("  movl %%eax, (%%rbx)\n");
+    printf("  movl %%%s, (%%%s)\n", reg[value][REG_LONG], reg[addr][REG_QUAD]);
   } else if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
-    printf("  movq %%rax, (%%rbx)\n");
+    printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
   } else if (type->ty_type == TY_POINTER) {
-    printf("  movq %%rax, (%%rbx)\n");
+    printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
   }
-  GEN_PUSH("rax");
+}
+
+static void gen_store_by_offset(RegCode value, int offset, Type *type) {
+  if (type->ty_type == TY_BOOL) {
+    printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
+  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
+    printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
+  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
+    printf("  movw %%%s, %d(%%rbp)\n", reg[value][REG_WORD], offset);
+  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
+    printf("  movl %%%s, %d(%%rbp)\n", reg[value][REG_LONG], offset);
+  } else if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
+    printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
+  } else if (type->ty_type == TY_POINTER) {
+    printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
+  }
 }
 
 static void gen_va_start(Expr *expr) {
@@ -240,7 +300,7 @@ static void gen_call(Expr *expr) {
   }
   for (int i = 0; i < expr->args->length; i++) {
     if (i >= 6) break;
-    GEN_POP(arg_reg[i]);
+    GEN_POP(reg[arg_reg[i]][REG_QUAD]);
   }
 
   // for function with variable length arguments
@@ -634,8 +694,10 @@ static void gen_condition(Expr *expr) {
 
 static void gen_assign(Expr *expr) {
   gen_lvalue(expr->lhs);
-  gen_expr(expr->rhs);
-  gen_store(expr->lhs->type);
+  GEN_OP(expr->rhs, "rax");
+  GEN_POP("rcx");
+  gen_store_by_addr(REG_AX, REG_CX, expr->lhs->type);
+  GEN_PUSH("rax");
 }
 
 static void gen_comma(Expr *expr) {
@@ -775,11 +837,8 @@ static void gen_init_local(Initializer *init, int offset) {
       gen_init_local(item, offset + size * i);
     }
   } else if (init->expr) {
-    printf("  leaq %d(%%rbp), %%rax\n", offset);
-    GEN_PUSH("rax");
-    gen_expr(init->expr);
-    gen_store(init->expr->type);
-    GEN_POP_DISCARD();
+    GEN_OP(init->expr, "rax");
+    gen_store_by_offset(REG_AX, offset, init->expr->type);
   }
 }
 
@@ -1084,7 +1143,7 @@ static void gen_func(Func *func) {
 
   if (type->ellipsis) {
     for (int i = type->params->length; i < 6; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", arg_reg[i], -176 + i * 8);
+      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_reg[i]][REG_QUAD], -176 + i * 8);
     }
   }
 
@@ -1107,18 +1166,10 @@ static void gen_func(Func *func) {
   for (int i = 0; i < type->params->length; i++) {
     Symbol *param = type->params->buffer[i];
     if (i < 6) {
-      printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
-      GEN_PUSH("rax");
-      GEN_PUSH(arg_reg[i]);
-      gen_store(param->type);
-      GEN_POP_DISCARD();
+      gen_store_by_offset(arg_reg[i], -param->offset, param->type);
     } else {
-      printf("  leaq %d(%%rbp), %%rax\n", -param->offset);
-      GEN_PUSH("rax");
       printf("  movq %d(%%rbp), %%rax\n", 16 + (i - 6) * 8);
-      GEN_PUSH("rax");
-      gen_store(param->type);
-      GEN_POP_DISCARD();
+      gen_store_by_offset(REG_AX, -param->offset, param->type);
     }
   }
 
