@@ -147,51 +147,92 @@ static void gen_lvalue(Expr *expr) {
 
 static void gen_load(Type *type) {
   GEN_POP("rax");
-  if (type->ty_type == TY_BOOL) {
-    printf("  movb (%%rax), %%al\n");
-  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movb (%%rax), %%al\n");
-  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movw (%%rax), %%ax\n");
-  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-    printf("  movl (%%rax), %%eax\n");
-  } else if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
-    printf("  movq (%%rax), %%rax\n");
-  } else if (type->ty_type == TY_POINTER && type == type->original) {
-    printf("  movq (%%rax), %%rax\n");
+  switch (type->ty_type) {
+    case TY_BOOL:
+    case TY_CHAR:
+    case TY_UCHAR: {
+      printf("  movb (%%rax), %%al\n");
+      break;
+    }
+    case TY_SHORT:
+    case TY_USHORT: {
+      printf("  movw (%%rax), %%ax\n");
+      break;
+    }
+    case TY_INT:
+    case TY_UINT: {
+      printf("  movl (%%rax), %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  movq (%%rax), %%rax\n");
+      break;
+    }
+    case TY_POINTER: {
+      if (type == type->original) {
+        printf("  movq (%%rax), %%rax\n");
+      }
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_store_by_addr(RegCode value, RegCode addr, Type *type) {
-  if (type->ty_type == TY_BOOL) {
-    printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
-  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
-  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movw %%%s, (%%%s)\n", reg[value][REG_WORD], reg[addr][REG_QUAD]);
-  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-    printf("  movl %%%s, (%%%s)\n", reg[value][REG_LONG], reg[addr][REG_QUAD]);
-  } else if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
-    printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
-  } else if (type->ty_type == TY_POINTER) {
-    printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
+  switch (type->ty_type) {
+    case TY_BOOL:
+    case TY_CHAR:
+    case TY_UCHAR: {
+      printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
+      break;
+    }
+    case TY_SHORT:
+    case TY_USHORT: {
+      printf("  movw %%%s, (%%%s)\n", reg[value][REG_WORD], reg[addr][REG_QUAD]);
+      break;
+    }
+    case TY_INT:
+    case TY_UINT: {
+      printf("  movl %%%s, (%%%s)\n", reg[value][REG_LONG], reg[addr][REG_QUAD]);
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
+      break;
+    }
+    default: assert(false);
   }
 }
 
 static void gen_store_by_offset(RegCode value, int offset, Type *type) {
-  if (type->ty_type == TY_BOOL) {
-    printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
-  } else if (type->ty_type == TY_CHAR || type->ty_type == TY_UCHAR) {
-    printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
-  } else if (type->ty_type == TY_SHORT || type->ty_type == TY_USHORT) {
-    printf("  movw %%%s, %d(%%rbp)\n", reg[value][REG_WORD], offset);
-  } else if (type->ty_type == TY_INT || type->ty_type == TY_UINT) {
-    printf("  movl %%%s, %d(%%rbp)\n", reg[value][REG_LONG], offset);
-  } else if (type->ty_type == TY_LONG || type->ty_type == TY_ULONG) {
-    printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
-  } else if (type->ty_type == TY_POINTER) {
-    printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
+  switch (type->ty_type) {
+    case TY_BOOL:
+    case TY_CHAR:
+    case TY_UCHAR: {
+      printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
+      break;
+    }
+    case TY_SHORT:
+    case TY_USHORT: {
+      printf("  movw %%%s, %d(%%rbp)\n", reg[value][REG_WORD], offset);
+      break;
+    }
+    case TY_INT:
+    case TY_UINT: {
+      printf("  movl %%%s, %d(%%rbp)\n", reg[value][REG_LONG], offset);
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
+      break;
+    }
+    default: assert(false);
   }
 }
 
