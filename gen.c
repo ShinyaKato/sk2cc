@@ -382,11 +382,6 @@ static void gen_indirect(Expr *expr) {
   gen_load(expr->type);
 }
 
-static void gen_uplus(Expr *expr) {
-  GEN_OP(expr->expr, "rax");
-  GEN_PUSH("rax");
-}
-
 static void gen_uminus(Expr *expr) {
   GEN_OP(expr->expr, "rax");
   if (expr->expr->type->ty_type == TY_INT || expr->expr->type->ty_type == TY_UINT) {
@@ -788,9 +783,6 @@ static void gen_expr(Expr *expr) {
       break;
     case ND_INDIRECT:
       gen_indirect(expr);
-      break;
-    case ND_UPLUS:
-      gen_uplus(expr);
       break;
     case ND_UMINUS:
       gen_uminus(expr);
