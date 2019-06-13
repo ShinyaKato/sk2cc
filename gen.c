@@ -289,10 +289,18 @@ static void gen_identifier(Expr *expr) {
 }
 
 static void gen_integer(Expr *expr) {
-  if (expr->type->ty_type == TY_INT || expr->type->ty_type == TY_UINT) {
-    printf("  movl $%llu, %%eax\n", expr->int_value);
-  } else if (expr->type->ty_type == TY_LONG || expr->type->ty_type == TY_ULONG) {
-    printf("  movq $%llu, %%rax\n", expr->int_value);
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  movl $%llu, %%eax\n", expr->int_value);
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  movq $%llu, %%rax\n", expr->int_value);
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
