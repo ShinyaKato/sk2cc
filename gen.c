@@ -1267,17 +1267,18 @@ static void gen_string_literal(String *string, int label) {
   printf("  .ascii \"");
   for (int i = 0; i < string->length; i++) {
     char c = string->buffer[i];
-    if (c == '\\') printf("\\\\");
-    else if (c == '"') printf("\\\"");
-    else if (c == '\a') printf("\\a");
-    else if (c == '\b') printf("\\b");
-    else if (c == '\f') printf("\\f");
-    else if (c == '\n') printf("\\n");
-    else if (c == '\r') printf("\\r");
-    else if (c == '\t') printf("\\t");
-    else if (c == '\v') printf("\\v");
-    else if (isprint(c)) printf("%c", c);
-    else printf("\\%o", c);
+    switch (c) {
+      case '\\': printf("\\\\"); break;
+      case '"': printf("\\\""); break;
+      case '\a': printf("\\a"); break;
+      case '\b': printf("\\b"); break;
+      case '\f': printf("\\f"); break;
+      case '\n': printf("\\n"); break;
+      case '\r': printf("\\r"); break;
+      case '\t': printf("\\t"); break;
+      case '\v': printf("\\v"); break;
+      default: printf(isprint(c) ? "%c" : "\\%o", c);
+    }
   }
   printf("\"\n");
 }
