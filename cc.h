@@ -344,9 +344,9 @@ struct stmt {
   Func *ret_func;
 
   // labels
-  int lbl_label;    // for label, case, default
-  int lbl_continue; // for while, do, for
-  int lbl_break;    // for while, do, for, switch
+  int label_no;       // for label, case, default
+  int label_continue; // for while, do, for
+  int label_break;    // for while, do, for, switch
 
   Token *token;
 };
@@ -361,7 +361,7 @@ struct func {
   int stack_size;      // stack size for local variables
   Vector *label_stmts; // Vector<Stmt*>
 
-  int lbl_return; // label
+  int label_return; // label
 
   Token *token;
 };

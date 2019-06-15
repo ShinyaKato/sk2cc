@@ -49,7 +49,7 @@ static char *reg[16][4] = {
 // currently initializer with enum constant is not supported.
 static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
 
-static int lbl_no;
+static int label_no;
 
 static int gp_offset;
 static int overflow_arg_area;
@@ -254,8 +254,8 @@ static void gen_va_arg(Expr *expr) {
   gen_lvalue(expr->macro_ap);
   GEN_POP("rax");
 
-  int label_overflow = lbl_no++;
-  int label_load = lbl_no++;
+  int label_overflow = label_no++;
+  int label_load = label_no++;
 
   printf("  movl (%%rax), %%ecx\n");
   printf("  cmpl $48, %%ecx\n");
@@ -825,64 +825,64 @@ static void gen_or(Expr *expr) {
 }
 
 static void gen_land(Expr *expr) {
-  int lbl_false = lbl_no++;
-  int lbl_end = lbl_no++;
+  int label_false = label_no++;
+  int label_end = label_no++;
 
   GEN_OP(expr->lhs, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("je", lbl_false);
+  GEN_JUMP("je", label_false);
 
   GEN_OP(expr->rhs, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("je", lbl_false);
+  GEN_JUMP("je", label_false);
 
   printf("  movl $1, %%eax\n");
-  GEN_JUMP("jmp", lbl_end);
+  GEN_JUMP("jmp", label_end);
 
-  GEN_LABEL(lbl_false);
+  GEN_LABEL(label_false);
   printf("  movl $0, %%eax\n");
 
-  GEN_LABEL(lbl_end);
+  GEN_LABEL(label_end);
   GEN_PUSH("rax");
 }
 
 static void gen_lor(Expr *expr) {
-  int lbl_true = lbl_no++;
-  int lbl_end = lbl_no++;
+  int label_true = label_no++;
+  int label_end = label_no++;
 
   GEN_OP(expr->lhs, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("jne", lbl_true);
+  GEN_JUMP("jne", label_true);
 
   GEN_OP(expr->rhs, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("jne", lbl_true);
+  GEN_JUMP("jne", label_true);
 
   printf("  movl $0, %%eax\n");
-  GEN_JUMP("jmp", lbl_end);
+  GEN_JUMP("jmp", label_end);
 
-  GEN_LABEL(lbl_true);
+  GEN_LABEL(label_true);
   printf("  movl $1, %%eax\n");
 
-  GEN_LABEL(lbl_end);
+  GEN_LABEL(label_end);
   GEN_PUSH("rax");
 }
 
 static void gen_condition(Expr *expr) {
-  int lbl_false = lbl_no++;
-  int lbl_end = lbl_no++;
+  int label_false = label_no++;
+  int label_end = label_no++;
 
   GEN_OP(expr->cond, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("je", lbl_false);
+  GEN_JUMP("je", label_false);
 
   GEN_OP(expr->lhs, "rax");
-  GEN_JUMP("jmp", lbl_end);
+  GEN_JUMP("jmp", label_end);
 
-  GEN_LABEL(lbl_false);
+  GEN_LABEL(label_false);
   GEN_OP(expr->rhs, "rax");
 
-  GEN_LABEL(lbl_end);
+  GEN_LABEL(label_end);
   GEN_PUSH("rax");
 }
 
@@ -966,17 +966,17 @@ static void gen_decl_local(Decl *decl) {
 static void gen_stmt(Stmt *stmt);
 
 static void gen_label(Stmt *stmt) {
-  GEN_LABEL(stmt->lbl_label);
+  GEN_LABEL(stmt->label_no);
   gen_stmt(stmt->label_stmt);
 }
 
 static void gen_case(Stmt *stmt) {
-  GEN_LABEL(stmt->lbl_label);
+  GEN_LABEL(stmt->label_no);
   gen_stmt(stmt->case_stmt);
 }
 
 static void gen_default(Stmt *stmt) {
-  GEN_LABEL(stmt->lbl_label);
+  GEN_LABEL(stmt->label_no);
   gen_stmt(stmt->default_stmt);
 }
 
@@ -998,84 +998,84 @@ static void gen_expr_stmt(Stmt *stmt) {
 }
 
 static void gen_if(Stmt *stmt) {
-  int lbl_else = lbl_no++;
-  int lbl_end = lbl_no++;
+  int label_else = label_no++;
+  int label_end = label_no++;
 
   GEN_OP(stmt->if_cond, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("je", lbl_else);
+  GEN_JUMP("je", label_else);
 
   gen_stmt(stmt->then_body);
-  GEN_JUMP("jmp", lbl_end);
+  GEN_JUMP("jmp", label_end);
 
-  GEN_LABEL(lbl_else);
+  GEN_LABEL(label_else);
 
   if (stmt->else_body) {
     gen_stmt(stmt->else_body);
   }
 
-  GEN_LABEL(lbl_end);
+  GEN_LABEL(label_end);
 }
 
 static void gen_switch(Stmt *stmt) {
-  stmt->lbl_break = lbl_no++;
+  stmt->label_break = label_no++;
 
   GEN_OP(stmt->switch_cond, "rax");
   for (int i = 0; i < stmt->switch_cases->length; i++) {
     Stmt *case_stmt = stmt->switch_cases->buffer[i];
-    case_stmt->lbl_label = lbl_no++;
+    case_stmt->label_no = label_no++;
     if (case_stmt->nd_type == ND_CASE) {
       printf("  cmpq $%llu, %%rax\n", case_stmt->case_const->int_value);
-      GEN_JUMP("je", case_stmt->lbl_label);
+      GEN_JUMP("je", case_stmt->label_no);
     } else if (case_stmt->nd_type == ND_DEFAULT) {
-      GEN_JUMP("jmp", case_stmt->lbl_label);
+      GEN_JUMP("jmp", case_stmt->label_no);
     }
   }
 
   gen_stmt(stmt->switch_body);
 
-  GEN_LABEL(stmt->lbl_break);
+  GEN_LABEL(stmt->label_break);
 }
 
 static void gen_while(Stmt *stmt) {
-  stmt->lbl_continue = lbl_no++;
-  stmt->lbl_break = lbl_no++;
+  stmt->label_continue = label_no++;
+  stmt->label_break = label_no++;
 
-  GEN_LABEL(stmt->lbl_continue);
+  GEN_LABEL(stmt->label_continue);
 
   GEN_OP(stmt->while_cond, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("je", stmt->lbl_break);
+  GEN_JUMP("je", stmt->label_break);
 
   gen_stmt(stmt->while_body);
 
-  GEN_JUMP("jmp", stmt->lbl_continue);
+  GEN_JUMP("jmp", stmt->label_continue);
 
-  GEN_LABEL(stmt->lbl_break);
+  GEN_LABEL(stmt->label_break);
 }
 
 static void gen_do(Stmt *stmt) {
-  int lbl_begin = lbl_no++;
-  stmt->lbl_continue = lbl_no++;
-  stmt->lbl_break = lbl_no++;
+  int label_begin = label_no++;
+  stmt->label_continue = label_no++;
+  stmt->label_break = label_no++;
 
-  GEN_LABEL(lbl_begin);
+  GEN_LABEL(label_begin);
 
   gen_stmt(stmt->do_body);
 
-  GEN_LABEL(stmt->lbl_continue);
+  GEN_LABEL(stmt->label_continue);
 
   GEN_OP(stmt->do_cond, "rax");
   printf("  cmpq $0, %%rax\n");
-  GEN_JUMP("jne", lbl_begin);
+  GEN_JUMP("jne", label_begin);
 
-  GEN_LABEL(stmt->lbl_break);
+  GEN_LABEL(stmt->label_break);
 }
 
 static void gen_for(Stmt *stmt) {
-  int lbl_begin = lbl_no++;
-  stmt->lbl_continue = lbl_no++;
-  stmt->lbl_break = lbl_no++;
+  int label_begin = label_no++;
+  stmt->label_continue = label_no++;
+  stmt->label_break = label_no++;
 
   if (stmt->for_init) {
     if (stmt->for_init->nd_type == ND_DECL) {
@@ -1085,43 +1085,43 @@ static void gen_for(Stmt *stmt) {
     }
   }
 
-  GEN_LABEL(lbl_begin);
+  GEN_LABEL(label_begin);
 
   if (stmt->for_cond) {
     GEN_OP(stmt->for_cond, "rax");
     printf("  cmpq $0, %%rax\n");
-    GEN_JUMP("je", stmt->lbl_break);
+    GEN_JUMP("je", stmt->label_break);
   }
 
   gen_stmt(stmt->for_body);
 
-  GEN_LABEL(stmt->lbl_continue);
+  GEN_LABEL(stmt->label_continue);
 
   if (stmt->for_after) {
     GEN_EVAL(stmt->for_after);
   }
-  GEN_JUMP("jmp", lbl_begin);
+  GEN_JUMP("jmp", label_begin);
 
-  GEN_LABEL(stmt->lbl_break);
+  GEN_LABEL(stmt->label_break);
 }
 
 static void gen_goto(Stmt *stmt) {
-  GEN_JUMP("jmp", stmt->goto_target->lbl_label);
+  GEN_JUMP("jmp", stmt->goto_target->label_no);
 }
 
 static void gen_continue(Stmt *stmt) {
-  GEN_JUMP("jmp", stmt->continue_target->lbl_continue);
+  GEN_JUMP("jmp", stmt->continue_target->label_continue);
 }
 
 static void gen_break(Stmt *stmt) {
-  GEN_JUMP("jmp", stmt->break_target->lbl_break);
+  GEN_JUMP("jmp", stmt->break_target->label_break);
 }
 
 static void gen_return(Stmt *stmt) {
   if (stmt->ret_expr) {
     GEN_OP(stmt->ret_expr, "rax");
   }
-  GEN_JUMP("jmp", stmt->ret_func->lbl_return);
+  GEN_JUMP("jmp", stmt->ret_func->label_return);
 }
 
 static void gen_stmt(Stmt *stmt) {
@@ -1203,10 +1203,10 @@ static void gen_func(Func *func) {
   stack_depth = 8;
 
   // assign labels
-  func->lbl_return = lbl_no++;
+  func->label_return = label_no++;
   for (int i = 0; i < func->label_stmts->length; i++) {
     Stmt *label_stmt = func->label_stmts->buffer[i];
-    label_stmt->lbl_label = lbl_no++;
+    label_stmt->label_no = label_no++;
   }
 
   printf("  .text\n");
@@ -1257,7 +1257,7 @@ static void gen_func(Func *func) {
 
   gen_stmt(func->body);
 
-  GEN_LABEL(func->lbl_return);
+  GEN_LABEL(func->label_return);
   printf("  leave\n");
   printf("  ret\n");
 }
@@ -1302,6 +1302,6 @@ static void gen_trans_unit(TransUnit *trans_unit) {
 }
 
 void gen(TransUnit *trans_unit) {
-  lbl_no = 0;
+  label_no = 0;
   gen_trans_unit(trans_unit);
 }
