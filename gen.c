@@ -670,21 +670,29 @@ static void gen_rshift(Expr *expr) {
 
 static void gen_lt(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT) {
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setl %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_UINT) {
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setb %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setl %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setb %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setb %%al\n");
+  switch (expr->lhs->type->ty_type) {
+    case TY_INT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setl %%al\n");
+      break;
+    }
+    case TY_UINT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setb %%al\n");
+      break;
+    }
+    case TY_LONG: {
+      printf("  cmpq %%rcx, %%rax\n");
+      printf("  setl %%al\n");
+      break;
+    }
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  cmpq %%rcx, %%rax\n");
+      printf("  setb %%al\n");
+      break;
+    }
+    default: assert(false);
   }
   printf("  movzbl %%al, %%eax\n");
   GEN_PUSH("rax");
@@ -692,21 +700,29 @@ static void gen_lt(Expr *expr) {
 
 static void gen_lte(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT) {
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setle %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_UINT) {
-    printf("  cmpl %%ecx, %%eax\n");
-    printf("  setbe %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setle %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setbe %%al\n");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    printf("  cmpq %%rcx, %%rax\n");
-    printf("  setbe %%al\n");
+  switch (expr->lhs->type->ty_type) {
+    case TY_INT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setle %%al\n");
+      break;
+    }
+    case TY_UINT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      printf("  setbe %%al\n");
+      break;
+    }
+    case TY_LONG: {
+      printf("  cmpq %%rcx, %%rax\n");
+      printf("  setle %%al\n");
+      break;
+    }
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  cmpq %%rcx, %%rax\n");
+      printf("  setbe %%al\n");
+      break;
+    }
+    default: assert(false);
   }
   printf("  movzbl %%al, %%eax\n");
   GEN_PUSH("rax");
@@ -714,12 +730,19 @@ static void gen_lte(Expr *expr) {
 
 static void gen_eq(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  cmpl %%ecx, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    printf("  cmpq %%rcx, %%rax\n");
+  switch (expr->lhs->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  cmpq %%rcx, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   printf("  sete %%al\n");
   printf("  movzbl %%al, %%eax\n");
@@ -728,12 +751,19 @@ static void gen_eq(Expr *expr) {
 
 static void gen_neq(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  cmpl %%ecx, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  cmpq %%rcx, %%rax\n");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    printf("  cmpq %%rcx, %%rax\n");
+  switch (expr->lhs->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  cmpl %%ecx, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  cmpq %%rcx, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   printf("  setne %%al\n");
   printf("  movzbl %%al, %%eax\n");
