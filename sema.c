@@ -7,7 +7,7 @@ typedef struct decl_attribution {
   bool sp_noreturn;
 } DeclAttribution;
 
-// symbols
+// --- symbols ---
 
 static int stack_size;
 
@@ -48,7 +48,7 @@ static void put_variable(DeclAttribution *attr, Symbol *symbol, bool global) {
   }
 }
 
-// tags
+// --- tags ---
 
 static Vector *tag_scopes; // Vector<Map<Type*>*>
 
@@ -67,7 +67,7 @@ static Type *lookup_tag(char *tag) {
   return NULL;
 }
 
-// types
+// --- types ---
 
 static Type *type_new(TypeType ty_type, int size, int align, bool complete) {
   Type *type = calloc(1, sizeof(Type));
@@ -259,7 +259,7 @@ static bool check_scalar(Type *type) {
   return check_arithmetic(type) || check_pointer(type);
 }
 
-// expressions
+// --- expressions ---
 
 static Expr *expr_identifier(char *identifier, Symbol *symbol, Token *token) {
   Expr *expr = calloc(1, sizeof(Expr));
@@ -313,7 +313,10 @@ static Expr *expr_binary(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   return expr;
 }
 
-// semantics of expression
+// --- semantics of expression ---
+
+static Expr *sema_expr(Expr *expr);
+static Type *sema_type_name(TypeName *type_name);
 
 static bool check_lvalue(Expr *expr) {
   if (expr->nd_type == ND_IDENTIFIER) return true;
@@ -392,9 +395,6 @@ static Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
 
   return type;
 }
-
-static Expr *sema_expr(Expr *expr);
-static Type *sema_type_name(TypeName *type_name);
 
 static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
@@ -1079,7 +1079,7 @@ static Expr *sema_const_expr(Expr *expr) {
   return expr;
 }
 
-// semantics of declaration
+// --- semantics of declaration ---
 
 static void sema_decl(Decl *decl, bool global);
 static DeclAttribution *sema_specs(Vector *specs, Token *token);
@@ -1418,7 +1418,9 @@ static void sema_initializer(Initializer *init, Type *type, bool global) {
   }
 }
 
-// semantics of statement
+// --- semantics of statement ---
+
+static void sema_stmt(Stmt *stmt);
 
 static Vector *label_stmts;
 static Vector *goto_stmts;
@@ -1426,6 +1428,14 @@ static Vector *switch_stmts;
 static Vector *continue_targets;
 static Vector *break_targets;
 static Func *ret_func;
+
+static void scope_begin(void) {
+  vector_push(tag_scopes, map_new());
+}
+
+static void scope_end(void) {
+  vector_pop(tag_scopes);
+}
 
 static void switch_begin(Stmt *stmt) {
   stmt->switch_cases = vector_new();
@@ -1439,18 +1449,16 @@ static void switch_end(void) {
 }
 
 static void loop_begin(Stmt *stmt) {
-  vector_push(tag_scopes, map_new());
+  scope_begin();
   vector_push(continue_targets, stmt);
   vector_push(break_targets, stmt);
 }
 
 static void loop_end(void) {
-  vector_pop(tag_scopes);
+  scope_end();
   vector_pop(continue_targets);
   vector_pop(break_targets);
 }
-
-static void sema_stmt(Stmt *stmt);
 
 static void sema_label(Stmt *stmt) {
   for (int i = 0; i < label_stmts->length; i++) {
@@ -1490,7 +1498,8 @@ static void sema_default(Stmt *stmt) {
 }
 
 static void sema_comp_stmt(Stmt *stmt) {
-  vector_push(tag_scopes, map_new());
+  scope_begin();
+
   for (int i = 0; i < stmt->block_items->length; i++) {
     Node *item = stmt->block_items->buffer[i];
     if (item->nd_type == ND_DECL) {
@@ -1499,7 +1508,8 @@ static void sema_comp_stmt(Stmt *stmt) {
       sema_stmt((Stmt *) item);
     }
   }
-  vector_pop(tag_scopes);
+
+  scope_end();
 }
 
 static void sema_expr_stmt(Stmt *stmt) {
@@ -1655,6 +1665,8 @@ static void sema_stmt(Stmt *stmt) {
   }
 }
 
+// --- semantics of external declaration ---
+
 static void sema_func(Func *func) {
   DeclAttribution *attr = sema_specs(func->specs, func->token);
   func->symbol->type = sema_declarator(func->symbol->decl, attr->type);
@@ -1680,8 +1692,7 @@ static void sema_func(Func *func) {
   break_targets = vector_new();
   ret_func = func;
 
-  // begin function scope
-  vector_push(tag_scopes, map_new());
+  scope_begin();
 
   for (int i = 0; i < func->symbol->type->params->length; i++) {
     Symbol *param = func->symbol->type->params->buffer[i];
@@ -1699,8 +1710,7 @@ static void sema_func(Func *func) {
     }
   }
 
-  // end function scope
-  vector_pop(tag_scopes);
+  scope_end();
 
   // check goto statements
   for (int i = 0; i < goto_stmts->length; i++) {
@@ -1722,8 +1732,7 @@ static void sema_func(Func *func) {
 }
 
 static void sema_trans_unit(TransUnit *trans_unit) {
-  tag_scopes = vector_new();
-  vector_push(tag_scopes, map_new());
+  scope_begin();
 
   for (int i = 0; i < trans_unit->decls->length; i++) {
     Node *decl = trans_unit->decls->buffer[i];
@@ -1734,9 +1743,11 @@ static void sema_trans_unit(TransUnit *trans_unit) {
     }
   }
 
-  vector_pop(tag_scopes);
+  scope_end();
 }
 
 void sema(TransUnit *trans_unit) {
+  tag_scopes = vector_new();
+
   sema_trans_unit(trans_unit);
 }
