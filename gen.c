@@ -634,20 +634,36 @@ static void gen_sub(Expr *expr) {
 
 static void gen_lshift(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  sall %%cl, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  salq %%cl, %%rax\n");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  sall %%cl, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  salq %%cl, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_rshift(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  sarl %%cl, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  sarq %%cl, %%rax\n");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  sarl %%cl, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  sarq %%cl, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
