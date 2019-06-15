@@ -125,9 +125,8 @@ struct token {
   // integer-constant
   unsigned long long int_value;
   bool int_decimal;
-  bool int_u;
-  bool int_l;
-  bool int_ll;
+  bool int_unsigned;
+  bool int_long;
 
   // character-constant
   char char_value;
@@ -251,9 +250,8 @@ struct expr {
   // integer constant
   unsigned long long int_value;
   bool int_decimal;
-  bool int_u;
-  bool int_l;
-  bool int_ll;
+  bool int_unsigned;
+  bool int_long;
 
   // string literal
   String *string_literal;

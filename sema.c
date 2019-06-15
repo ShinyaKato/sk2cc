@@ -497,64 +497,25 @@ static Expr *sema_identifier(Expr *expr) {
 }
 
 static Expr *sema_integer(Expr *expr) {
-  if (!expr->int_decimal) {
-    if (!expr->int_u) {
-      if (!expr->int_l && !expr->int_ll) {
-        if (expr->int_value <= 0x7fffffff) {
-          expr->type = type_int();
-        } else if (expr->int_value <= 0xffffffff) {
-          expr->type = type_uint();
-        } else if (expr->int_value <= 0x7fffffffffffffff) {
-          expr->type = type_long();
-        } else {
-          expr->type = type_ulong();
-        }
-      } else {
-        if (expr->int_value <= 0x7fffffffffffffff) {
-          expr->type = type_long();
-        } else {
-          expr->type = type_ulong();
-        }
-      }
-    } else {
-      if (!expr->int_l && !expr->int_ll) {
-        if (expr->int_value <= 0xffffffff) {
-          expr->type = type_uint();
-        } else {
-          expr->type = type_ulong();
-        }
-      } else {
-        expr->type = type_ulong();
-      }
-    }
+  unsigned long long int_max = 0x7fffffff;
+  unsigned long long uint_max = 0xffffffff;
+  unsigned long long long_max = 0x7fffffffffffffff;
+
+  unsigned long long int_value = expr->int_value;
+  bool int_decimal = expr->int_decimal;
+  bool int_unsigned = expr->int_unsigned;
+  bool int_long = expr->int_long;
+
+  if (int_value <= int_max && !int_unsigned && !int_long) {
+    expr->type = type_int();
+  } else if (int_value <= uint_max && (int_unsigned || !int_decimal) && !int_long) {
+    expr->type = type_uint();
+  } else if (int_value <= long_max && !int_unsigned) {
+    expr->type = type_long();
+  } else if (int_unsigned || !int_decimal) {
+    expr->type = type_ulong();
   } else {
-    if (!expr->int_u) {
-      if (!expr->int_l && !expr->int_ll) {
-        if (expr->int_value <= 0x7fffffff) {
-          expr->type = type_int();
-        } else if (expr->int_value <= 0x7fffffffffffffff) {
-          expr->type = type_long();
-        } else {
-          ERROR(expr->token, "can not represents integer-constant.");
-        }
-      } else {
-        if (expr->int_value <= 0x7fffffffffffffff) {
-          expr->type = type_long();
-        } else {
-          ERROR(expr->token, "can not represents integer-constant.");
-        }
-      }
-    } else {
-      if (!expr->int_l && !expr->int_ll) {
-        if (expr->int_value <= 0xffffffff) {
-          expr->type = type_uint();
-        } else {
-          expr->type = type_ulong();
-        }
-      } else {
-        expr->type = type_ulong();
-      }
-    }
+    ERROR(expr->token, "can not represents integer-constant.");
   }
 
   return expr;

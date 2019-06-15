@@ -204,9 +204,8 @@ static Expr *primary_expression(void) {
     Expr *expr = expr_new(ND_INTEGER, token);
     expr->int_value = token->int_value;
     expr->int_decimal = token->int_decimal;
-    expr->int_u = token->int_u;
-    expr->int_l = token->int_l;
-    expr->int_ll = token->int_ll;
+    expr->int_unsigned = token->int_unsigned;
+    expr->int_long = token->int_long;
     return expr;
   }
 
@@ -1640,31 +1639,26 @@ static Token *inspect_pp_number(Token *token) {
     }
   }
 
-  bool int_u = false;
-  bool int_l = false;
-  bool int_ll = false;
+  bool int_unsigned = false;
+  bool int_long = false;
   if (tolower(pp_number[pos]) == 'u') {
-    int_u = true;
+    int_unsigned = true;
     pos++;
     if (tolower(pp_number[pos] == 'l')) {
+      int_long = true;
       pos++;
       if (tolower(pp_number[pos] == 'l')) {
-        int_ll = true;
         pos++;
-      } else {
-        int_l = true;
       }
     }
   } else if (tolower(pp_number[pos]) == 'l') {
+    int_long = true;
     pos++;
     if (tolower(pp_number[pos]) == 'l') {
-      int_ll = true;
       pos++;
-    } else {
-      int_l = true;
     }
     if (tolower(pp_number[pos]) == 'u') {
-      int_u = true;
+      int_unsigned = true;
       pos++;
     }
   }
@@ -1679,9 +1673,8 @@ static Token *inspect_pp_number(Token *token) {
   int_const->loc = token->loc;
   int_const->int_value = int_value;
   int_const->int_decimal = int_decimal;
-  int_const->int_u = int_u;
-  int_const->int_l = int_l;
-  int_const->int_ll = int_ll;
+  int_const->int_unsigned = int_unsigned;
+  int_const->int_long = int_long;
   return int_const;
 }
 
