@@ -1006,170 +1006,57 @@ static Expr *sema_expr(Expr *expr) {
   if (expr->type) return expr;
 
   switch (expr->nd_type) {
-    // builtins
-    case ND_VA_START:
-      expr = sema_va_start(expr);
-      break;
-    case ND_VA_ARG:
-      expr = sema_va_arg(expr);
-      break;
-    case ND_VA_END:
-      expr = sema_va_end(expr);
-      break;
-
-    // primary expressions
-    case ND_IDENTIFIER:
-      expr = sema_identifier(expr);
-      break;
-    case ND_INTEGER:
-      expr = sema_integer(expr);
-      break;
-    case ND_ENUM_CONST:
-      expr = sema_enum_const(expr);
-      break;
-    case ND_STRING:
-      expr = sema_string(expr);
-      break;
-
-    // postfix operators
-    case ND_SUBSCRIPTION:
-      expr = sema_subscription(expr);
-      break;
-    case ND_CALL:
-      expr = sema_call(expr);
-      break;
-    case ND_DOT:
-      expr = sema_dot(expr);
-      break;
-    case ND_ARROW:
-      expr = sema_arrow(expr);
-      break;
-    case ND_POST_INC:
-      expr = sema_post_inc(expr);
-      break;
-    case ND_POST_DEC:
-      expr = sema_post_dec(expr);
-      break;
-
-    // unary operators
-    case ND_PRE_INC:
-      expr = sema_pre_inc(expr);
-      break;
-    case ND_PRE_DEC:
-      expr = sema_pre_dec(expr);
-      break;
-    case ND_ADDRESS:
-      expr = sema_address(expr);
-      break;
-    case ND_INDIRECT:
-      expr = sema_indirect(expr);
-      break;
-    case ND_UPLUS:
-      expr = sema_uplus(expr);
-      break;
-    case ND_UMINUS:
-      expr = sema_uminus(expr);
-      break;
-    case ND_NOT:
-      expr = sema_not(expr);
-      break;
-    case ND_LNOT:
-      expr = sema_lnot(expr);
-      break;
-    case ND_SIZEOF:
-      expr = sema_sizeof(expr);
-      break;
-    case ND_ALIGNOF:
-      expr = sema_alignof(expr);
-      break;
-
-    // cast operators
-    case ND_CAST:
-      expr = sema_cast(expr);
-      break;
-
-    // *, /, % operators
-    case ND_MUL:
-    case ND_DIV:
-      expr = sema_mul(expr);
-      break;
-    case ND_MOD:
-      expr = sema_mod(expr);
-      break;
-
-    // +, - operators
-    case ND_ADD:
-      expr = sema_add(expr);
-      break;
-    case ND_SUB:
-      expr = sema_sub(expr);
-      break;
-
-    // <<, >> operators
-    case ND_LSHIFT:
-    case ND_RSHIFT:
-      expr = sema_shift(expr);
-      break;
-
-    // <, >, <=, >= operators
-    case ND_LT:
-    case ND_GT:
-    case ND_LTE:
-    case ND_GTE:
-      expr = sema_relational(expr);
-      break;
-
-    // ==, != operators
-    case ND_EQ:
-    case ND_NEQ:
-      expr = sema_equality(expr);
-      break;
-
-    // &, ^, | operators
-    case ND_AND:
-    case ND_XOR:
-    case ND_OR:
-      expr = sema_bitwise(expr);
-      break;
-
-    // &&, || operators
-    case ND_LAND:
-    case ND_LOR:
-      expr = sema_logical(expr);
-      break;
-
-    // ?: operator
-    case ND_CONDITION:
-      expr = sema_condition(expr);
-      break;
-
-    // assignment operators
-    case ND_ASSIGN:
-      expr = sema_assign(expr);
-      break;
-    case ND_MUL_ASSIGN:
-      expr = sema_mul_assign(expr);
-      break;
-    case ND_DIV_ASSIGN:
-      expr = sema_div_assign(expr);
-      break;
-    case ND_MOD_ASSIGN:
-      expr = sema_mod_assign(expr);
-      break;
-    case ND_ADD_ASSIGN:
-      expr = sema_add_assign(expr);
-      break;
-    case ND_SUB_ASSIGN:
-      expr = sema_sub_assign(expr);
-      break;
-
-    // comma operator
-    case ND_COMMA:
-      expr = sema_comma(expr);
-      break;
-
-    default:
-      assert(false); // unreachable
+    case ND_VA_START: expr = sema_va_start(expr); break;
+    case ND_VA_ARG: expr = sema_va_arg(expr); break;
+    case ND_VA_END: expr = sema_va_end(expr); break;
+    case ND_IDENTIFIER: expr = sema_identifier(expr); break;
+    case ND_INTEGER: expr = sema_integer(expr); break;
+    case ND_ENUM_CONST: expr = sema_enum_const(expr); break;
+    case ND_STRING: expr = sema_string(expr); break;
+    case ND_SUBSCRIPTION: expr = sema_subscription(expr); break;
+    case ND_CALL: expr = sema_call(expr); break;
+    case ND_DOT: expr = sema_dot(expr); break;
+    case ND_ARROW: expr = sema_arrow(expr); break;
+    case ND_POST_INC: expr = sema_post_inc(expr); break;
+    case ND_POST_DEC: expr = sema_post_dec(expr); break;
+    case ND_PRE_INC: expr = sema_pre_inc(expr); break;
+    case ND_PRE_DEC: expr = sema_pre_dec(expr); break;
+    case ND_ADDRESS: expr = sema_address(expr); break;
+    case ND_INDIRECT: expr = sema_indirect(expr); break;
+    case ND_UPLUS: expr = sema_uplus(expr); break;
+    case ND_UMINUS: expr = sema_uminus(expr); break;
+    case ND_NOT: expr = sema_not(expr); break;
+    case ND_LNOT: expr = sema_lnot(expr); break;
+    case ND_SIZEOF: expr = sema_sizeof(expr); break;
+    case ND_ALIGNOF: expr = sema_alignof(expr); break;
+    case ND_CAST: expr = sema_cast(expr); break;
+    case ND_MUL: expr = sema_mul(expr); break;
+    case ND_DIV: expr = sema_mul(expr); break;
+    case ND_MOD: expr = sema_mod(expr); break;
+    case ND_ADD: expr = sema_add(expr); break;
+    case ND_SUB: expr = sema_sub(expr); break;
+    case ND_LSHIFT: expr = sema_shift(expr); break;
+    case ND_RSHIFT: expr = sema_shift(expr); break;
+    case ND_LT: expr = sema_relational(expr); break;
+    case ND_GT: expr = sema_relational(expr); break;
+    case ND_LTE: expr = sema_relational(expr); break;
+    case ND_GTE: expr = sema_relational(expr); break;
+    case ND_EQ: expr = sema_equality(expr); break;
+    case ND_NEQ: expr = sema_equality(expr); break;
+    case ND_AND: expr = sema_bitwise(expr); break;
+    case ND_XOR: expr = sema_bitwise(expr); break;
+    case ND_OR: expr = sema_bitwise(expr); break;
+    case ND_LAND: expr = sema_logical(expr); break;
+    case ND_LOR: expr = sema_logical(expr); break;
+    case ND_CONDITION: expr = sema_condition(expr); break;
+    case ND_ASSIGN: expr = sema_assign(expr); break;
+    case ND_MUL_ASSIGN: expr = sema_mul_assign(expr); break;
+    case ND_DIV_ASSIGN: expr = sema_div_assign(expr); break;
+    case ND_MOD_ASSIGN: expr = sema_mod_assign(expr); break;
+    case ND_ADD_ASSIGN: expr = sema_add_assign(expr); break;
+    case ND_SUB_ASSIGN: expr = sema_sub_assign(expr); break;
+    case ND_COMMA: expr = sema_comma(expr); break;
+    default: assert(false);
   }
 
   // lvalue promotion (convert array to pointer)
@@ -1602,6 +1489,25 @@ static void sema_default(Stmt *stmt) {
   sema_stmt(stmt->default_stmt);
 }
 
+static void sema_comp_stmt(Stmt *stmt) {
+  vector_push(tag_scopes, map_new());
+  for (int i = 0; i < stmt->block_items->length; i++) {
+    Node *item = stmt->block_items->buffer[i];
+    if (item->nd_type == ND_DECL) {
+      sema_decl((Decl *) item, false);
+    } else {
+      sema_stmt((Stmt *) item);
+    }
+  }
+  vector_pop(tag_scopes);
+}
+
+static void sema_expr_stmt(Stmt *stmt) {
+  if (stmt->expr) {
+    stmt->expr = sema_expr(stmt->expr);
+  }
+}
+
 static void sema_if(Stmt *stmt) {
   stmt->if_cond = sema_expr(stmt->if_cond);
   if (check_scalar(stmt->if_cond->type)) {
@@ -1731,67 +1637,21 @@ static void sema_return(Stmt *stmt) {
 
 static void sema_stmt(Stmt *stmt) {
   switch (stmt->nd_type) {
-    case ND_LABEL:
-      sema_label(stmt);
-      break;
-    case ND_CASE:
-      sema_case(stmt);
-      break;
-    case ND_DEFAULT:
-      sema_default(stmt);
-      break;
-
-    case ND_COMP:
-      vector_push(tag_scopes, map_new());
-      for (int i = 0; i < stmt->block_items->length; i++) {
-        Node *item = stmt->block_items->buffer[i];
-        if (item->nd_type == ND_DECL) {
-          sema_decl((Decl *) item, false);
-        } else {
-          sema_stmt((Stmt *) item);
-        }
-      }
-      vector_pop(tag_scopes);
-      break;
-
-    case ND_EXPR:
-      if (stmt->expr) {
-        stmt->expr = sema_expr(stmt->expr);
-      }
-      break;
-
-    case ND_IF:
-      sema_if(stmt);
-      break;
-    case ND_SWITCH:
-      sema_switch(stmt);
-      break;
-
-    case ND_WHILE:
-      sema_while(stmt);
-      break;
-    case ND_DO:
-      sema_do(stmt);
-      break;
-    case ND_FOR:
-      sema_for(stmt);
-      break;
-
-    case ND_GOTO:
-      sema_goto(stmt);
-      break;
-    case ND_CONTINUE:
-      sema_continue(stmt);
-      break;
-    case ND_BREAK:
-      sema_break(stmt);
-      break;
-    case ND_RETURN:
-      sema_return(stmt);
-      break;
-
-    default:
-      assert(false); // unreachable
+    case ND_LABEL: sema_label(stmt); break;
+    case ND_CASE: sema_case(stmt); break;
+    case ND_DEFAULT: sema_default(stmt); break;
+    case ND_COMP: sema_comp_stmt(stmt); break;
+    case ND_EXPR: sema_expr_stmt(stmt); break;
+    case ND_IF: sema_if(stmt); break;
+    case ND_SWITCH: sema_switch(stmt); break;
+    case ND_WHILE: sema_while(stmt); break;
+    case ND_DO: sema_do(stmt); break;
+    case ND_FOR: sema_for(stmt); break;
+    case ND_GOTO: sema_goto(stmt); break;
+    case ND_CONTINUE: sema_continue(stmt); break;
+    case ND_BREAK: sema_break(stmt); break;
+    case ND_RETURN: sema_return(stmt); break;
+    default: assert(false);
   }
 }
 
@@ -1828,7 +1688,16 @@ static void sema_func(Func *func) {
     put_variable(NULL, param, false);
   }
 
-  sema_stmt(func->body);
+  // check statements in the function
+  Stmt *stmt = func->body;
+  for (int i = 0; i < stmt->block_items->length; i++) {
+    Node *item = stmt->block_items->buffer[i];
+    if (item->nd_type == ND_DECL) {
+      sema_decl((Decl *) item, false);
+    } else {
+      sema_stmt((Stmt *) item);
+    }
+  }
 
   // end function scope
   vector_pop(tag_scopes);
