@@ -901,122 +901,40 @@ static void gen_comma(Expr *expr) {
 
 static void gen_expr(Expr *expr) {
   switch (expr->nd_type) {
-    case ND_VA_START:
-      gen_va_start(expr);
-      break;
-    case ND_VA_ARG:
-      gen_va_arg(expr);
-      break;
-    case ND_VA_END:
-      gen_va_end(expr);
-      break;
-
-    case ND_IDENTIFIER:
-      gen_identifier(expr);
-      break;
-    case ND_INTEGER:
-      gen_integer(expr);
-      break;
-    case ND_STRING:
-      gen_string(expr);
-      break;
-
-    case ND_CALL:
-      gen_call(expr);
-      break;
-    case ND_DOT:
-      gen_dot(expr);
-      break;
-
-    case ND_ADDRESS:
-      gen_address(expr);
-      break;
-    case ND_INDIRECT:
-      gen_indirect(expr);
-      break;
-    case ND_UMINUS:
-      gen_uminus(expr);
-      break;
-    case ND_NOT:
-      gen_not(expr);
-      break;
-    case ND_LNOT:
-      gen_lnot(expr);
-      break;
-
-    case ND_CAST:
-      gen_cast(expr);
-      break;
-
-    case ND_MUL:
-      gen_mul(expr);
-      break;
-    case ND_DIV:
-      gen_div(expr);
-      break;
-    case ND_MOD:
-      gen_mod(expr);
-      break;
-
-    case ND_ADD:
-      gen_add(expr);
-      break;
-    case ND_SUB:
-      gen_sub(expr);
-      break;
-
-    case ND_LSHIFT:
-      gen_lshift(expr);
-      break;
-    case ND_RSHIFT:
-      gen_rshift(expr);
-      break;
-
-    case ND_LT:
-      gen_lt(expr);
-      break;
-    case ND_LTE:
-      gen_lte(expr);
-      break;
-
-    case ND_EQ:
-      gen_eq(expr);
-      break;
-    case ND_NEQ:
-      gen_neq(expr);
-      break;
-
-    case ND_AND:
-      gen_and(expr);
-      break;
-    case ND_XOR:
-      gen_xor(expr);
-      break;
-    case ND_OR:
-      gen_or(expr);
-      break;
-
-    case ND_LAND:
-      gen_land(expr);
-      break;
-    case ND_LOR:
-      gen_lor(expr);
-      break;
-
-    case ND_CONDITION:
-      gen_condition(expr);
-      break;
-
-    case ND_ASSIGN:
-      gen_assign(expr);
-      break;
-
-    case ND_COMMA:
-      gen_comma(expr);
-      break;
-
-    default:
-      assert(false); // unreachable
+    case ND_VA_START: gen_va_start(expr); break;
+    case ND_VA_ARG: gen_va_arg(expr); break;
+    case ND_VA_END: gen_va_end(expr); break;
+    case ND_IDENTIFIER: gen_identifier(expr); break;
+    case ND_INTEGER: gen_integer(expr); break;
+    case ND_STRING: gen_string(expr); break;
+    case ND_CALL: gen_call(expr); break;
+    case ND_DOT: gen_dot(expr); break;
+    case ND_ADDRESS: gen_address(expr); break;
+    case ND_INDIRECT: gen_indirect(expr); break;
+    case ND_UMINUS: gen_uminus(expr); break;
+    case ND_NOT: gen_not(expr); break;
+    case ND_LNOT: gen_lnot(expr); break;
+    case ND_CAST: gen_cast(expr); break;
+    case ND_MUL: gen_mul(expr); break;
+    case ND_DIV: gen_div(expr); break;
+    case ND_MOD: gen_mod(expr); break;
+    case ND_ADD: gen_add(expr); break;
+    case ND_SUB: gen_sub(expr); break;
+    case ND_LSHIFT: gen_lshift(expr); break;
+    case ND_RSHIFT: gen_rshift(expr); break;
+    case ND_LT: gen_lt(expr); break;
+    case ND_LTE: gen_lte(expr); break;
+    case ND_EQ: gen_eq(expr); break;
+    case ND_NEQ: gen_neq(expr); break;
+    case ND_AND: gen_and(expr); break;
+    case ND_XOR: gen_xor(expr); break;
+    case ND_OR: gen_or(expr); break;
+    case ND_LAND: gen_land(expr); break;
+    case ND_LOR: gen_lor(expr); break;
+    case ND_CONDITION: gen_condition(expr); break;
+    case ND_ASSIGN: gen_assign(expr); break;
+    case ND_COMMA: gen_comma(expr); break;
+    default: assert(false); // unreachable
   }
 }
 
@@ -1060,6 +978,23 @@ static void gen_case(Stmt *stmt) {
 static void gen_default(Stmt *stmt) {
   GEN_LABEL(stmt->lbl_label);
   gen_stmt(stmt->default_stmt);
+}
+
+static void gen_comp_stmt(Stmt *stmt) {
+  for (int i = 0; i < stmt->block_items->length; i++) {
+    Node *item = stmt->block_items->buffer[i];
+    if (item->nd_type == ND_DECL) {
+      gen_decl_local((Decl *) item);
+    } else {
+      gen_stmt((Stmt *) item);
+    }
+  }
+}
+
+static void gen_expr_stmt(Stmt *stmt) {
+  if (stmt->expr) {
+    GEN_EVAL(stmt->expr);
+  }
 }
 
 static void gen_if(Stmt *stmt) {
@@ -1191,65 +1126,21 @@ static void gen_return(Stmt *stmt) {
 
 static void gen_stmt(Stmt *stmt) {
   switch (stmt->nd_type) {
-    case ND_LABEL:
-      gen_label(stmt);
-      break;
-    case ND_CASE:
-      gen_case(stmt);
-      break;
-    case ND_DEFAULT:
-      gen_default(stmt);
-      break;
-
-    case ND_COMP:
-      for (int i = 0; i < stmt->block_items->length; i++) {
-        Node *item = stmt->block_items->buffer[i];
-        if (item->nd_type == ND_DECL) {
-          gen_decl_local((Decl *) item);
-        } else {
-          gen_stmt((Stmt *) item);
-        }
-      }
-      break;
-
-    case ND_EXPR:
-      if (stmt->expr) {
-        GEN_EVAL(stmt->expr);
-      }
-      break;
-
-    case ND_IF:
-      gen_if(stmt);
-      break;
-    case ND_SWITCH:
-      gen_switch(stmt);
-      break;
-
-    case ND_WHILE:
-      gen_while(stmt);
-      break;
-    case ND_DO:
-      gen_do(stmt);
-      break;
-    case ND_FOR:
-      gen_for(stmt);
-      break;
-
-    case ND_GOTO:
-      gen_goto(stmt);
-      break;
-    case ND_CONTINUE:
-      gen_continue(stmt);
-      break;
-    case ND_BREAK:
-      gen_break(stmt);
-      break;
-    case ND_RETURN:
-      gen_return(stmt);
-      break;
-
-    default:
-      assert(false); // unreachable
+    case ND_LABEL: gen_label(stmt); break;
+    case ND_CASE: gen_case(stmt); break;
+    case ND_DEFAULT: gen_default(stmt); break;
+    case ND_COMP: gen_comp_stmt(stmt); break;
+    case ND_EXPR: gen_expr_stmt(stmt); break;
+    case ND_IF: gen_if(stmt); break;
+    case ND_SWITCH: gen_switch(stmt); break;
+    case ND_WHILE: gen_while(stmt); break;
+    case ND_DO: gen_do(stmt); break;
+    case ND_FOR: gen_for(stmt); break;
+    case ND_GOTO: gen_goto(stmt); break;
+    case ND_CONTINUE: gen_continue(stmt); break;
+    case ND_BREAK: gen_break(stmt); break;
+    case ND_RETURN: gen_return(stmt); break;
+    default: assert(false); // unreachable
   }
 }
 
