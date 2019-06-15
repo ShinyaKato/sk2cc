@@ -384,20 +384,36 @@ static void gen_indirect(Expr *expr) {
 
 static void gen_uminus(Expr *expr) {
   GEN_OP(expr->expr, "rax");
-  if (expr->expr->type->ty_type == TY_INT || expr->expr->type->ty_type == TY_UINT) {
-    printf("  negl %%eax\n");
-  } else if (expr->expr->type->ty_type == TY_LONG || expr->expr->type->ty_type == TY_ULONG) {
-    printf("  negq %%rax\n");
+  switch (expr->expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  negl %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  negq %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_not(Expr *expr) {
   GEN_OP(expr->expr, "rax");
-  if (expr->expr->type->ty_type == TY_INT || expr->expr->type->ty_type == TY_UINT) {
-    printf("  notl %%eax\n");
-  } else if (expr->expr->type->ty_type == TY_LONG || expr->expr->type->ty_type == TY_ULONG) {
-    printf("  notq %%rax\n");
+  switch (expr->expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  notl %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  notq %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
