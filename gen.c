@@ -484,44 +484,88 @@ static void gen_cast(Expr *expr) {
 
 static void gen_mul(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT) {
-    printf("  imull %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_UINT) {
-    printf("  mull %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG) {
-    printf("  imulq %%rcx\n");
-  } else if (expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  mulq %%rcx\n");
+  switch (expr->type->ty_type) {
+    case TY_INT: {
+      printf("  imull %%ecx\n");
+      break;
+    }
+    case TY_UINT: {
+      printf("  mull %%ecx\n");
+      break;
+    }
+    case TY_LONG: {
+      printf("  imulq %%rcx\n");
+      break;
+    }
+    case TY_ULONG: {
+      printf("  mulq %%rcx\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_div(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  printf("  movq $0, %%rdx\n");
-  if (expr->lhs->type->ty_type == TY_INT) {
-    printf("  idivl %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_UINT) {
-    printf("  divl %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG) {
-    printf("  idivq %%rcx\n");
-  } else if (expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  divq %%rcx\n");
+  switch (expr->type->ty_type) {
+    case TY_INT: {
+      // idivl: signed devide edx:eax by 32-bit register.
+      printf("  movl $0, %%edx\n");
+      printf("  idivl %%ecx\n");
+      break;
+    }
+    case TY_UINT: {
+      // divl: unsigned devide edx:eax by 32-bit register.
+      printf("  movl $0, %%edx\n");
+      printf("  divl %%ecx\n");
+      break;
+    }
+    case TY_LONG: {
+      // idivq: signed devide rdx:rax by 64-bit register.
+      printf("  movq $0, %%rdx\n");
+      printf("  idivq %%rcx\n");
+      break;
+    }
+    case TY_ULONG: {
+      // divq: unsigned devide rdx:rax by 64-bit register.
+      printf("  movq $0, %%rdx\n");
+      printf("  divq %%rcx\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_mod(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  printf("  movq $0, %%rdx\n");
-  if (expr->lhs->type->ty_type == TY_INT) {
-    printf("  idivl %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_UINT) {
-    printf("  divl %%ecx\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG) {
-    printf("  idivq %%rcx\n");
-  } else if (expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  divq %%rcx\n");
+  switch (expr->type->ty_type) {
+    case TY_INT: {
+      // idivl: signed devide edx:eax by 32-bit register.
+      printf("  movl $0, %%edx\n");
+      printf("  idivl %%ecx\n");
+      break;
+    }
+    case TY_UINT: {
+      // divl: unsigned devide edx:eax by 32-bit register.
+      printf("  movl $0, %%edx\n");
+      printf("  divl %%ecx\n");
+      break;
+    }
+    case TY_LONG: {
+      // idivq: signed devide rdx:rax by 64-bit register.
+      printf("  movq $0, %%rdx\n");
+      printf("  idivq %%rcx\n");
+      break;
+    }
+    case TY_ULONG: {
+      // divq: unsigned devide rdx:rax by 64-bit register.
+      printf("  movq $0, %%rdx\n");
+      printf("  divq %%rcx\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rdx");
 }
