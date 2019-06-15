@@ -772,30 +772,54 @@ static void gen_neq(Expr *expr) {
 
 static void gen_and(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  andl %%ecx, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  andq %%rcx, %%rax\n");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  andl %%ecx, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  andq %%rcx, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_xor(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  xorl %%ecx, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  xorq %%rcx, %%rax\n");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  xorl %%ecx, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  xorq %%rcx, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
 
 static void gen_or(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    printf("  orl %%ecx, %%eax\n");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    printf("  orq %%rcx, %%rax\n");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      printf("  orl %%ecx, %%eax\n");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      printf("  orq %%rcx, %%rax\n");
+      break;
+    }
+    default: assert(false);
   }
   GEN_PUSH("rax");
 }
