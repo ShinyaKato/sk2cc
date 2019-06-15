@@ -571,44 +571,64 @@ static void gen_mod(Expr *expr) {
 }
 
 static void gen_add(Expr *expr) {
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-    printf("  addl %%ecx, %%eax\n");
-    GEN_PUSH("rax");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-    printf("  addq %%rcx, %%rax\n");
-    GEN_PUSH("rax");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    int size = expr->lhs->type->pointer_to->size;
-    gen_expr(expr->lhs);
-    GEN_OP(expr->rhs, "rax");
-    printf("  movq $%d, %%rcx\n", size);
-    printf("  mulq %%rcx\n");
-    GEN_POP("rcx");
-    printf("  addq %%rax, %%rcx\n");
-    GEN_PUSH("rcx");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+      printf("  addl %%ecx, %%eax\n");
+      GEN_PUSH("rax");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+      printf("  addq %%rcx, %%rax\n");
+      GEN_PUSH("rax");
+      break;
+    }
+    case TY_POINTER: {
+      int size = expr->lhs->type->pointer_to->size;
+      gen_expr(expr->lhs);
+      GEN_OP(expr->rhs, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      GEN_POP("rcx");
+      printf("  addq %%rax, %%rcx\n");
+      GEN_PUSH("rcx");
+      break;
+    }
+    default: assert(false);
   }
 }
 
 static void gen_sub(Expr *expr) {
-  if (expr->lhs->type->ty_type == TY_INT || expr->lhs->type->ty_type == TY_UINT) {
-    GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-    printf("  subl %%ecx, %%eax\n");
-    GEN_PUSH("rax");
-  } else if (expr->lhs->type->ty_type == TY_LONG || expr->lhs->type->ty_type == TY_ULONG) {
-    GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-    printf("  subq %%rcx, %%rax\n");
-    GEN_PUSH("rax");
-  } else if (expr->lhs->type->ty_type == TY_POINTER) {
-    int size = expr->lhs->type->pointer_to->size;
-    gen_expr(expr->lhs);
-    GEN_OP(expr->rhs, "rax");
-    printf("  movq $%d, %%rcx\n", size);
-    printf("  mulq %%rcx\n");
-    GEN_POP("rcx");
-    printf("  subq %%rax, %%rcx\n");
-    GEN_PUSH("rcx");
+  switch (expr->type->ty_type) {
+    case TY_INT:
+    case TY_UINT: {
+      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+      printf("  subl %%ecx, %%eax\n");
+      GEN_PUSH("rax");
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG: {
+      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+      printf("  subq %%rcx, %%rax\n");
+      GEN_PUSH("rax");
+      break;
+    }
+    case TY_POINTER: {
+      int size = expr->lhs->type->pointer_to->size;
+      gen_expr(expr->lhs);
+      GEN_OP(expr->rhs, "rax");
+      printf("  movq $%d, %%rcx\n", size);
+      printf("  mulq %%rcx\n");
+      GEN_POP("rcx");
+      printf("  subq %%rax, %%rcx\n");
+      GEN_PUSH("rcx");
+      break;
+    }
+    default: assert(false);
   }
 }
 
