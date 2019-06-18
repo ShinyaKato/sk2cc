@@ -137,6 +137,11 @@ void as_sema(Vector *stmts) {
   for (int i = 0; i < stmts->length; i++) {
     Stmt *stmt = stmts->buffer[i];
     switch (stmt->type) {
+      case ST_CLTD: {
+        sema_inst_op0((Inst *) stmt, INST_LONG);
+        break;
+      }
+      case ST_CQTO:
       case ST_LEAVE:
       case ST_RET: {
         sema_inst_op0((Inst *) stmt, INST_QUAD);

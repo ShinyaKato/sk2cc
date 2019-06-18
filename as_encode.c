@@ -225,6 +225,17 @@ static void gen_pop(Inst *inst) {
   gen_opcode_reg(0x58, inst->op->regcode);
 }
 
+static void gen_cltd(Inst *inst) {
+  // 99
+  gen_opcode(0x99);
+}
+
+static void gen_cqto(Inst *inst) {
+  // REX.W + 99
+  gen_rex(1, 0, 0, 0, false);
+  gen_opcode(0x99);
+}
+
 static void gen_mov(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
   switch (inst->suffix) {
@@ -1448,6 +1459,8 @@ TransUnit *as_encode(Vector *stmts) {
       // instructions
       case ST_PUSH: gen_push((Inst *) stmt); break;
       case ST_POP: gen_pop((Inst *) stmt); break;
+      case ST_CLTD: gen_cltd((Inst *) stmt); break;
+      case ST_CQTO: gen_cqto((Inst *) stmt); break;
       case ST_MOV: gen_mov((Inst *) stmt); break;
       case ST_MOVZB: gen_movzb((Inst *) stmt); break;
       case ST_MOVZW: gen_movzw((Inst *) stmt); break;

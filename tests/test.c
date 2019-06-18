@@ -147,6 +147,16 @@ void test_expression() {
   expect(6 / 2, 3);
   expect(123 % 31, 30);
 
+  // truncated division:
+  //   +7 % +3 = (+2, +1) or (+3, -2) -> (+2, +1)
+  //   -7 % -3 = (+2, -1) or (+3, +2) -> (+2, -1)
+  //   +7 % -3 = (-3, -2) or (-2, +1) -> (-2, +1)
+  //   -7 % +3 = (-3, +2) or (-2, -1) -> (-2, -1)
+  expect(+7 / +3, +2); expect(+7 % +3, +1);
+  expect(-7 / -3, +2); expect(-7 % +3, -1);
+  expect(+7 / -3, -2); expect(+7 % -3, +1);
+  expect(-7 / +3, -2); expect(-7 % +3, -1);
+
   // additive operator
   expect(2 + 3, 5);
   expect(11 - 7, 4);

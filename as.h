@@ -104,6 +104,8 @@ typedef enum {
   // instructions
   ST_PUSH,
   ST_POP,
+  ST_CLTD,
+  ST_CQTO,
   ST_MOV,
   ST_MOVZB,
   ST_MOVZW,

@@ -156,6 +156,8 @@ static Map *create_insts(void) {
 
   put_insts(map, "push", ST_PUSH);
   put_insts(map, "pop", ST_POP);
+  put_insts(map, "cltd", ST_CLTD);
+  put_insts(map, "cqto", ST_CQTO);
   put_insts(map, "mov", ST_MOV);
   put_insts(map, "movzb", ST_MOVZB);
   put_insts(map, "movzw", ST_MOVZW);

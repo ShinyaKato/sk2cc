@@ -510,8 +510,9 @@ static void gen_div(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
   switch (expr->type->ty_type) {
     case TY_INT: {
+      // cltd: sign extension (eax -> edx:eax)
       // idivl: signed devide edx:eax by 32-bit register.
-      printf("  movl $0, %%edx\n");
+      printf("  cltd\n");
       printf("  idivl %%ecx\n");
       break;
     }
@@ -522,8 +523,9 @@ static void gen_div(Expr *expr) {
       break;
     }
     case TY_LONG: {
+      // cqto: sign extension (rax -> rdx:rax)
       // idivq: signed devide rdx:rax by 64-bit register.
-      printf("  movq $0, %%rdx\n");
+      printf("  cqto\n");
       printf("  idivq %%rcx\n");
       break;
     }
@@ -542,8 +544,9 @@ static void gen_mod(Expr *expr) {
   GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
   switch (expr->type->ty_type) {
     case TY_INT: {
+      // cltd: sign extension (eax -> edx:eax)
       // idivl: signed devide edx:eax by 32-bit register.
-      printf("  movl $0, %%edx\n");
+      printf("  cltd\n");
       printf("  idivl %%ecx\n");
       break;
     }
@@ -554,8 +557,9 @@ static void gen_mod(Expr *expr) {
       break;
     }
     case TY_LONG: {
+      // cqto: sign extension (rax -> rdx:rax)
       // idivq: signed devide rdx:rax by 64-bit register.
-      printf("  movq $0, %%rdx\n");
+      printf("  cqto\n");
       printf("  idivq %%rcx\n");
       break;
     }

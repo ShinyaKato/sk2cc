@@ -1638,5 +1638,9 @@ test_encoding 'movswl (%rcx), %edx' '0f bf 11'
 test_encoding 'movslq %ecx, %rdx' '48 63 d1'
 test_encoding 'movslq (%rcx), %rdx' '48 63 11'
 
+# cltd, cqto
+test_encoding 'cltd' '99'
+test_encoding 'cqto' '48 99'
+
 echo "[OK]"
 exit 0
