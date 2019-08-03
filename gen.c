@@ -203,8 +203,79 @@ static void gen_va_end(Expr *expr) {
 }
 
 static void gen_identifier(Expr *expr) {
-  gen_lvalue(expr);
-  gen_load(expr);
+  switch (expr->symbol->link) {
+    case LN_EXTERNAL:
+    case LN_INTERNAL: {
+      switch (expr->type->ty_type) {
+        case TY_BOOL:
+        case TY_CHAR:
+        case TY_UCHAR: {
+          printf("  movb %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][0]);
+          break;
+        }
+        case TY_SHORT:
+        case TY_USHORT: {
+          printf("  movw %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][1]);
+          break;
+        }
+        case TY_INT:
+        case TY_UINT: {
+          printf("  movl %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][2]);
+          break;
+        }
+        case TY_LONG:
+        case TY_ULONG: {
+          printf("  movq %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][3]);
+          break;
+        }
+        case TY_POINTER: {
+          if (expr->type == expr->type->original) {
+            printf("  movq %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][3]);
+          } else {
+            printf("  leaq %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][3]);
+          }
+          break;
+        }
+        default: assert(false);
+      }
+      break;
+    }
+    case LN_NONE: {
+      switch (expr->type->ty_type) {
+        case TY_BOOL:
+        case TY_CHAR:
+        case TY_UCHAR: {
+          printf("  movb %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][0]);
+          break;
+        }
+        case TY_SHORT:
+        case TY_USHORT: {
+          printf("  movw %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][1]);
+          break;
+        }
+        case TY_INT:
+        case TY_UINT: {
+          printf("  movl %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][2]);
+          break;
+        }
+        case TY_LONG:
+        case TY_ULONG: {
+          printf("  movq %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][3]);
+          break;
+        }
+        case TY_POINTER: {
+          if (expr->type == expr->type->original) {
+            printf("  movq %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][3]);
+          } else {
+            printf("  leaq %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][3]);
+          }
+          break;
+        }
+        default: assert(false);
+      }
+      break;
+    }
+  }
 }
 
 static void gen_integer(Expr *expr) {
