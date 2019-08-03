@@ -165,7 +165,7 @@ static void gen_va_start(Expr *expr) {
 
   printf("  movl $%d, (%%rax)\n", gp_offset);
   printf("  movl $48, 4(%%rax)\n");
-  printf("  leaq %d(%%rbp), %%rcx\n", 16 + 40 + overflow_arg_area);
+  printf("  leaq %d(%%rbp), %%rcx\n", overflow_arg_area);
   printf("  movq %%rcx, 8(%%rax)\n");
   printf("  leaq -176(%%rbp), %%rcx\n");
   printf("  movq %%rcx, 16(%%rax)\n");
@@ -1251,12 +1251,35 @@ static void gen_func(Func *func) {
   Symbol *symbol = func->symbol;
   Type *type = symbol->type;
 
+  // calculate stack frame size
+  int stack_params_offset = 16;
+  if (func->r15_used) {
+    stack_params_offset += 8;
+  }
+  if (func->r14_used) {
+    stack_params_offset += 8;
+  }
+  if (func->r13_used) {
+    stack_params_offset += 8;
+  }
+  if (func->r12_used) {
+    stack_params_offset += 8;
+  }
+  if (func->bx_used) {
+    stack_params_offset += 8;
+  }
+
+  int stack_size = func->stack_size;
+  if ((stack_params_offset + stack_size) % 16 > 0) {
+    stack_size += 16 - (stack_params_offset + stack_size) % 16;
+  }
+
   if (type->params->length <= 6) {
     gp_offset = type->params->length * 8;
-    overflow_arg_area = 0;
+    overflow_arg_area = stack_params_offset;
   } else {
     gp_offset = 48;
-    overflow_arg_area = (type->params->length - 6) * 8;
+    overflow_arg_area = stack_params_offset + (type->params->length - 6) * 8;
   }
 
   // assign labels
@@ -1266,31 +1289,32 @@ static void gen_func(Func *func) {
     label_stmt->label_no = label_no++;
   }
 
+  // function symbol
   printf("  .text\n");
   if (symbol->link == LN_EXTERNAL) {
     printf("  .global %s\n", symbol->identifier);
   }
   printf("%s:\n", symbol->identifier);
 
-  printf("  pushq %%r15\n");
-  printf("  pushq %%r14\n");
-  printf("  pushq %%r13\n");
-  printf("  pushq %%r12\n");
-  printf("  pushq %%rbx\n");
+  // function prologue
+  if (func->r15_used) {
+    printf("  pushq %%r15\n");
+  }
+  if (func->r14_used) {
+    printf("  pushq %%r14\n");
+  }
+  if (func->r13_used) {
+    printf("  pushq %%r13\n");
+  }
+  if (func->r12_used) {
+    printf("  pushq %%r12\n");
+  }
+  if (func->bx_used) {
+    printf("  pushq %%rbx\n");
+  }
   printf("  pushq %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
-
-  int stack_size = func->stack_size;
-  if (stack_size % 16 > 0) {
-    stack_size += 16 - stack_size % 16;
-  }
-  printf("  subq $%d, %%rsp\n", stack_size + 8);
-
-  if (type->ellipsis) {
-    for (int i = type->params->length; i < 6; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_reg[i]][REG_QUAD], -176 + i * 8);
-    }
-  }
+  printf("  subq $%d, %%rsp\n", stack_size);
 
   // The current stack state is as follows:
   //
@@ -1302,31 +1326,56 @@ static void gen_func(Func *func) {
   //   argument 7
   //   ---- <= (16-byte aligned)
   //   return address
+  //   %r15 (if needed)
+  //   %r14 (if needed)
+  //   %r13 (if needed)
+  //   %r12 (if needed)
+  //   %rbx (if needed)
   //   %rbp of the previous frame
   //   ---- <= %rbp
   //   local variables of the current frame
-  //   ---- <= %rsp
+  //   ---- <= %rsp (16-byte aligned)
   // [lower address]
 
+  // store params on the registers
   for (int i = 0; i < type->params->length; i++) {
     Symbol *param = type->params->buffer[i];
     if (i < 6) {
       gen_store_by_offset(arg_reg[i], -param->offset, param->type);
     } else {
-      printf("  movq %d(%%rbp), %%rax\n", 16 + 40 + (i - 6) * 8);
+      printf("  movq %d(%%rbp), %%rax\n", stack_params_offset + (i - 6) * 8);
       gen_store_by_offset(REG_AX, -param->offset, param->type);
     }
   }
 
+  // store params when the function takes variable length arguments
+  if (type->ellipsis) {
+    for (int i = type->params->length; i < 6; i++) {
+      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_reg[i]][REG_QUAD], -176 + i * 8);
+    }
+  }
+
+  // function body
   gen_stmt(func->body);
 
+  // function epilogue
   GEN_LABEL(func->label_return);
   printf("  leave\n");
-  printf("  popq %%rbx\n");
-  printf("  popq %%r12\n");
-  printf("  popq %%r13\n");
-  printf("  popq %%r14\n");
-  printf("  popq %%r15\n");
+  if (func->bx_used) {
+    printf("  popq %%rbx\n");
+  }
+  if (func->r12_used) {
+    printf("  popq %%r12\n");
+  }
+  if (func->r13_used) {
+    printf("  popq %%r13\n");
+  }
+  if (func->r14_used) {
+    printf("  popq %%r14\n");
+  }
+  if (func->r15_used) {
+    printf("  popq %%r15\n");
+  }
   printf("  ret\n");
 }
 

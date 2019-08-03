@@ -10,6 +10,8 @@ typedef int RegSet;
 
 static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
 
+static RegSet func_used;
+
 static RegSet alloc_expr(Expr *expr, RegCode reg, RegSet reserved_regs);
 
 static RegCode select_reg(RegSet used_regs, RegSet reserved_regs) {
@@ -21,11 +23,13 @@ static RegCode select_reg(RegSet used_regs, RegSet reserved_regs) {
   for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
     if (REGS_CHECK(used_regs, regs[i])) continue;
     if (REGS_CHECK(reserved_regs, regs[i])) continue;
+    func_used = REGS_ADD(func_used, regs[i]);
     return regs[i];
   }
 
   for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
     if (REGS_CHECK(used_regs, regs[i])) continue;
+    func_used = REGS_ADD(func_used, regs[i]);
     return regs[i];
   }
 
@@ -308,7 +312,15 @@ static void alloc_stmt(Stmt *stmt) {
 }
 
 static void alloc_func(Func *func) {
+  func_used = REGS_EMPTY;
+
   alloc_stmt(func->body);
+
+  func->bx_used = REGS_CHECK(func_used, REG_BX);
+  func->r12_used = REGS_CHECK(func_used, REG_R12);
+  func->r13_used = REGS_CHECK(func_used, REG_R13);
+  func->r14_used = REGS_CHECK(func_used, REG_R14);
+  func->r15_used = REGS_CHECK(func_used, REG_R15);
 }
 
 static void alloc_trans_unit(TransUnit *trans_unit) {
