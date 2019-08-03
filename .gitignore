@@ -1,8 +1,8 @@
 sk2cc
 self
 self2
-as
 tmp
+debug
 
 # Prerequisites
 *.d
