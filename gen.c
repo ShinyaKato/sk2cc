@@ -1,31 +1,5 @@
 #include "cc.h"
 
-typedef enum {
-  REG_BYTE,
-  REG_WORD,
-  REG_LONG,
-  REG_QUAD,
-} RegSize;
-
-typedef enum {
-  REG_AX,
-  REG_CX,
-  REG_DX,
-  REG_BX,
-  REG_SP,
-  REG_BP,
-  REG_SI,
-  REG_DI,
-  REG_R8,
-  REG_R9,
-  REG_R10,
-  REG_R11,
-  REG_R12,
-  REG_R13,
-  REG_R14,
-  REG_R15,
-} RegCode;
-
 static char *reg[16][4] = {
   { "al", "ax", "eax", "rax" },
   { "cl", "cx", "ecx", "rcx" },
@@ -53,41 +27,10 @@ static int label_no;
 
 static int gp_offset;
 static int overflow_arg_area;
-static int stack_depth;
 
 // generation of expression
 
 static void gen_expr(Expr *expr);
-
-#define GEN_PUSH(reg) \
-  do { \
-    stack_depth += 8; \
-    printf("  pushq %%%s\n", reg); \
-  } while (0)
-
-#define GEN_POP(reg) \
-  do { \
-    stack_depth -= 8; \
-    printf("  popq %%%s\n", reg); \
-  } while (0)
-
-#define GEN_PUSH_GARBAGE() \
-  do { \
-    stack_depth += 8; \
-    printf("  subq $8, %%rsp\n"); \
-  } while (0)
-
-#define GEN_POP_DISCARD() \
-  do { \
-    stack_depth -= 8; \
-    printf("  addq $8, %%rsp\n"); \
-  } while (0)
-
-#define GEN_EVAL(expr) \
-  do { \
-    gen_expr(expr); \
-    GEN_POP_DISCARD(); \
-  } while (0)
 
 #define GEN_LABEL(label) \
   do { \
@@ -99,35 +42,20 @@ static void gen_expr(Expr *expr);
     printf("  %s .L%d\n", inst, label); \
   } while (0)
 
-#define GEN_OP(expr, reg) \
-  do { \
-    gen_expr(expr); \
-    GEN_POP(reg); \
-  } while (0)
-
-#define GEN_OP2(expr_lhs, expr_rhs, reg_lhs, reg_rhs) \
-  do { \
-    gen_expr(expr_lhs); \
-    gen_expr(expr_rhs); \
-    GEN_POP(reg_rhs); \
-    GEN_POP(reg_lhs); \
-  } while (0)
-
 static void gen_lvalue(Expr *expr) {
   switch (expr->nd_type) {
     case ND_IDENTIFIER: {
       switch (expr->symbol->link) {
         case LN_EXTERNAL:
         case LN_INTERNAL: {
-          printf("  leaq %s(%%rip), %%rax\n", expr->symbol->identifier);
+          printf("  leaq %s(%%rip), %%%s\n", expr->symbol->identifier, reg[expr->reg][3]);
           break;
         }
         case LN_NONE: {
-          printf("  leaq %d(%%rbp), %%rax\n", -expr->symbol->offset);
+          printf("  leaq %d(%%rbp), %%%s\n", -expr->symbol->offset, reg[expr->reg][3]);
           break;
         }
       }
-      GEN_PUSH("rax");
       break;
     }
     case ND_INDIRECT: {
@@ -136,72 +64,68 @@ static void gen_lvalue(Expr *expr) {
     }
     case ND_DOT: {
       gen_lvalue(expr->expr);
-      GEN_POP("rax");
-      printf("  leaq %d(%%rax), %%rax\n", expr->offset);
-      GEN_PUSH("rax");
+      printf("  leaq %d(%%%s), %%%s\n", expr->offset, reg[expr->expr->reg][3], reg[expr->reg][3]);
       break;
     }
     default: assert(false);
   }
 }
 
-static void gen_load(Type *type) {
-  GEN_POP("rax");
-  switch (type->ty_type) {
+static void gen_load(Expr *expr) {
+  switch (expr->type->ty_type) {
     case TY_BOOL:
     case TY_CHAR:
     case TY_UCHAR: {
-      printf("  movb (%%rax), %%al\n");
+      printf("  movb (%%%s), %%%s\n", reg[expr->reg][3], reg[expr->reg][0]);
       break;
     }
     case TY_SHORT:
     case TY_USHORT: {
-      printf("  movw (%%rax), %%ax\n");
+      printf("  movw (%%%s), %%%s\n", reg[expr->reg][3], reg[expr->reg][1]);
       break;
     }
     case TY_INT:
     case TY_UINT: {
-      printf("  movl (%%rax), %%eax\n");
+      printf("  movl (%%%s), %%%s\n", reg[expr->reg][3], reg[expr->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  movq (%%rax), %%rax\n");
+      printf("  movq (%%%s), %%%s\n", reg[expr->reg][3], reg[expr->reg][3]);
       break;
     }
     case TY_POINTER: {
-      if (type == type->original) {
-        printf("  movq (%%rax), %%rax\n");
+      if (expr->type == expr->type->original) {
+        printf("  movq (%%%s), %%%s\n", reg[expr->reg][3], reg[expr->reg][3]);
       }
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
 }
 
-static void gen_store_by_addr(RegCode value, RegCode addr, Type *type) {
-  switch (type->ty_type) {
+static void gen_store(Expr *lvalue, Expr *expr) {
+  switch (expr->type->ty_type) {
     case TY_BOOL:
     case TY_CHAR:
     case TY_UCHAR: {
-      printf("  movb %%%s, (%%%s)\n", reg[value][REG_BYTE], reg[addr][REG_QUAD]);
+      printf("  movb %%%s, (%%%s)\n", reg[expr->reg][REG_BYTE], reg[lvalue->reg][REG_QUAD]);
       break;
     }
     case TY_SHORT:
     case TY_USHORT: {
-      printf("  movw %%%s, (%%%s)\n", reg[value][REG_WORD], reg[addr][REG_QUAD]);
+      printf("  movw %%%s, (%%%s)\n", reg[expr->reg][REG_WORD], reg[lvalue->reg][REG_QUAD]);
       break;
     }
     case TY_INT:
     case TY_UINT: {
-      printf("  movl %%%s, (%%%s)\n", reg[value][REG_LONG], reg[addr][REG_QUAD]);
+      printf("  movl %%%s, (%%%s)\n", reg[expr->reg][REG_LONG], reg[lvalue->reg][REG_QUAD]);
       break;
     }
     case TY_LONG:
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  movq %%%s, (%%%s)\n", reg[value][REG_QUAD], reg[addr][REG_QUAD]);
+      printf("  movq %%%s, (%%%s)\n", reg[expr->reg][REG_QUAD], reg[lvalue->reg][REG_QUAD]);
       break;
     }
     default: assert(false);
@@ -238,21 +162,17 @@ static void gen_store_by_offset(RegCode value, int offset, Type *type) {
 
 static void gen_va_start(Expr *expr) {
   gen_lvalue(expr->macro_ap);
-  GEN_POP("rax");
 
   printf("  movl $%d, (%%rax)\n", gp_offset);
   printf("  movl $48, 4(%%rax)\n");
-  printf("  leaq %d(%%rbp), %%rcx\n", overflow_arg_area + 16);
+  printf("  leaq %d(%%rbp), %%rcx\n", 16 + 40 + overflow_arg_area);
   printf("  movq %%rcx, 8(%%rax)\n");
   printf("  leaq -176(%%rbp), %%rcx\n");
   printf("  movq %%rcx, 16(%%rax)\n");
-
-  GEN_PUSH_GARBAGE();
 }
 
 static void gen_va_arg(Expr *expr) {
   gen_lvalue(expr->macro_ap);
-  GEN_POP("rax");
 
   int label_overflow = label_no++;
   int label_load = label_no++;
@@ -275,39 +195,36 @@ static void gen_va_arg(Expr *expr) {
   printf("  movq %%rdx, 8(%%rax)\n");
 
   GEN_LABEL(label_load);
-  printf("  movq (%%rcx), %%rax\n");
-  GEN_PUSH("rax");
+  printf("  movq (%%rcx), %%%s\n", reg[expr->reg][3]);
 }
 
 static void gen_va_end(Expr *expr) {
-  GEN_PUSH_GARBAGE();
+  gen_lvalue(expr->macro_ap);
 }
 
 static void gen_identifier(Expr *expr) {
   gen_lvalue(expr);
-  gen_load(expr->type);
+  gen_load(expr);
 }
 
 static void gen_integer(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  movl $%llu, %%eax\n", expr->int_value);
+      printf("  movl $%llu, %%%s\n", expr->int_value, reg[expr->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  movq $%llu, %%rax\n", expr->int_value);
+      printf("  movq $%llu, %%%s\n", expr->int_value, reg[expr->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
 }
 
 static void gen_string(Expr *expr) {
-  printf("  leaq .S%d(%%rip), %%rax\n", expr->string_label);
-  GEN_PUSH("rax");
+  printf("  leaq .S%d(%%rip), %%%s\n", expr->string_label, reg[expr->reg][3]);
 }
 
 static void gen_call(Expr *expr) {
@@ -333,44 +250,53 @@ static void gen_call(Expr *expr) {
   //   --- <= %rsp (16-byte aligned)
   // [lower address]
 
-  // 16-byte alignment
-  int stack_args = expr->args->length > 6 ? expr->args->length - 6 : 0;
-  int stack_top = stack_depth + stack_args * 8;
-  int padding = stack_top % 16 ? 16 - stack_top % 16 : 0;
-  if (padding > 0) {
-    printf("  subq $%d, %%rsp\n", padding);
-    stack_depth += padding;
-  }
-
   // evaluate arguments
-  for (int i = expr->args->length - 1; i >= 0; i--) {
+  for (int i = 0; i < expr->args->length; i++) {
     Expr *arg = expr->args->buffer[i];
     gen_expr(arg);
   }
-  for (int i = 0; i < expr->args->length; i++) {
-    if (i >= 6) break;
-    GEN_POP(reg[arg_reg[i]][REG_QUAD]);
+
+  int args_size = 0;
+  if (expr->args->length > 6) {
+    args_size = (expr->args->length - 6) * 8;
+    if (args_size % 16 > 0) {
+      args_size += 16 - args_size % 16;
+    }
   }
 
-  // for function with variable length arguments
+  if (args_size > 0) {
+    printf("  subq $%d, %%rsp\n", args_size);
+  }
+
+  for (int i = 0; i < expr->args->length; i++) {
+    Expr *arg = expr->args->buffer[i];
+    if (i < 6) {
+      if (arg->reg != arg_reg[i]) {
+        printf("  movq %%%s, %%%s\n", reg[arg->reg][3], reg[arg_reg[i]][3]);
+      }
+    } else {
+      printf("  movq %%%s, %d(%%rsp)\n", reg[arg->reg][3], (i - 6) * 8);
+    }
+  }
+
   if (!expr->expr->symbol || expr->expr->symbol->type->ellipsis) {
     printf("  movb $0, %%al\n");
   }
 
   printf("  call %s\n", expr->expr->identifier);
 
-  // restore rsp
-  if (padding + stack_args * 8 > 0) {
-    printf("  addq $%d, %%rsp\n", padding + stack_args * 8);
-    stack_depth -= padding + stack_args * 8;
+  if (args_size > 0) {
+    printf("  addq $%d, %%rsp\n", args_size);
   }
 
-  GEN_PUSH("rax");
+  if (expr->reg != REG_AX) {
+    printf("  movq %%rax, %%%s\n", reg[expr->reg][3]);
+  }
 }
 
 static void gen_dot(Expr *expr) {
   gen_lvalue(expr);
-  gen_load(expr->type);
+  gen_load(expr);
 }
 
 static void gen_address(Expr *expr) {
@@ -379,531 +305,585 @@ static void gen_address(Expr *expr) {
 
 static void gen_indirect(Expr *expr) {
   gen_lvalue(expr);
-  gen_load(expr->type);
+  gen_load(expr);
 }
 
 static void gen_uminus(Expr *expr) {
-  GEN_OP(expr->expr, "rax");
+  gen_expr(expr->expr);
+
   switch (expr->expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  negl %%eax\n");
+      printf("  negl %%%s\n", reg[expr->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  negq %%rax\n");
+      printf("  negq %%%s\n", reg[expr->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
 }
 
 static void gen_not(Expr *expr) {
-  GEN_OP(expr->expr, "rax");
+  gen_expr(expr->expr);
+
   switch (expr->expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  notl %%eax\n");
+      printf("  notl %%%s\n", reg[expr->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  notq %%rax\n");
+      printf("  notq %%%s\n", reg[expr->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
 }
 
 static void gen_lnot(Expr *expr) {
-  GEN_OP(expr->expr, "rax");
-  printf("  cmpq $0, %%rax\n");
-  printf("  sete %%al\n");
-  printf("  movzbl %%al, %%eax\n");
-  GEN_PUSH("rax");
+  gen_expr(expr->expr);
+
+  printf("  cmpq $0, %%%s\n", reg[expr->expr->reg][3]);
+  printf("  sete %%%s\n", reg[expr->reg][0]);
+  printf("  movzbl %%%s, %%%s\n", reg[expr->reg][0], reg[expr->reg][2]);
 }
 
 static void gen_cast(Expr *expr) {
-  GEN_OP(expr->expr, "rax");
+  gen_expr(expr->expr);
 
   Type *to = expr->type;
   Type *from = expr->expr->type;
 
   if (to->ty_type == TY_BOOL) {
     if (from->ty_type == TY_CHAR || from->ty_type == TY_UCHAR) {
-      printf("  cmpb $0, %%al\n");
-      printf("  setne %%al\n");
+      printf("  cmpb $0, %%%s\n", reg[expr->expr->reg][0]);
+      printf("  setne %%%s\n", reg[expr->reg][0]);
     } else if (from->ty_type == TY_SHORT || from->ty_type == TY_USHORT) {
-      printf("  cmpw $0, %%ax\n");
-      printf("  setne %%al\n");
+      printf("  cmpw $0, %%%s\n", reg[expr->expr->reg][1]);
+      printf("  setne %%%s\n", reg[expr->reg][0]);
     } else if (from->ty_type == TY_INT || from->ty_type == TY_UINT) {
-      printf("  cmpl $0, %%eax\n");
-      printf("  setne %%al\n");
+      printf("  cmpl $0, %%%s\n", reg[expr->expr->reg][2]);
+      printf("  setne %%%s\n", reg[expr->reg][0]);
     }
   } else if (to->ty_type == TY_SHORT || to->ty_type == TY_USHORT) {
     if (from->ty_type == TY_BOOL) {
-      printf("  movzbw %%al, %%ax\n");
+      printf("  movzbw %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][1]);
     } else if (from->ty_type == TY_CHAR) {
-      printf("  movsbw %%al, %%ax\n");
+      printf("  movsbw %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][1]);
     } else if (from->ty_type == TY_UCHAR) {
-      printf("  movzbw %%al, %%ax");
+      printf("  movzbw %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][1]);
     }
   } else if (to->ty_type == TY_INT || to->ty_type == TY_UINT) {
     if (from->ty_type == TY_BOOL) {
-      printf("  movzbl %%al, %%eax\n");
+      printf("  movzbl %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][2]);
     } else if (from->ty_type == TY_CHAR) {
-      printf("  movsbl %%al, %%eax\n");
+      printf("  movsbl %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][2]);
     } else if (from->ty_type == TY_UCHAR) {
-      printf("  movzbl %%al, %%eax\n");
+      printf("  movzbl %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][2]);
     } else if (from->ty_type == TY_SHORT) {
-      printf("  movswl %%ax, %%eax\n");
+      printf("  movswl %%%s, %%%s\n", reg[expr->expr->reg][1], reg[expr->reg][2]);
     } else if (from->ty_type == TY_USHORT) {
-      printf("  movzwl %%ax, %%eax\n");
+      printf("  movzwl %%%s, %%%s\n", reg[expr->expr->reg][1], reg[expr->reg][2]);
     }
   } else if (to->ty_type == TY_LONG || to->ty_type == TY_ULONG) {
     if (from->ty_type == TY_BOOL) {
-      printf("  movzbl %%al, %%eax\n");
+      printf("  movzbl %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][2]);
     } else if (from->ty_type == TY_CHAR) {
-      printf("  movsbq %%al, %%rax\n");
+      printf("  movsbq %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][3]);
     } else if (from->ty_type == TY_UCHAR) {
-      printf("  movzbl %%al, %%eax\n");
+      printf("  movzbl %%%s, %%%s\n", reg[expr->expr->reg][0], reg[expr->reg][2]);
     } else if (from->ty_type == TY_SHORT) {
-      printf("  movswq %%ax, %%rax\n");
+      printf("  movswq %%%s, %%%s\n", reg[expr->expr->reg][1], reg[expr->reg][3]);
     } else if (from->ty_type == TY_USHORT) {
-      printf("  movzwl %%ax, %%eax\n");
+      printf("  movzwl %%%s, %%%s\n", reg[expr->expr->reg][1], reg[expr->reg][2]);
     } else if (from->ty_type == TY_INT) {
-      printf("  movslq %%eax, %%rax\n");
+      printf("  movslq %%%s, %%%s\n", reg[expr->expr->reg][2], reg[expr->reg][3]);
     }
   }
-
-  GEN_PUSH("rax");
 }
 
 static void gen_mul(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
+  if (expr->lhs->reg != REG_AX) {
+    printf("  movq %%%s, %%rax\n", reg[expr->lhs->reg][3]);
+  }
+
   switch (expr->type->ty_type) {
     case TY_INT: {
-      printf("  imull %%ecx\n");
+      printf("  imull %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_UINT: {
-      printf("  mull %%ecx\n");
+      printf("  mull %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG: {
-      printf("  imulq %%rcx\n");
+      printf("  imulq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     case TY_ULONG: {
-      printf("  mulq %%rcx\n");
+      printf("  mulq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->reg != REG_AX) {
+    printf("  movq %%rax, %%%s\n", reg[expr->reg][3]);
+  }
 }
 
 static void gen_div(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
+  if (expr->lhs->reg != REG_AX) {
+    printf("  movq %%%s, %%rax\n", reg[expr->lhs->reg][3]);
+  }
+
   switch (expr->type->ty_type) {
     case TY_INT: {
       // cltd: sign extension (eax -> edx:eax)
       // idivl: signed devide edx:eax by 32-bit register.
       printf("  cltd\n");
-      printf("  idivl %%ecx\n");
+      printf("  idivl %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_UINT: {
       // divl: unsigned devide edx:eax by 32-bit register.
       printf("  movl $0, %%edx\n");
-      printf("  divl %%ecx\n");
+      printf("  divl %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG: {
       // cqto: sign extension (rax -> rdx:rax)
       // idivq: signed devide rdx:rax by 64-bit register.
       printf("  cqto\n");
-      printf("  idivq %%rcx\n");
+      printf("  idivq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     case TY_ULONG: {
       // divq: unsigned devide rdx:rax by 64-bit register.
       printf("  movq $0, %%rdx\n");
-      printf("  divq %%rcx\n");
+      printf("  divq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->reg != REG_AX) {
+    printf("  movq %%rax, %%%s\n", reg[expr->reg][3]);
+  }
 }
 
 static void gen_mod(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
+  if (expr->lhs->reg != REG_AX) {
+    printf("  movq %%%s, %%rax\n", reg[expr->lhs->reg][3]);
+  }
+
   switch (expr->type->ty_type) {
     case TY_INT: {
       // cltd: sign extension (eax -> edx:eax)
       // idivl: signed devide edx:eax by 32-bit register.
       printf("  cltd\n");
-      printf("  idivl %%ecx\n");
+      printf("  idivl %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_UINT: {
       // divl: unsigned devide edx:eax by 32-bit register.
       printf("  movl $0, %%edx\n");
-      printf("  divl %%ecx\n");
+      printf("  divl %%%s\n", reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG: {
       // cqto: sign extension (rax -> rdx:rax)
       // idivq: signed devide rdx:rax by 64-bit register.
       printf("  cqto\n");
-      printf("  idivq %%rcx\n");
+      printf("  idivq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     case TY_ULONG: {
       // divq: unsigned devide rdx:rax by 64-bit register.
       printf("  movq $0, %%rdx\n");
-      printf("  divq %%rcx\n");
+      printf("  divq %%%s\n", reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rdx");
+
+  if (expr->reg != REG_DX) {
+    printf("  movq %%rdx, %%%s\n", reg[expr->reg][3]);
+  }
 }
 
 static void gen_add(Expr *expr) {
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-      printf("  addl %%ecx, %%eax\n");
-      GEN_PUSH("rax");
+      printf("  addl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-      printf("  addq %%rcx, %%rax\n");
-      GEN_PUSH("rax");
-      break;
-    }
-    case TY_POINTER: {
-      int size = expr->lhs->type->pointer_to->size;
-      gen_expr(expr->lhs);
-      GEN_OP(expr->rhs, "rax");
-      printf("  movq $%d, %%rcx\n", size);
-      printf("  mulq %%rcx\n");
-      GEN_POP("rcx");
-      printf("  addq %%rax, %%rcx\n");
-      GEN_PUSH("rcx");
+      printf("  addq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
+  }
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
   }
 }
 
 static void gen_sub(Expr *expr) {
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-      printf("  subl %%ecx, %%eax\n");
-      GEN_PUSH("rax");
+      printf("  subl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
-      printf("  subq %%rcx, %%rax\n");
-      GEN_PUSH("rax");
-      break;
-    }
-    case TY_POINTER: {
-      int size = expr->lhs->type->pointer_to->size;
-      gen_expr(expr->lhs);
-      GEN_OP(expr->rhs, "rax");
-      printf("  movq $%d, %%rcx\n", size);
-      printf("  mulq %%rcx\n");
-      GEN_POP("rcx");
-      printf("  subq %%rax, %%rcx\n");
-      GEN_PUSH("rcx");
+      printf("  subq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
+  }
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
   }
 }
 
 static void gen_lshift(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
+  if (expr->rhs->reg != REG_CX) {
+    printf("movq %%%s, %%rcx\n", reg[expr->rhs->reg][3]);
+  }
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  sall %%cl, %%eax\n");
+      printf("  sall %%cl, %%%s\n", reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  salq %%cl, %%rax\n");
+      printf("  salq %%cl, %%%s\n", reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_rshift(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
+  if (expr->rhs->reg != REG_CX) {
+    printf("movq %%%s, %%rcx\n", reg[expr->rhs->reg][3]);
+  }
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  sarl %%cl, %%eax\n");
+      printf("  sarl %%cl, %%%s\n", reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  sarq %%cl, %%rax\n");
+      printf("  sarq %%cl, %%%s\n", reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_lt(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->lhs->type->ty_type) {
     case TY_INT: {
-      printf("  cmpl %%ecx, %%eax\n");
-      printf("  setl %%al\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  setl %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_UINT: {
-      printf("  cmpl %%ecx, %%eax\n");
-      printf("  setb %%al\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  setb %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_LONG: {
-      printf("  cmpq %%rcx, %%rax\n");
-      printf("  setl %%al\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  setl %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  cmpq %%rcx, %%rax\n");
-      printf("  setb %%al\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  setb %%%s\n", reg[expr->reg][0]);
       break;
     }
     default: assert(false);
   }
-  printf("  movzbl %%al, %%eax\n");
-  GEN_PUSH("rax");
+  printf("  movzbl %%%s, %%%s\n", reg[expr->reg][0], reg[expr->reg][2]);
 }
 
 static void gen_lte(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->lhs->type->ty_type) {
     case TY_INT: {
-      printf("  cmpl %%ecx, %%eax\n");
-      printf("  setle %%al\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  setle %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_UINT: {
-      printf("  cmpl %%ecx, %%eax\n");
-      printf("  setbe %%al\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  setbe %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_LONG: {
-      printf("  cmpq %%rcx, %%rax\n");
-      printf("  setle %%al\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  setle %%%s\n", reg[expr->reg][0]);
       break;
     }
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  cmpq %%rcx, %%rax\n");
-      printf("  setbe %%al\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  setbe %%%s\n", reg[expr->reg][0]);
       break;
     }
     default: assert(false);
   }
   printf("  movzbl %%al, %%eax\n");
-  GEN_PUSH("rax");
 }
 
 static void gen_eq(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->lhs->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  cmpl %%ecx, %%eax\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  cmpq %%rcx, %%rax\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  printf("  sete %%al\n");
-  printf("  movzbl %%al, %%eax\n");
-  GEN_PUSH("rax");
+  printf("  sete %%%s\n", reg[expr->reg][0]);
+  printf("  movzbl %%%s, %%%s\n", reg[expr->reg][0], reg[expr->reg][2]);
 }
 
 static void gen_neq(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->lhs->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  cmpl %%ecx, %%eax\n");
+      printf("  cmpl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  cmpq %%rcx, %%rax\n");
+      printf("  cmpq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  printf("  setne %%al\n");
-  printf("  movzbl %%al, %%eax\n");
-  GEN_PUSH("rax");
+  printf("  setne %%%s\n", reg[expr->reg][0]);
+  printf("  movzbl %%%s, %%%s\n", reg[expr->reg][0], reg[expr->reg][2]);
 }
 
 static void gen_and(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  andl %%ecx, %%eax\n");
+      printf("  andl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  andq %%rcx, %%rax\n");
+      printf("  andq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_xor(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  xorl %%ecx, %%eax\n");
+      printf("  xorl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  xorq %%rcx, %%rax\n");
+      printf("  xorq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_or(Expr *expr) {
-  GEN_OP2(expr->lhs, expr->rhs, "rax", "rcx");
+  gen_expr(expr->lhs);
+  gen_expr(expr->rhs);
+
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  orl %%ecx, %%eax\n");
+      printf("  orl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  orq %%rcx, %%rax\n");
+      printf("  orq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
       break;
     }
     default: assert(false);
   }
-  GEN_PUSH("rax");
+
+  if (expr->lhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_land(Expr *expr) {
   int label_false = label_no++;
   int label_end = label_no++;
 
-  GEN_OP(expr->lhs, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(expr->lhs);
+  printf("  cmpq $0, %%%s\n", reg[expr->lhs->reg][3]);
   GEN_JUMP("je", label_false);
 
-  GEN_OP(expr->rhs, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(expr->rhs);
+  printf("  cmpq $0, %%%s\n", reg[expr->rhs->reg][3]);
   GEN_JUMP("je", label_false);
 
-  printf("  movl $1, %%eax\n");
+  printf("  movl $1, %%%s\n", reg[expr->reg][2]);
   GEN_JUMP("jmp", label_end);
 
   GEN_LABEL(label_false);
-  printf("  movl $0, %%eax\n");
+  printf("  movl $0, %%%s\n", reg[expr->reg][2]);
 
   GEN_LABEL(label_end);
-  GEN_PUSH("rax");
 }
 
 static void gen_lor(Expr *expr) {
   int label_true = label_no++;
   int label_end = label_no++;
 
-  GEN_OP(expr->lhs, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(expr->lhs);
+  printf("  cmpq $0, %%%s\n", reg[expr->lhs->reg][3]);
   GEN_JUMP("jne", label_true);
 
-  GEN_OP(expr->rhs, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(expr->rhs);
+  printf("  cmpq $0, %%%s\n", reg[expr->rhs->reg][3]);
   GEN_JUMP("jne", label_true);
 
-  printf("  movl $0, %%eax\n");
+  printf("  movl $0, %%%s\n", reg[expr->reg][2]);
   GEN_JUMP("jmp", label_end);
 
   GEN_LABEL(label_true);
-  printf("  movl $1, %%eax\n");
+  printf("  movl $1, %%%s\n", reg[expr->reg][2]);
 
   GEN_LABEL(label_end);
-  GEN_PUSH("rax");
 }
 
 static void gen_condition(Expr *expr) {
   int label_false = label_no++;
   int label_end = label_no++;
 
-  GEN_OP(expr->cond, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(expr->cond);
+  printf("  cmpq $0, %%%s\n", reg[expr->cond->reg][3]);
   GEN_JUMP("je", label_false);
 
-  GEN_OP(expr->lhs, "rax");
+  gen_expr(expr->lhs);
+  printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
   GEN_JUMP("jmp", label_end);
 
   GEN_LABEL(label_false);
-  GEN_OP(expr->rhs, "rax");
+  gen_expr(expr->rhs);
+  printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
 
   GEN_LABEL(label_end);
-  GEN_PUSH("rax");
 }
 
 static void gen_assign(Expr *expr) {
   gen_lvalue(expr->lhs);
-  GEN_OP(expr->rhs, "rax");
-  GEN_POP("rcx");
-  gen_store_by_addr(REG_AX, REG_CX, expr->lhs->type);
-  GEN_PUSH("rax");
+  gen_expr(expr->rhs);
+
+  gen_store(expr->lhs, expr->rhs);
+
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_comma(Expr *expr) {
-  GEN_EVAL(expr->lhs);
+  gen_expr(expr->lhs);
   gen_expr(expr->rhs);
+
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
+  }
 }
 
 static void gen_expr(Expr *expr) {
+  /* fprintf(stderr, "%d: %s\n", expr->nd_type, reg[expr->reg][1]); */
+
   switch (expr->nd_type) {
     case ND_VA_START: gen_va_start(expr); break;
     case ND_VA_ARG: gen_va_arg(expr); break;
@@ -950,7 +930,7 @@ static void gen_init_local(Initializer *init, int offset) {
       gen_init_local(item, offset + size * i);
     }
   } else if (init->expr) {
-    GEN_OP(init->expr, "rax");
+    gen_expr(init->expr);
     gen_store_by_offset(REG_AX, offset, init->expr->type);
   }
 }
@@ -997,7 +977,7 @@ static void gen_comp_stmt(Stmt *stmt) {
 
 static void gen_expr_stmt(Stmt *stmt) {
   if (stmt->expr) {
-    GEN_EVAL(stmt->expr);
+    gen_expr(stmt->expr);
   }
 }
 
@@ -1005,8 +985,8 @@ static void gen_if(Stmt *stmt) {
   int label_else = label_no++;
   int label_end = label_no++;
 
-  GEN_OP(stmt->if_cond, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(stmt->if_cond);
+  printf("  cmpq $0, %%%s\n", reg[stmt->if_cond->reg][3]);
   GEN_JUMP("je", label_else);
 
   gen_stmt(stmt->then_body);
@@ -1024,12 +1004,12 @@ static void gen_if(Stmt *stmt) {
 static void gen_switch(Stmt *stmt) {
   stmt->label_break = label_no++;
 
-  GEN_OP(stmt->switch_cond, "rax");
+  gen_expr(stmt->switch_cond);
   for (int i = 0; i < stmt->switch_cases->length; i++) {
     Stmt *case_stmt = stmt->switch_cases->buffer[i];
     case_stmt->label_no = label_no++;
     if (case_stmt->nd_type == ND_CASE) {
-      printf("  cmpq $%llu, %%rax\n", case_stmt->case_const->int_value);
+      printf("  cmpq $%llu, %%%s\n", case_stmt->case_const->int_value, reg[stmt->switch_cond->reg][3]);
       GEN_JUMP("je", case_stmt->label_no);
     } else if (case_stmt->nd_type == ND_DEFAULT) {
       GEN_JUMP("jmp", case_stmt->label_no);
@@ -1047,8 +1027,8 @@ static void gen_while(Stmt *stmt) {
 
   GEN_LABEL(stmt->label_continue);
 
-  GEN_OP(stmt->while_cond, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(stmt->while_cond);
+  printf("  cmpq $0, %%%s\n", reg[stmt->while_cond->reg][3]);
   GEN_JUMP("je", stmt->label_break);
 
   gen_stmt(stmt->while_body);
@@ -1069,8 +1049,8 @@ static void gen_do(Stmt *stmt) {
 
   GEN_LABEL(stmt->label_continue);
 
-  GEN_OP(stmt->do_cond, "rax");
-  printf("  cmpq $0, %%rax\n");
+  gen_expr(stmt->do_cond);
+  printf("  cmpq $0, %%%s\n", reg[stmt->do_cond->reg][3]);
   GEN_JUMP("jne", label_begin);
 
   GEN_LABEL(stmt->label_break);
@@ -1085,15 +1065,15 @@ static void gen_for(Stmt *stmt) {
     if (stmt->for_init->nd_type == ND_DECL) {
       gen_decl_local((Decl *) stmt->for_init);
     } else {
-      GEN_EVAL((Expr *) stmt->for_init);
+      gen_expr((Expr *) stmt->for_init);
     }
   }
 
   GEN_LABEL(label_begin);
 
   if (stmt->for_cond) {
-    GEN_OP(stmt->for_cond, "rax");
-    printf("  cmpq $0, %%rax\n");
+    gen_expr(stmt->for_cond);
+    printf("  cmpq $0, %%%s\n", reg[stmt->for_cond->reg][3]);
     GEN_JUMP("je", stmt->label_break);
   }
 
@@ -1102,7 +1082,7 @@ static void gen_for(Stmt *stmt) {
   GEN_LABEL(stmt->label_continue);
 
   if (stmt->for_after) {
-    GEN_EVAL(stmt->for_after);
+    gen_expr(stmt->for_after);
   }
   GEN_JUMP("jmp", label_begin);
 
@@ -1123,7 +1103,7 @@ static void gen_break(Stmt *stmt) {
 
 static void gen_return(Stmt *stmt) {
   if (stmt->ret_expr) {
-    GEN_OP(stmt->ret_expr, "rax");
+    gen_expr(stmt->ret_expr);
   }
   GEN_JUMP("jmp", stmt->ret_func->label_return);
 }
@@ -1204,7 +1184,6 @@ static void gen_func(Func *func) {
     gp_offset = 48;
     overflow_arg_area = (type->params->length - 6) * 8;
   }
-  stack_depth = 8;
 
   // assign labels
   func->label_return = label_no++;
@@ -1219,13 +1198,19 @@ static void gen_func(Func *func) {
   }
   printf("%s:\n", symbol->identifier);
 
-  GEN_PUSH("rbp");
+  printf("  pushq %%r15\n");
+  printf("  pushq %%r14\n");
+  printf("  pushq %%r13\n");
+  printf("  pushq %%r12\n");
+  printf("  pushq %%rbx\n");
+  printf("  pushq %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
 
-  if (func->stack_size > 0) {
-    printf("  subq $%d, %%rsp\n", func->stack_size);
-    stack_depth += func->stack_size;
+  int stack_size = func->stack_size;
+  if (stack_size % 16 > 0) {
+    stack_size += 16 - stack_size % 16;
   }
+  printf("  subq $%d, %%rsp\n", stack_size + 8);
 
   if (type->ellipsis) {
     for (int i = type->params->length; i < 6; i++) {
@@ -1254,7 +1239,7 @@ static void gen_func(Func *func) {
     if (i < 6) {
       gen_store_by_offset(arg_reg[i], -param->offset, param->type);
     } else {
-      printf("  movq %d(%%rbp), %%rax\n", 16 + (i - 6) * 8);
+      printf("  movq %d(%%rbp), %%rax\n", 16 + 40 + (i - 6) * 8);
       gen_store_by_offset(REG_AX, -param->offset, param->type);
     }
   }
@@ -1263,6 +1248,11 @@ static void gen_func(Func *func) {
 
   GEN_LABEL(func->label_return);
   printf("  leave\n");
+  printf("  popq %%rbx\n");
+  printf("  popq %%r12\n");
+  printf("  popq %%r13\n");
+  printf("  popq %%r14\n");
+  printf("  popq %%r15\n");
   printf("  ret\n");
 }
 

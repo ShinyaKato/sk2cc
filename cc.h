@@ -220,6 +220,34 @@ typedef enum node_type {
   ND_FUNC,
 } NodeType;
 
+// RegSize
+typedef enum {
+  REG_BYTE,
+  REG_WORD,
+  REG_LONG,
+  REG_QUAD,
+} RegSize;
+
+// RegCode
+typedef enum {
+  REG_AX,
+  REG_CX,
+  REG_DX,
+  REG_BX,
+  REG_SP,
+  REG_BP,
+  REG_SI,
+  REG_DI,
+  REG_R8,
+  REG_R9,
+  REG_R10,
+  REG_R11,
+  REG_R12,
+  REG_R13,
+  REG_R14,
+  REG_R15,
+} RegCode;
+
 // Node (AST node)
 // This struct is used for checking the node type.
 // After checking, the pointer is casted to the pointer of each node type.
@@ -269,6 +297,9 @@ struct expr {
 
   // sizeof, alignof, cast
   TypeName *type_name;
+
+  // allocated register
+  RegCode reg;
 
   Token *token;
 };
@@ -554,6 +585,9 @@ extern TransUnit *parse(Vector *tokens);
 
 // sema.c
 extern void sema(TransUnit *trans_unit);
+
+// alloc.c
+extern void alloc(TransUnit *trans_unit);
 
 // gen.c
 extern void gen(TransUnit *node);

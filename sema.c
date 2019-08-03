@@ -413,12 +413,13 @@ static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *tok
   sym_val->token = token;
   put_variable(NULL, sym_val, false);
 
-  Expr *addr_ident = expr_identifier(NULL, sym_addr, token);
+  Expr *addr_ident1 = expr_identifier(NULL, sym_addr, token);
   Expr *addr = expr_unary(ND_ADDRESS, lhs, token);
-  Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident, addr, token);
+  Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident1, addr, token);
 
+  Expr *addr_ident2 = expr_identifier(NULL, sym_addr, token);
   Expr *val_ident = expr_identifier(NULL, sym_val, token);
-  Expr *val = expr_unary(ND_INDIRECT, addr_ident, token);
+  Expr *val = expr_unary(ND_INDIRECT, addr_ident2, token);
   Expr *val_assign = expr_binary(ND_ASSIGN, val_ident, val, token);
 
   Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
@@ -440,11 +441,12 @@ static Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *toke
   sym_addr->token = token;
   put_variable(NULL, sym_addr, false);
 
-  Expr *addr_ident = expr_identifier(NULL, sym_addr, token);
+  Expr *addr_ident1 = expr_identifier(NULL, sym_addr, token);
   Expr *addr = expr_unary(ND_ADDRESS, lhs, token);
-  Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident, addr, token);
+  Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident1, addr, token);
 
-  Expr *val = expr_unary(ND_INDIRECT, addr_ident, token);
+  Expr *addr_ident2 = expr_identifier(NULL, sym_addr, token);
+  Expr *val = expr_unary(ND_INDIRECT, addr_ident2, token);
 
   Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
   Expr *op = expr_binary(nd_type, val, rhs, token);
@@ -779,14 +781,31 @@ static Expr *sema_add(Expr *expr) {
   if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else if (check_pointer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    promote_integer(&expr->rhs);
-    expr->type = expr->lhs->type;
+    Type *lhs_type = expr->lhs->type;
+    expr->lhs = insert_cast(type_long(), expr->lhs, expr->token);
+
+    int type_size = lhs_type->pointer_to->size;
+    Expr *size = expr_integer(type_size, expr->token);
+    expr->rhs = expr_binary(ND_MUL, size, expr->rhs, expr->token);
+    expr->rhs = sema_expr(expr->rhs);
+
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
+    expr = insert_cast(lhs_type, expr, expr->token);
   } else if (check_integer(expr->lhs->type) && check_pointer(expr->rhs->type)) {
     Expr *tmp = expr->lhs;
     expr->lhs = expr->rhs;
     expr->rhs = tmp;
-    promote_integer(&expr->rhs);
-    expr->type = expr->lhs->type;
+
+    Type *lhs_type = expr->lhs->type;
+    expr->lhs = insert_cast(type_long(), expr->lhs, expr->token);
+
+    int type_size = lhs_type->pointer_to->size;
+    Expr *size = expr_integer(type_size, expr->token);
+    expr->rhs = expr_binary(ND_MUL, size, expr->rhs, expr->token);
+    expr->rhs = sema_expr(expr->rhs);
+
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
+    expr = insert_cast(lhs_type, expr, expr->token);
   } else {
     ERROR(expr->token, "invalid operand types.");
   }
@@ -801,8 +820,16 @@ static Expr *sema_sub(Expr *expr) {
   if (check_arithmetic(expr->lhs->type) && check_arithmetic(expr->rhs->type)) {
     expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
   } else if (check_pointer(expr->lhs->type) && check_integer(expr->rhs->type)) {
-    promote_integer(&expr->rhs);
-    expr->type = expr->lhs->type;
+    Type *lhs_type = expr->lhs->type;
+    expr->lhs = insert_cast(type_long(), expr->lhs, expr->token);
+
+    int type_size = lhs_type->pointer_to->size;
+    Expr *size = expr_integer(type_size, expr->token);
+    expr->rhs = expr_binary(ND_MUL, size, expr->rhs, expr->token);
+    expr->rhs = sema_expr(expr->rhs);
+
+    expr->type = convert_arithmetic(&expr->lhs, &expr->rhs);
+    expr = insert_cast(lhs_type, expr, expr->token);
   } else {
     ERROR(expr->token, "invalid operand types.");
   }

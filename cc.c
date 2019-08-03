@@ -15,5 +15,6 @@ void compile(char *input, bool cpp) {
 
   TransUnit *trans_unit = parse(tokens);
   sema(trans_unit);
+  alloc(trans_unit);
   gen(trans_unit);
 }

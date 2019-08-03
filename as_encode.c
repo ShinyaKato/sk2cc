@@ -380,16 +380,17 @@ static void gen_mov(Inst *inst) {
 
 static void gen_movzb(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
+  bool required = (src->regcode & 12) == 4;
   if (inst->suffix == INST_QUAD) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // REX.W + 0F B6 /r
-      gen_rex(1, dest->regcode, 0, src->regcode, false);
+      gen_rex(1, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // REX.W + 0F B6 /r
-      gen_rex(1, dest->regcode, src->index, src->base, false);
+      gen_rex(1, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
@@ -397,13 +398,13 @@ static void gen_movzb(Inst *inst) {
   } else if (inst->suffix == INST_LONG) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // 0F B6 /r
-      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_rex(0, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // 0F B6 /r
-      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_rex(0, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
@@ -412,14 +413,14 @@ static void gen_movzb(Inst *inst) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // 0F B6 /r
       gen_prefix(0x66);
-      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_rex(0, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // 0F B6 /r
       gen_prefix(0x66);
-      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_rex(0, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xb6);
       gen_ops(dest->regcode, src);
@@ -462,16 +463,17 @@ static void gen_movzw(Inst *inst) {
 
 static void gen_movsb(Inst *inst) {
   Op *src = inst->src, *dest = inst->dest;
+  bool required = (src->regcode & 12) == 4;
   if (inst->suffix == INST_QUAD) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // REX.W + 0F BE /r
-      gen_rex(1, dest->regcode, 0, src->regcode, false);
+      gen_rex(1, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // REX.W + 0F BE /r
-      gen_rex(1, dest->regcode, src->index, src->base, false);
+      gen_rex(1, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);
@@ -479,13 +481,13 @@ static void gen_movsb(Inst *inst) {
   } else if (inst->suffix == INST_LONG) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // 0F BE /r
-      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_rex(0, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // 0F BE /r
-      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_rex(0, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);
@@ -494,14 +496,14 @@ static void gen_movsb(Inst *inst) {
     if (src->type == OP_REG && dest->type == OP_REG) {
       // 0F BE /r
       gen_prefix(0x66);
-      gen_rex(0, dest->regcode, 0, src->regcode, false);
+      gen_rex(0, dest->regcode, 0, src->regcode, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);
     } else if (src->type == OP_MEM && dest->type == OP_REG) {
       // 0F BE /r
       gen_prefix(0x66);
-      gen_rex(0, dest->regcode, src->index, src->base, false);
+      gen_rex(0, dest->regcode, src->index, src->base, required);
       gen_opcode(0x0f);
       gen_opcode(0xbe);
       gen_ops(dest->regcode, src);

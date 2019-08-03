@@ -10,23 +10,17 @@ failed() {
 
 # failed to compile
 error() {
-  echo "[failed]"
-  echo "exit with error."
-  echo "[input]"
-  head  tmp/cc_test.c
-  echo "[log]"
-  cat tmp/cc_test.log
+  echo "[failed] exit with error."
+  echo "  input: tmp/cc_test.c"
+  echo "  log:   tmp/cc_test.log"
   exit 1
 }
 
 # failed to link with gcc
 invalid() {
-  echo "[failed]"
-  echo "failed to link with gcc."
-  echo "[input]"
-  head -n 10 tmp/cc_test.c
-  echo "[output]"
-  head -n 10 tmp/cc_test.s
+  echo "[failed] failed to link with gcc."
+  echo "  input:  tmp/cc_test.c"
+  echo "  output: tmp/cc_test.s"
   exit 1
 }
 
@@ -34,12 +28,9 @@ invalid() {
 miscompile() {
   expect=$1
   actual=$2
-  echo "[failed]"
-  echo "$expect is expected, but got $actual."
-  echo "[input]"
-  head -n 10 tmp/cc_test.c
-  echo "[output]"
-  head -n 10 tmp/cc_test.s
+  echo "[failed] $expect is expected, but got $actual."
+  echo "input:  tmp/cc_test.c"
+  echo "output: tmp/cc_test.s"
   exit 1
 }
 
@@ -70,17 +61,13 @@ test_error() {
   $target tmp/cc_test.c > /dev/null 2> /dev/null
   ret=$?
   if [ $ret -eq 0 ]; then
-    echo "[failed]"
-    echo "compilation is unexpectedly succeeded."
-    echo "[input]"
-    head -n 10 tmp/cc_test.c
+    echo "[failed] compilation is unexpectedly succeeded."
+    echo "  input: tmp/cc_test.c"
     exit 1
   fi
   if [ $ret -ne 1 ]; then
-    echo "[failed]"
-    echo "compilation is failed."
-    echo "[input]"
-    head -n 10 tmp/cc_test.c
+    echo "[failed] compilation is failed."
+    echo "  input tmp/cc_test.c"
     exit 1
   fi
   return 0
@@ -405,4 +392,5 @@ test_error "int main() { goto label; }"
 test_error "int main() { label: return 0; label: return 1; }"
 test_error "int f() { label: return 0; } int main() { goto label; }"
 
+echo "[OK]"
 exit 0
