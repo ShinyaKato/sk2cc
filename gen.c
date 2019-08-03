@@ -1054,22 +1054,25 @@ static void gen_expr_stmt(Stmt *stmt) {
 
 static void gen_if(Stmt *stmt) {
   int label_else = label_no++;
-  int label_end = label_no++;
 
   gen_expr(stmt->if_cond);
   printf("  cmpq $0, %%%s\n", reg[stmt->if_cond->reg][3]);
   GEN_JUMP("je", label_else);
 
   gen_stmt(stmt->then_body);
-  GEN_JUMP("jmp", label_end);
-
-  GEN_LABEL(label_else);
 
   if (stmt->else_body) {
-    gen_stmt(stmt->else_body);
-  }
+    int label_end = label_no++;
 
-  GEN_LABEL(label_end);
+    GEN_JUMP("jmp", label_end);
+
+    GEN_LABEL(label_else);
+    gen_stmt(stmt->else_body);
+
+    GEN_LABEL(label_end);
+  } else {
+    GEN_LABEL(label_else);
+  }
 }
 
 static void gen_switch(Stmt *stmt) {
