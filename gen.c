@@ -603,19 +603,19 @@ static void gen_add(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  addl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  addl %%%s, %%%s\n", reg[expr->lhs->reg][2], reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  addq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  addq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
   }
 }
 
@@ -809,19 +809,19 @@ static void gen_and(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  andl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  andl %%%s, %%%s\n", reg[expr->lhs->reg][2], reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  andq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  andq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
   }
 }
 
@@ -832,19 +832,19 @@ static void gen_xor(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  xorl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  xorl %%%s, %%%s\n", reg[expr->lhs->reg][2], reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  xorq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  xorq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
   }
 }
 
@@ -855,19 +855,19 @@ static void gen_or(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  orl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  orl %%%s, %%%s\n", reg[expr->lhs->reg][2], reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  orq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  orq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
   }
 }
 
