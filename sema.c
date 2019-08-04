@@ -396,6 +396,9 @@ static Type *convert_arithmetic(Expr **lhs, Expr **rhs) {
   return type;
 }
 
+// lhs [op]= rhs
+// => sym_addr = &lhs, sym_val = *sym_addr, *sym_addr = sym_val [op] rhs, sym_val
+// => *(sym_addr = &lhs) = (sym_val = *sym_addr) [op] rhs, sym_val
 static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
@@ -416,22 +419,24 @@ static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *tok
   Expr *addr_ident1 = expr_identifier(NULL, sym_addr, token);
   Expr *addr = expr_unary(ND_ADDRESS, lhs, token);
   Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident1, addr, token);
+  Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
 
   Expr *addr_ident2 = expr_identifier(NULL, sym_addr, token);
-  Expr *val_ident1 = expr_identifier(NULL, sym_val, token);
   Expr *val = expr_unary(ND_INDIRECT, addr_ident2, token);
+  Expr *val_ident1 = expr_identifier(NULL, sym_val, token);
   Expr *val_assign = expr_binary(ND_ASSIGN, val_ident1, val, token);
-
-  Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
   Expr *op = expr_binary(nd_type, val_assign, rhs, token);
-  Expr *assign = expr_binary(ND_ASSIGN, lvalue, op, token);
 
+  Expr *assign = expr_binary(ND_ASSIGN, lvalue, op, token);
   Expr *val_ident2 = expr_identifier(NULL, sym_val, token);
   Expr *comma = expr_binary(ND_COMMA, assign, val_ident2, token);
 
   return sema_expr(comma);
 }
 
+// lhs [op]= rhs
+// => sym_addr = &lhs, *sym_addr = *sym_addr [op] rhs
+// => *(sym_addr = &lhs) = *sym_addr [op] rhs
 static Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *token) {
   lhs = sema_expr(lhs);
 
@@ -445,12 +450,12 @@ static Expr *comp_assign_pre(NodeType nd_type, Expr *lhs, Expr *rhs, Token *toke
   Expr *addr_ident1 = expr_identifier(NULL, sym_addr, token);
   Expr *addr = expr_unary(ND_ADDRESS, lhs, token);
   Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident1, addr, token);
+  Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
 
   Expr *addr_ident2 = expr_identifier(NULL, sym_addr, token);
   Expr *val = expr_unary(ND_INDIRECT, addr_ident2, token);
-
-  Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
   Expr *op = expr_binary(nd_type, val, rhs, token);
+
   Expr *assign = expr_binary(ND_ASSIGN, lvalue, op, token);
 
   return sema_expr(assign);
