@@ -121,6 +121,14 @@ static RegSet alloc_div(Expr *expr, RegCode reg, RegSet reserved_regs) {
   return used;
 }
 
+static RegSet alloc_sub(Expr *expr, RegCode reg, RegSet reserved_regs) {
+  Expr *tmp = expr->lhs;
+  expr->lhs = expr->rhs;
+  expr->rhs = tmp;
+
+  return alloc_binary(expr, reg, reserved_regs);
+}
+
 static RegSet alloc_shift(Expr *expr, RegCode reg, RegSet reserved_regs) {
   RegSet rhs_used = alloc_expr(expr->rhs, REG_CX, reserved_regs);
 
@@ -185,7 +193,7 @@ static RegSet alloc_expr(Expr *expr, RegCode reg, RegSet reserved_regs) {
     case ND_DIV:        return alloc_div(expr, reg, reserved_regs);
     case ND_MOD:        return alloc_div(expr, reg, reserved_regs);
     case ND_ADD:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_SUB:        return alloc_binary(expr, reg, reserved_regs);
+    case ND_SUB:        return alloc_sub(expr, reg, reserved_regs);
     case ND_LSHIFT:     return alloc_shift(expr, reg, reserved_regs);
     case ND_RSHIFT:     return alloc_shift(expr, reg, reserved_regs);
     case ND_LT:         return alloc_binary(expr, reg, reserved_regs);

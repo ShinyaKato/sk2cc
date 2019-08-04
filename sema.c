@@ -418,15 +418,16 @@ static Expr *comp_assign_post(NodeType nd_type, Expr *lhs, Expr *rhs, Token *tok
   Expr *addr_assign = expr_binary(ND_ASSIGN, addr_ident1, addr, token);
 
   Expr *addr_ident2 = expr_identifier(NULL, sym_addr, token);
-  Expr *val_ident = expr_identifier(NULL, sym_val, token);
+  Expr *val_ident1 = expr_identifier(NULL, sym_val, token);
   Expr *val = expr_unary(ND_INDIRECT, addr_ident2, token);
-  Expr *val_assign = expr_binary(ND_ASSIGN, val_ident, val, token);
+  Expr *val_assign = expr_binary(ND_ASSIGN, val_ident1, val, token);
 
   Expr *lvalue = expr_unary(ND_INDIRECT, addr_assign, token);
   Expr *op = expr_binary(nd_type, val_assign, rhs, token);
   Expr *assign = expr_binary(ND_ASSIGN, lvalue, op, token);
 
-  Expr *comma = expr_binary(ND_COMMA, assign, val_ident, token);
+  Expr *val_ident2 = expr_identifier(NULL, sym_val, token);
+  Expr *comma = expr_binary(ND_COMMA, assign, val_ident2, token);
 
   return sema_expr(comma);
 }

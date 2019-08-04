@@ -626,19 +626,19 @@ static void gen_sub(Expr *expr) {
   switch (expr->type->ty_type) {
     case TY_INT:
     case TY_UINT: {
-      printf("  subl %%%s, %%%s\n", reg[expr->rhs->reg][2], reg[expr->lhs->reg][2]);
+      printf("  subl %%%s, %%%s\n", reg[expr->lhs->reg][2], reg[expr->rhs->reg][2]);
       break;
     }
     case TY_LONG:
     case TY_ULONG: {
-      printf("  subq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->lhs->reg][3]);
+      printf("  subq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->rhs->reg][3]);
       break;
     }
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", reg[expr->lhs->reg][3], reg[expr->reg][3]);
+  if (expr->rhs->reg != expr->reg) {
+    printf("  movq %%%s, %%%s\n", reg[expr->rhs->reg][3], reg[expr->reg][3]);
   }
 }
 
