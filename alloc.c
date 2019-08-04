@@ -90,8 +90,6 @@ static RegSet alloc_binary(Expr *expr, RegCode reg, RegSet reserved_regs) {
   RegCode lhs_reg = select_reg(rhs_used, reserved_regs);
   RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg, reserved_regs);
 
-  assert(expr->lhs->reg != expr->rhs->reg);
-
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, reg);
   return used;
