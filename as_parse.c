@@ -372,7 +372,7 @@ static Inst *parse_inst(StmtType type, StmtType suffix, Token *token) {
   return inst_new(type, suffix, ops, token);
 }
 
-Stmt *parse_stmt(void) {
+static Stmt *parse_stmt(void) {
   // the first token should be identifier.
   Token *token = expect(TK_IDENT);
 
