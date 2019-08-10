@@ -23,11 +23,11 @@ static bool func_used[REGS];
 
 // utilities
 
-static RegCode choose(bool *reg_used) {
+static RegCode choose(bool *used) {
   // check caller-saved registers
   for (int i = 0; i < CALLER_SAVED_REGS; i++) {
     RegCode reg = caller_saved_regs[i];
-    if (!reg_used[reg]) {
+    if (!used[reg]) {
       func_used[reg] = true;
       return reg;
     }
@@ -36,7 +36,7 @@ static RegCode choose(bool *reg_used) {
   // check callee-saved registers
   for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
     RegCode reg = callee_saved_regs[i];
-    if (!reg_used[reg]) {
+    if (!used[reg]) {
       func_used[reg] = true;
       return reg;
     }
@@ -45,28 +45,28 @@ static RegCode choose(bool *reg_used) {
   assert(false && "failed to allocate register.");
 }
 
-static RegCode arg_choose(bool *reg_used, int index, int length) {
-  if (index < 6 && !reg_used[index]) {
+static RegCode arg_choose(bool *used, int index, int length) {
+  if (index < 6 && !used[index]) {
     return arg_regs[index];
   }
 
   // if the register is already used in the subtree,
   // allocate another register except DI, SI, DX, CX, R8, R9.
 
-  bool reg_used_or_arg[REGS];
+  bool used_or_arg[REGS];
   for (int i = 0; i < REGS; i++) {
-    reg_used_or_arg[i] = reg_used[i];
+    used_or_arg[i] = used[i];
   }
   for (int i = 0; i < length && i < ARG_REGS; i++) {
-    reg_used_or_arg[arg_regs[i]] = true;
+    used_or_arg[arg_regs[i]] = true;
   }
 
-  return choose(reg_used_or_arg);
+  return choose(used_or_arg);
 }
 
 static void merge(Expr *parent, Expr *child) {
   for (int i = 0; i < REGS; i++) {
-    parent->reg_used[i] = parent->reg_used[i] || child->reg_used[i];
+    parent->used[i] = parent->used[i] || child->used[i];
   }
 }
 
@@ -83,7 +83,7 @@ static void alloc_va_arg(Expr *expr, RegCode reg) {
   alloc_expr(expr->macro_ap, REG_AX);
   merge(expr, expr->macro_ap);
 
-  expr->reg_used[REG_DX] = true; // used in code generation
+  expr->used[REG_DX] = true; // used in code generation
 }
 
 static void alloc_va_end(Expr *expr, RegCode reg) {
@@ -98,13 +98,13 @@ static void alloc_primary(Expr *expr, RegCode reg) {
 static void alloc_call(Expr *expr, RegCode reg) {
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
-    alloc_expr(arg, arg_choose(expr->reg_used, i, expr->args->length));
+    alloc_expr(arg, arg_choose(expr->used, i, expr->args->length));
     merge(expr, arg);
   }
 
-  // add all caller-saved registers to 'reg_used' to avoid register saving.
+  // add all caller-saved registers to 'used' to avoid register saving.
   for (int i = 0; i < CALLER_SAVED_REGS; i++) {
-    expr->reg_used[caller_saved_regs[i]] = true;
+    expr->used[caller_saved_regs[i]] = true;
   }
 }
 
@@ -117,7 +117,7 @@ static void alloc_binary(Expr *expr, RegCode reg) {
   alloc_expr(expr->rhs, reg);
   merge(expr, expr->rhs);
 
-  alloc_expr(expr->lhs, choose(expr->reg_used));
+  alloc_expr(expr->lhs, choose(expr->used));
   merge(expr, expr->lhs);
 }
 
@@ -125,22 +125,22 @@ static void alloc_mul(Expr *expr, RegCode reg) {
   alloc_expr(expr->rhs, REG_DX);
   merge(expr, expr->rhs);
 
-  alloc_expr(expr->lhs, choose(expr->reg_used));
+  alloc_expr(expr->lhs, choose(expr->used));
   merge(expr, expr->lhs);
 
-  expr->reg_used[REG_AX] = true;
-  expr->reg_used[REG_DX] = true;
+  expr->used[REG_AX] = true;
+  expr->used[REG_DX] = true;
 }
 
 static void alloc_div(Expr *expr, RegCode reg) {
   alloc_expr(expr->rhs, REG_CX);
   merge(expr, expr->rhs);
 
-  alloc_expr(expr->lhs, choose(expr->reg_used));
+  alloc_expr(expr->lhs, choose(expr->used));
   merge(expr, expr->lhs);
 
-  expr->reg_used[REG_AX] = true;
-  expr->reg_used[REG_DX] = true;
+  expr->used[REG_AX] = true;
+  expr->used[REG_DX] = true;
 }
 
 static void alloc_sub(Expr *expr, RegCode reg) {
@@ -155,7 +155,7 @@ static void alloc_shift(Expr *expr, RegCode reg) {
   alloc_expr(expr->rhs, REG_CX);
   merge(expr, expr->rhs);
 
-  alloc_expr(expr->lhs, choose(expr->reg_used));
+  alloc_expr(expr->lhs, choose(expr->used));
   merge(expr, expr->lhs);
 }
 
@@ -225,7 +225,7 @@ static void alloc_expr(Expr *expr, RegCode reg) {
   }
 
   expr->reg = reg;
-  expr->reg_used[reg] = true;
+  expr->used[reg] = true;
 }
 
 // allocation of declaration

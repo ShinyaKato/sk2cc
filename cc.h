@@ -301,7 +301,7 @@ struct expr {
 
   // allocated register
   RegCode reg;
-  bool reg_used[REGS];
+  bool used[REGS];
 
   Token *token;
 };
