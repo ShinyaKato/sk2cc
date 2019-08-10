@@ -1,29 +1,49 @@
 #include "cc.h"
 
-#define REGS_EMPTY 0
-#define REGS_ADD(regs, reg) ((regs) | (1 << (reg)))
-#define REGS_REMOVE(regs, reg) (~REGS_ADD(~(regs), (reg)))
-#define REGS_UNION(regs1, regs2) ((regs1) | (regs2))
-#define REGS_CHECK(regs, reg) ((regs) & (1 << (reg)))
+#define CALLER_SAVED_REGS 9
+#define CALLEE_SAVED_REGS 5
+#define ARG_REGS 6
 
-typedef int RegSet;
+// AX, CX, DX, SI, DI, R8, R9, R10, R11
+static RegCode caller_saved_regs[CALLER_SAVED_REGS] = {
+  0, 1, 2, 6, 7, 8, 9, 10, 11
+};
 
-static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
+// BX, R12, R13, R14, R15,
+static RegCode callee_saved_regs[CALLEE_SAVED_REGS] = {
+  3, 12, 13, 14, 15
+};
 
-static RegSet func_used;
+// DI, SI, DX, CX, R8, R9
+static RegCode arg_regs[ARG_REGS] = {
+  7, 6, 2, 1, 8, 9
+};
 
-static RegSet alloc_expr(Expr *expr, RegCode reg);
+static bool func_used[REGS];
 
-static RegCode select_reg(RegSet reg_used) {
-  RegCode regs[] = {
-    REG_AX, REG_CX, REG_DX, REG_SI, REG_DI, REG_R8, REG_R9, REG_R10, REG_R11,
-    REG_BX, REG_R12, REG_R13, REG_R14, REG_R15,
-  };
+// utilities
 
-  for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
-    RegCode reg = regs[i];
-    if (!REGS_CHECK(reg_used, reg)) {
-      func_used = REGS_ADD(func_used, reg);
+static void merge(Expr *parent, Expr *child) {
+  for (int i = 0; i < REGS; i++) {
+    parent->reg_used[i] = parent->reg_used[i] || child->reg_used[i];
+  }
+}
+
+static RegCode choose(bool *reg_used) {
+  // check caller-saved registers
+  for (int i = 0; i < CALLER_SAVED_REGS; i++) {
+    RegCode reg = caller_saved_regs[i];
+    if (!reg_used[reg]) {
+      func_used[reg] = true;
+      return reg;
+    }
+  }
+
+  // check callee-saved registers
+  for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
+    RegCode reg = callee_saved_regs[i];
+    if (!reg_used[reg]) {
+      func_used[reg] = true;
       return reg;
     }
   }
@@ -31,181 +51,182 @@ static RegCode select_reg(RegSet reg_used) {
   assert(false && "failed to allocate register.");
 }
 
-static RegSet alloc_va_start(Expr *expr, RegCode reg) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
-  used = REGS_ADD(used, REG_CX);
-  return used;
+// allocation of expression
+
+static void alloc_expr(Expr *expr, RegCode reg);
+
+static void alloc_va_start(Expr *expr, RegCode reg) {
+  alloc_expr(expr->macro_ap, REG_AX);
+  merge(expr, expr->macro_ap);
 }
 
-static RegSet alloc_va_arg(Expr *expr, RegCode reg) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
-  used = REGS_ADD(used, REG_CX);
-  used = REGS_ADD(used, REG_DX);
-  return used;
+static void alloc_va_arg(Expr *expr, RegCode reg) {
+  alloc_expr(expr->macro_ap, REG_AX);
+  merge(expr, expr->macro_ap);
+
+  expr->reg_used[REG_DX] = true; // used in code generation
 }
 
-static RegSet alloc_va_end(Expr *expr, RegCode reg) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
-  return used;
+static void alloc_va_end(Expr *expr, RegCode reg) {
+  alloc_expr(expr->macro_ap, REG_AX);
+  merge(expr, expr->macro_ap);
 }
 
-static RegSet alloc_primary(Expr *expr, RegCode reg) {
-  return REGS_ADD(REGS_EMPTY, reg);
+static void alloc_primary(Expr *expr, RegCode reg) {
+  // nothing to do
 }
 
-static RegSet alloc_call(Expr *expr, RegCode reg) {
-  RegSet arg_regs = REGS_EMPTY;
-  for (int i = 0; i < 6; i++) {
-    arg_regs = REGS_ADD(arg_regs, arg_reg[i]);
-  }
-
-  RegSet used = REGS_EMPTY;
+static void alloc_call(Expr *expr, RegCode reg) {
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
-    RegCode reg = i < 6 && !REGS_CHECK(used, arg_reg[i]) ? arg_reg[i] : select_reg(REGS_UNION(used, arg_regs));
-    RegSet arg_used = alloc_expr(arg, reg);
-    used = REGS_UNION(used, arg_used);
+
+    // if the register is already used in the subtree,
+    // allocate another register except DI, SI, DX, CX, R8, R9.
+    RegCode arg_reg;
+    if (i < 6 && !expr->reg_used[arg_regs[i]]) {
+      arg_reg = arg_regs[i];
+    } else {
+      bool used[REGS];
+      for (int j = 0; j < REGS; j++) {
+        used[j] = expr->reg_used[j];
+      }
+      for (int j = 0; j < expr->args->length && j < ARG_REGS; j++) {
+        used[arg_regs[j]] = true;
+      }
+      arg_reg = choose(used);
+    }
+
+    alloc_expr(arg, arg_reg);
+    merge(expr, arg);
   }
 
-  used = REGS_UNION(used, arg_regs);
-  used = REGS_ADD(used, REG_AX);
-  used = REGS_ADD(used, REG_R10);
-  used = REGS_ADD(used, REG_R11);
-
-  return used;
+  // add all caller-saved registers to 'reg_used' to avoid register saving.
+  for (int i = 0; i < CALLER_SAVED_REGS; i++) {
+    expr->reg_used[caller_saved_regs[i]] = true;
+  }
 }
 
-static RegSet alloc_unary(Expr *expr, RegCode reg) {
-  return alloc_expr(expr->expr, reg);
+static void alloc_unary(Expr *expr, RegCode reg) {
+  alloc_expr(expr->expr, reg);
+  merge(expr, expr->expr);
 }
 
-static RegSet alloc_binary(Expr *expr, RegCode reg) {
-  RegSet rhs_used = alloc_expr(expr->rhs, reg);
+static void alloc_binary(Expr *expr, RegCode reg) {
+  alloc_expr(expr->rhs, reg);
+  merge(expr, expr->rhs);
 
-  RegCode lhs_reg = select_reg(rhs_used);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
-
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, reg);
-  return used;
+  alloc_expr(expr->lhs, choose(expr->reg_used));
+  merge(expr, expr->lhs);
 }
 
-static RegSet alloc_mul(Expr *expr, RegCode reg) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_DX);
+static void alloc_mul(Expr *expr, RegCode reg) {
+  alloc_expr(expr->rhs, REG_DX);
+  merge(expr, expr->rhs);
 
-  RegCode lhs_reg = select_reg(rhs_used);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
+  alloc_expr(expr->lhs, choose(expr->reg_used));
+  merge(expr, expr->lhs);
 
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, REG_AX);
-  used = REGS_ADD(used, REG_DX);
-  used = REGS_ADD(used, reg);
-  return used;
+  expr->reg_used[REG_AX] = true;
+  expr->reg_used[REG_DX] = true;
 }
 
-static RegSet alloc_div(Expr *expr, RegCode reg) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX);
+static void alloc_div(Expr *expr, RegCode reg) {
+  alloc_expr(expr->rhs, REG_CX);
+  merge(expr, expr->rhs);
 
-  RegCode lhs_reg = select_reg(rhs_used);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
+  alloc_expr(expr->lhs, choose(expr->reg_used));
+  merge(expr, expr->lhs);
 
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, REG_DX);
-  used = REGS_ADD(used, REG_AX);
-  used = REGS_ADD(used, reg);
-  return used;
+  expr->reg_used[REG_AX] = true;
+  expr->reg_used[REG_DX] = true;
 }
 
-static RegSet alloc_sub(Expr *expr, RegCode reg) {
+static void alloc_sub(Expr *expr, RegCode reg) {
   Expr *tmp = expr->lhs;
   expr->lhs = expr->rhs;
   expr->rhs = tmp;
 
-  return alloc_binary(expr, reg);
+  alloc_binary(expr, reg);
 }
 
-static RegSet alloc_shift(Expr *expr, RegCode reg) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX);
+static void alloc_shift(Expr *expr, RegCode reg) {
+  alloc_expr(expr->rhs, REG_CX);
+  merge(expr, expr->rhs);
 
-  RegCode lhs_reg = select_reg(rhs_used);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
-
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, reg);
-  return used;
+  alloc_expr(expr->lhs, choose(expr->reg_used));
+  merge(expr, expr->lhs);
 }
 
-static RegSet alloc_logical(Expr *expr, RegCode reg) {
-  RegSet lhs_used = alloc_expr(expr->lhs, reg);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg);
+static void alloc_logical(Expr *expr, RegCode reg) {
+  alloc_expr(expr->lhs, reg);
+  merge(expr, expr->lhs);
 
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, reg);
-  return used;
+  alloc_expr(expr->rhs, reg);
+  merge(expr, expr->rhs);
 }
 
-static RegSet alloc_condition(Expr *expr, RegCode reg) {
-  RegSet cond_used = alloc_expr(expr->cond, reg);
-  RegSet lhs_used = alloc_expr(expr->lhs, reg);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg);
+static void alloc_condition(Expr *expr, RegCode reg) {
+  alloc_expr(expr->cond, reg);
+  merge(expr, expr->cond);
 
-  RegSet used = REGS_EMPTY;
-  used = REGS_UNION(used, cond_used);
-  used = REGS_UNION(used, lhs_used);
-  used = REGS_UNION(used, rhs_used);
-  used = REGS_ADD(used, reg);
-  return used;
+  alloc_expr(expr->lhs, reg);
+  merge(expr, expr->lhs);
+
+  alloc_expr(expr->rhs, reg);
+  merge(expr, expr->rhs);
 }
 
-static RegSet alloc_comma(Expr *expr, RegCode reg) {
-  RegSet lhs_used = alloc_expr(expr->lhs, reg);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg);
+static void alloc_comma(Expr *expr, RegCode reg) {
+  alloc_expr(expr->lhs, reg);
+  merge(expr, expr->lhs);
 
-  RegSet used = REGS_UNION(lhs_used, rhs_used);
-  used = REGS_ADD(used, reg);
-  return used;
+  alloc_expr(expr->rhs, reg);
+  merge(expr, expr->rhs);
 }
 
-static RegSet alloc_expr(Expr *expr, RegCode reg) {
-  expr->reg = reg;
-
+static void alloc_expr(Expr *expr, RegCode reg) {
   switch (expr->nd_type) {
-    case ND_VA_START:   return alloc_va_start(expr, reg);
-    case ND_VA_ARG:     return alloc_va_arg(expr, reg);
-    case ND_VA_END:     return alloc_va_end(expr, reg);
-    case ND_IDENTIFIER: return alloc_primary(expr, reg);
-    case ND_INTEGER:    return alloc_primary(expr, reg);
-    case ND_STRING:     return alloc_primary(expr, reg);
-    case ND_CALL:       return alloc_call(expr, reg);
-    case ND_DOT:        return alloc_unary(expr, reg);
-    case ND_ADDRESS:    return alloc_unary(expr, reg);
-    case ND_INDIRECT:   return alloc_unary(expr, reg);
-    case ND_UMINUS:     return alloc_unary(expr, reg);
-    case ND_NOT:        return alloc_unary(expr, reg);
-    case ND_LNOT:       return alloc_unary(expr, reg);
-    case ND_CAST:       return alloc_unary(expr, reg);
-    case ND_MUL:        return alloc_mul(expr, reg);
-    case ND_DIV:        return alloc_div(expr, reg);
-    case ND_MOD:        return alloc_div(expr, reg);
-    case ND_ADD:        return alloc_binary(expr, reg);
-    case ND_SUB:        return alloc_sub(expr, reg);
-    case ND_LSHIFT:     return alloc_shift(expr, reg);
-    case ND_RSHIFT:     return alloc_shift(expr, reg);
-    case ND_LT:         return alloc_binary(expr, reg);
-    case ND_LTE:        return alloc_binary(expr, reg);
-    case ND_EQ:         return alloc_binary(expr, reg);
-    case ND_NEQ:        return alloc_binary(expr, reg);
-    case ND_AND:        return alloc_binary(expr, reg);
-    case ND_XOR:        return alloc_binary(expr, reg);
-    case ND_OR:         return alloc_binary(expr, reg);
-    case ND_LAND:       return alloc_logical(expr, reg);
-    case ND_LOR:        return alloc_logical(expr, reg);
-    case ND_CONDITION:  return alloc_condition(expr, reg);
-    case ND_ASSIGN:     return alloc_binary(expr, reg);
-    case ND_COMMA:      return alloc_comma(expr, reg);
+    case ND_VA_START:   alloc_va_start(expr, reg); break;
+    case ND_VA_ARG:     alloc_va_arg(expr, reg); break;
+    case ND_VA_END:     alloc_va_end(expr, reg); break;
+    case ND_IDENTIFIER: alloc_primary(expr, reg); break;
+    case ND_INTEGER:    alloc_primary(expr, reg); break;
+    case ND_STRING:     alloc_primary(expr, reg); break;
+    case ND_CALL:       alloc_call(expr, reg); break;
+    case ND_DOT:        alloc_unary(expr, reg); break;
+    case ND_ADDRESS:    alloc_unary(expr, reg); break;
+    case ND_INDIRECT:   alloc_unary(expr, reg); break;
+    case ND_UMINUS:     alloc_unary(expr, reg); break;
+    case ND_NOT:        alloc_unary(expr, reg); break;
+    case ND_LNOT:       alloc_unary(expr, reg); break;
+    case ND_CAST:       alloc_unary(expr, reg); break;
+    case ND_MUL:        alloc_mul(expr, reg); break;
+    case ND_DIV:        alloc_div(expr, reg); break;
+    case ND_MOD:        alloc_div(expr, reg); break;
+    case ND_ADD:        alloc_binary(expr, reg); break;
+    case ND_SUB:        alloc_sub(expr, reg); break;
+    case ND_LSHIFT:     alloc_shift(expr, reg); break;
+    case ND_RSHIFT:     alloc_shift(expr, reg); break;
+    case ND_LT:         alloc_binary(expr, reg); break;
+    case ND_LTE:        alloc_binary(expr, reg); break;
+    case ND_EQ:         alloc_binary(expr, reg); break;
+    case ND_NEQ:        alloc_binary(expr, reg); break;
+    case ND_AND:        alloc_binary(expr, reg); break;
+    case ND_XOR:        alloc_binary(expr, reg); break;
+    case ND_OR:         alloc_binary(expr, reg); break;
+    case ND_LAND:       alloc_logical(expr, reg); break;
+    case ND_LOR:        alloc_logical(expr, reg); break;
+    case ND_CONDITION:  alloc_condition(expr, reg); break;
+    case ND_ASSIGN:     alloc_binary(expr, reg); break;
+    case ND_COMMA:      alloc_comma(expr, reg); break;
     default:            assert(false); // unreachable
   }
+
+  expr->reg = reg;
+  expr->reg_used[reg] = true;
 }
+
+// allocation of declaration
 
 static void alloc_init(Initializer *init) {
   if (init->list) {
@@ -227,6 +248,8 @@ static void alloc_decl(Decl *decl) {
     }
   }
 }
+
+// allocation of statement
 
 static void alloc_stmt(Stmt *stmt) {
   switch (stmt->nd_type) {
@@ -312,16 +335,20 @@ static void alloc_stmt(Stmt *stmt) {
   }
 }
 
+// allocatino of external declaration
+
 static void alloc_func(Func *func) {
-  func_used = REGS_EMPTY;
+  for (int i = 0; i < REGS; i++) {
+    func_used[i] = false;
+  }
 
   alloc_stmt(func->body);
 
-  func->bx_used = REGS_CHECK(func_used, REG_BX);
-  func->r12_used = REGS_CHECK(func_used, REG_R12);
-  func->r13_used = REGS_CHECK(func_used, REG_R13);
-  func->r14_used = REGS_CHECK(func_used, REG_R14);
-  func->r15_used = REGS_CHECK(func_used, REG_R15);
+  func->bx_used = func_used[REG_BX];
+  func->r12_used = func_used[REG_R12];
+  func->r13_used = func_used[REG_R13];
+  func->r14_used = func_used[REG_R14];
+  func->r15_used = func_used[REG_R15];
 }
 
 static void alloc_trans_unit(TransUnit *trans_unit) {

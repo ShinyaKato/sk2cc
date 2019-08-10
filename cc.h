@@ -229,6 +229,7 @@ typedef enum {
 } RegSize;
 
 // RegCode
+#define REGS 16
 typedef enum {
   REG_AX,
   REG_CX,
@@ -300,6 +301,7 @@ struct expr {
 
   // allocated register
   RegCode reg;
+  bool reg_used[REGS];
 
   Token *token;
 };
