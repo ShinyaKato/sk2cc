@@ -23,12 +23,6 @@ static bool func_used[REGS];
 
 // utilities
 
-static void merge(Expr *parent, Expr *child) {
-  for (int i = 0; i < REGS; i++) {
-    parent->reg_used[i] = parent->reg_used[i] || child->reg_used[i];
-  }
-}
-
 static RegCode choose(bool *reg_used) {
   // check caller-saved registers
   for (int i = 0; i < CALLER_SAVED_REGS; i++) {
@@ -49,6 +43,31 @@ static RegCode choose(bool *reg_used) {
   }
 
   assert(false && "failed to allocate register.");
+}
+
+static RegCode arg_choose(bool *reg_used, int index, int length) {
+  if (index < 6 && !reg_used[index]) {
+    return arg_regs[index];
+  }
+
+  // if the register is already used in the subtree,
+  // allocate another register except DI, SI, DX, CX, R8, R9.
+
+  bool reg_used_or_arg[REGS];
+  for (int i = 0; i < REGS; i++) {
+    reg_used_or_arg[i] = reg_used[i];
+  }
+  for (int i = 0; i < length && i < ARG_REGS; i++) {
+    reg_used_or_arg[arg_regs[i]] = true;
+  }
+
+  return choose(reg_used_or_arg);
+}
+
+static void merge(Expr *parent, Expr *child) {
+  for (int i = 0; i < REGS; i++) {
+    parent->reg_used[i] = parent->reg_used[i] || child->reg_used[i];
+  }
 }
 
 // allocation of expression
@@ -79,24 +98,7 @@ static void alloc_primary(Expr *expr, RegCode reg) {
 static void alloc_call(Expr *expr, RegCode reg) {
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
-
-    // if the register is already used in the subtree,
-    // allocate another register except DI, SI, DX, CX, R8, R9.
-    RegCode arg_reg;
-    if (i < 6 && !expr->reg_used[arg_regs[i]]) {
-      arg_reg = arg_regs[i];
-    } else {
-      bool used[REGS];
-      for (int j = 0; j < REGS; j++) {
-        used[j] = expr->reg_used[j];
-      }
-      for (int j = 0; j < expr->args->length && j < ARG_REGS; j++) {
-        used[arg_regs[j]] = true;
-      }
-      arg_reg = choose(used);
-    }
-
-    alloc_expr(arg, arg_reg);
+    alloc_expr(arg, arg_choose(expr->reg_used, i, expr->args->length));
     merge(expr, arg);
   }
 
