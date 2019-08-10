@@ -12,20 +12,13 @@ static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
 
 static RegSet func_used;
 
-static RegSet alloc_expr(Expr *expr, RegCode reg, RegSet reserved_regs);
+static RegSet alloc_expr(Expr *expr, RegCode reg);
 
-static RegCode select_reg(RegSet used_regs, RegSet reserved_regs) {
+static RegCode select_reg(RegSet used_regs) {
   RegCode regs[] = {
     REG_AX, REG_CX, REG_DX, REG_SI, REG_DI, REG_R8, REG_R9, REG_R10, REG_R11,
     REG_BX, REG_R12, REG_R13, REG_R14, REG_R15,
   };
-
-  for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
-    if (REGS_CHECK(used_regs, regs[i])) continue;
-    if (REGS_CHECK(reserved_regs, regs[i])) continue;
-    func_used = REGS_ADD(func_used, regs[i]);
-    return regs[i];
-  }
 
   for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
     if (REGS_CHECK(used_regs, regs[i])) continue;
@@ -36,29 +29,29 @@ static RegCode select_reg(RegSet used_regs, RegSet reserved_regs) {
   assert(false && "failed to allocate register.");
 }
 
-static RegSet alloc_va_start(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX, reserved_regs);
+static RegSet alloc_va_start(Expr *expr, RegCode reg) {
+  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
   used = REGS_ADD(used, REG_CX);
   return used;
 }
 
-static RegSet alloc_va_arg(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX, reserved_regs);
+static RegSet alloc_va_arg(Expr *expr, RegCode reg) {
+  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
   used = REGS_ADD(used, REG_CX);
   used = REGS_ADD(used, REG_DX);
   return used;
 }
 
-static RegSet alloc_va_end(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet used = alloc_expr(expr->macro_ap, REG_AX, reserved_regs);
+static RegSet alloc_va_end(Expr *expr, RegCode reg) {
+  RegSet used = alloc_expr(expr->macro_ap, REG_AX);
   return used;
 }
 
-static RegSet alloc_primary(Expr *expr, RegCode reg, RegSet reserved_regs) {
+static RegSet alloc_primary(Expr *expr, RegCode reg) {
   return REGS_ADD(REGS_EMPTY, reg);
 }
 
-static RegSet alloc_call(Expr *expr, RegCode reg, RegSet reserved_regs) {
+static RegSet alloc_call(Expr *expr, RegCode reg) {
   RegSet arg_regs = REGS_EMPTY;
   for (int i = 0; i < 6; i++) {
     arg_regs = REGS_ADD(arg_regs, arg_reg[i]);
@@ -67,8 +60,8 @@ static RegSet alloc_call(Expr *expr, RegCode reg, RegSet reserved_regs) {
   RegSet used = REGS_EMPTY;
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
-    RegCode reg = i < 6 && !REGS_CHECK(used, arg_reg[i]) ? arg_reg[i] : select_reg(REGS_UNION(used, arg_regs), reserved_regs);
-    RegSet arg_used = alloc_expr(arg, reg, reserved_regs);
+    RegCode reg = i < 6 && !REGS_CHECK(used, arg_reg[i]) ? arg_reg[i] : select_reg(REGS_UNION(used, arg_regs));
+    RegSet arg_used = alloc_expr(arg, reg);
     used = REGS_UNION(used, arg_used);
   }
 
@@ -80,26 +73,26 @@ static RegSet alloc_call(Expr *expr, RegCode reg, RegSet reserved_regs) {
   return used;
 }
 
-static RegSet alloc_unary(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  return alloc_expr(expr->expr, reg, reserved_regs);
+static RegSet alloc_unary(Expr *expr, RegCode reg) {
+  return alloc_expr(expr->expr, reg);
 }
 
-static RegSet alloc_binary(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet rhs_used = alloc_expr(expr->rhs, reg, reserved_regs);
+static RegSet alloc_binary(Expr *expr, RegCode reg) {
+  RegSet rhs_used = alloc_expr(expr->rhs, reg);
 
-  RegCode lhs_reg = select_reg(rhs_used, reserved_regs);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg, reserved_regs);
+  RegCode lhs_reg = select_reg(rhs_used);
+  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, reg);
   return used;
 }
 
-static RegSet alloc_mul(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_DX, reserved_regs);
+static RegSet alloc_mul(Expr *expr, RegCode reg) {
+  RegSet rhs_used = alloc_expr(expr->rhs, REG_DX);
 
-  RegCode lhs_reg = select_reg(rhs_used, reserved_regs);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg, reserved_regs);
+  RegCode lhs_reg = select_reg(rhs_used);
+  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, REG_AX);
@@ -108,11 +101,11 @@ static RegSet alloc_mul(Expr *expr, RegCode reg, RegSet reserved_regs) {
   return used;
 }
 
-static RegSet alloc_div(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX, reserved_regs);
+static RegSet alloc_div(Expr *expr, RegCode reg) {
+  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX);
 
-  RegCode lhs_reg = select_reg(rhs_used, reserved_regs);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg, reserved_regs);
+  RegCode lhs_reg = select_reg(rhs_used);
+  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, REG_DX);
@@ -121,38 +114,38 @@ static RegSet alloc_div(Expr *expr, RegCode reg, RegSet reserved_regs) {
   return used;
 }
 
-static RegSet alloc_sub(Expr *expr, RegCode reg, RegSet reserved_regs) {
+static RegSet alloc_sub(Expr *expr, RegCode reg) {
   Expr *tmp = expr->lhs;
   expr->lhs = expr->rhs;
   expr->rhs = tmp;
 
-  return alloc_binary(expr, reg, reserved_regs);
+  return alloc_binary(expr, reg);
 }
 
-static RegSet alloc_shift(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX, reserved_regs);
+static RegSet alloc_shift(Expr *expr, RegCode reg) {
+  RegSet rhs_used = alloc_expr(expr->rhs, REG_CX);
 
-  RegCode lhs_reg = select_reg(rhs_used, reserved_regs);
-  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg, reserved_regs);
+  RegCode lhs_reg = select_reg(rhs_used);
+  RegSet lhs_used = alloc_expr(expr->lhs, lhs_reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, reg);
   return used;
 }
 
-static RegSet alloc_logical(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet lhs_used = alloc_expr(expr->lhs, reg, reserved_regs);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg, reserved_regs);
+static RegSet alloc_logical(Expr *expr, RegCode reg) {
+  RegSet lhs_used = alloc_expr(expr->lhs, reg);
+  RegSet rhs_used = alloc_expr(expr->rhs, reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, reg);
   return used;
 }
 
-static RegSet alloc_condition(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet cond_used = alloc_expr(expr->cond, reg, reserved_regs);
-  RegSet lhs_used = alloc_expr(expr->lhs, reg, reserved_regs);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg, reserved_regs);
+static RegSet alloc_condition(Expr *expr, RegCode reg) {
+  RegSet cond_used = alloc_expr(expr->cond, reg);
+  RegSet lhs_used = alloc_expr(expr->lhs, reg);
+  RegSet rhs_used = alloc_expr(expr->rhs, reg);
 
   RegSet used = REGS_EMPTY;
   used = REGS_UNION(used, cond_used);
@@ -162,52 +155,52 @@ static RegSet alloc_condition(Expr *expr, RegCode reg, RegSet reserved_regs) {
   return used;
 }
 
-static RegSet alloc_comma(Expr *expr, RegCode reg, RegSet reserved_regs) {
-  RegSet lhs_used = alloc_expr(expr->lhs, reg, reserved_regs);
-  RegSet rhs_used = alloc_expr(expr->rhs, reg, reserved_regs);
+static RegSet alloc_comma(Expr *expr, RegCode reg) {
+  RegSet lhs_used = alloc_expr(expr->lhs, reg);
+  RegSet rhs_used = alloc_expr(expr->rhs, reg);
 
   RegSet used = REGS_UNION(lhs_used, rhs_used);
   used = REGS_ADD(used, reg);
   return used;
 }
 
-static RegSet alloc_expr(Expr *expr, RegCode reg, RegSet reserved_regs) {
+static RegSet alloc_expr(Expr *expr, RegCode reg) {
   expr->reg = reg;
 
   switch (expr->nd_type) {
-    case ND_VA_START:   return alloc_va_start(expr, reg, reserved_regs);
-    case ND_VA_ARG:     return alloc_va_arg(expr, reg, reserved_regs);
-    case ND_VA_END:     return alloc_va_end(expr, reg, reserved_regs);
-    case ND_IDENTIFIER: return alloc_primary(expr, reg, reserved_regs);
-    case ND_INTEGER:    return alloc_primary(expr, reg, reserved_regs);
-    case ND_STRING:     return alloc_primary(expr, reg, reserved_regs);
-    case ND_CALL:       return alloc_call(expr, reg, reserved_regs);
-    case ND_DOT:        return alloc_unary(expr, reg, reserved_regs);
-    case ND_ADDRESS:    return alloc_unary(expr, reg, reserved_regs);
-    case ND_INDIRECT:   return alloc_unary(expr, reg, reserved_regs);
-    case ND_UMINUS:     return alloc_unary(expr, reg, reserved_regs);
-    case ND_NOT:        return alloc_unary(expr, reg, reserved_regs);
-    case ND_LNOT:       return alloc_unary(expr, reg, reserved_regs);
-    case ND_CAST:       return alloc_unary(expr, reg, reserved_regs);
-    case ND_MUL:        return alloc_mul(expr, reg, reserved_regs);
-    case ND_DIV:        return alloc_div(expr, reg, reserved_regs);
-    case ND_MOD:        return alloc_div(expr, reg, reserved_regs);
-    case ND_ADD:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_SUB:        return alloc_sub(expr, reg, reserved_regs);
-    case ND_LSHIFT:     return alloc_shift(expr, reg, reserved_regs);
-    case ND_RSHIFT:     return alloc_shift(expr, reg, reserved_regs);
-    case ND_LT:         return alloc_binary(expr, reg, reserved_regs);
-    case ND_LTE:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_EQ:         return alloc_binary(expr, reg, reserved_regs);
-    case ND_NEQ:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_AND:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_XOR:        return alloc_binary(expr, reg, reserved_regs);
-    case ND_OR:         return alloc_binary(expr, reg, reserved_regs);
-    case ND_LAND:       return alloc_logical(expr, reg, reserved_regs);
-    case ND_LOR:        return alloc_logical(expr, reg, reserved_regs);
-    case ND_CONDITION:  return alloc_condition(expr, reg, reserved_regs);
-    case ND_ASSIGN:     return alloc_binary(expr, reg, reserved_regs);
-    case ND_COMMA:      return alloc_comma(expr, reg, reserved_regs);
+    case ND_VA_START:   return alloc_va_start(expr, reg);
+    case ND_VA_ARG:     return alloc_va_arg(expr, reg);
+    case ND_VA_END:     return alloc_va_end(expr, reg);
+    case ND_IDENTIFIER: return alloc_primary(expr, reg);
+    case ND_INTEGER:    return alloc_primary(expr, reg);
+    case ND_STRING:     return alloc_primary(expr, reg);
+    case ND_CALL:       return alloc_call(expr, reg);
+    case ND_DOT:        return alloc_unary(expr, reg);
+    case ND_ADDRESS:    return alloc_unary(expr, reg);
+    case ND_INDIRECT:   return alloc_unary(expr, reg);
+    case ND_UMINUS:     return alloc_unary(expr, reg);
+    case ND_NOT:        return alloc_unary(expr, reg);
+    case ND_LNOT:       return alloc_unary(expr, reg);
+    case ND_CAST:       return alloc_unary(expr, reg);
+    case ND_MUL:        return alloc_mul(expr, reg);
+    case ND_DIV:        return alloc_div(expr, reg);
+    case ND_MOD:        return alloc_div(expr, reg);
+    case ND_ADD:        return alloc_binary(expr, reg);
+    case ND_SUB:        return alloc_sub(expr, reg);
+    case ND_LSHIFT:     return alloc_shift(expr, reg);
+    case ND_RSHIFT:     return alloc_shift(expr, reg);
+    case ND_LT:         return alloc_binary(expr, reg);
+    case ND_LTE:        return alloc_binary(expr, reg);
+    case ND_EQ:         return alloc_binary(expr, reg);
+    case ND_NEQ:        return alloc_binary(expr, reg);
+    case ND_AND:        return alloc_binary(expr, reg);
+    case ND_XOR:        return alloc_binary(expr, reg);
+    case ND_OR:         return alloc_binary(expr, reg);
+    case ND_LAND:       return alloc_logical(expr, reg);
+    case ND_LOR:        return alloc_logical(expr, reg);
+    case ND_CONDITION:  return alloc_condition(expr, reg);
+    case ND_ASSIGN:     return alloc_binary(expr, reg);
+    case ND_COMMA:      return alloc_comma(expr, reg);
     default:            assert(false); // unreachable
   }
 }
@@ -219,7 +212,7 @@ static void alloc_init(Initializer *init) {
       alloc_init(item);
     }
   } else if (init->expr) {
-    alloc_expr(init->expr, REG_AX, REGS_EMPTY);
+    alloc_expr(init->expr, REG_AX);
   }
 }
 
@@ -260,12 +253,12 @@ static void alloc_stmt(Stmt *stmt) {
     }
     case ND_EXPR: {
       if (stmt->expr) {
-        alloc_expr(stmt->expr, REG_AX, REGS_EMPTY);
+        alloc_expr(stmt->expr, REG_AX);
       }
       break;
     }
     case ND_IF: {
-      alloc_expr(stmt->if_cond, REG_AX, REGS_EMPTY);
+      alloc_expr(stmt->if_cond, REG_AX);
       alloc_stmt(stmt->then_body);
       if (stmt->else_body) {
         alloc_stmt(stmt->else_body);
@@ -273,17 +266,17 @@ static void alloc_stmt(Stmt *stmt) {
       break;
     }
     case ND_SWITCH: {
-      alloc_expr(stmt->switch_cond, REG_AX, REGS_EMPTY);
+      alloc_expr(stmt->switch_cond, REG_AX);
       alloc_stmt(stmt->switch_body);
       break;
     }
     case ND_WHILE: {
-      alloc_expr(stmt->while_cond, REG_AX, REGS_EMPTY);
+      alloc_expr(stmt->while_cond, REG_AX);
       alloc_stmt(stmt->while_body);
       break;
     }
     case ND_DO: {
-      alloc_expr(stmt->do_cond, REG_AX, REGS_EMPTY);
+      alloc_expr(stmt->do_cond, REG_AX);
       alloc_stmt(stmt->do_body);
       break;
     }
@@ -292,14 +285,14 @@ static void alloc_stmt(Stmt *stmt) {
         if (stmt->for_init->nd_type == ND_DECL) {
           alloc_decl((Decl *) stmt->for_init);
         } else {
-          alloc_expr((Expr *) stmt->for_init, REG_AX, REGS_EMPTY);
+          alloc_expr((Expr *) stmt->for_init, REG_AX);
         }
       }
       if (stmt->for_cond) {
-        alloc_expr(stmt->for_cond, REG_AX, REGS_EMPTY);
+        alloc_expr(stmt->for_cond, REG_AX);
       }
       if (stmt->for_after) {
-        alloc_expr(stmt->for_after, REG_AX, REGS_EMPTY);
+        alloc_expr(stmt->for_after, REG_AX);
       }
       alloc_stmt(stmt->for_body);
       break;
@@ -309,7 +302,7 @@ static void alloc_stmt(Stmt *stmt) {
     case ND_BREAK: break;
     case ND_RETURN: {
       if (stmt->ret_expr) {
-        alloc_expr(stmt->ret_expr, REG_AX, REGS_EMPTY);
+        alloc_expr(stmt->ret_expr, REG_AX);
       }
       break;
     }
