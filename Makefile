@@ -42,7 +42,7 @@ $(SELF): $(SELF_OBJS)
 SELF2_ASMS = $(patsubst %.c,$(DIR)/%2.s,$(SRCS))
 $(SELF2_ASMS): $(DIR)/%2.s:%.c $(HEADERS) $(SK2CC)
 	@mkdir -p $(DIR)
-	$(SK2CC) $< > $@
+	$(SELF) $< > $@
 
 SELF2_OBJS = $(patsubst %2.s,%2.o,$(SELF2_ASMS))
 $(SELF2_OBJS): %2.o:%2.s $(HEADERS) $(SELF)
