@@ -14,16 +14,18 @@ static RegSet func_used;
 
 static RegSet alloc_expr(Expr *expr, RegCode reg);
 
-static RegCode select_reg(RegSet used_regs) {
+static RegCode select_reg(RegSet reg_used) {
   RegCode regs[] = {
     REG_AX, REG_CX, REG_DX, REG_SI, REG_DI, REG_R8, REG_R9, REG_R10, REG_R11,
     REG_BX, REG_R12, REG_R13, REG_R14, REG_R15,
   };
 
   for (int i = 0; i < sizeof(regs) / sizeof(RegCode); i++) {
-    if (REGS_CHECK(used_regs, regs[i])) continue;
-    func_used = REGS_ADD(func_used, regs[i]);
-    return regs[i];
+    RegCode reg = regs[i];
+    if (!REGS_CHECK(reg_used, reg)) {
+      func_used = REGS_ADD(func_used, reg);
+      return reg;
+    }
   }
 
   assert(false && "failed to allocate register.");
