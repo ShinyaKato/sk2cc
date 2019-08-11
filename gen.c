@@ -1,5 +1,7 @@
 #include "cc.h"
 
+#define ARG_REGS 6
+
 static char *reg[16][4] = {
   { "al", "ax", "eax", "rax" },
   { "cl", "cx", "ecx", "rcx" },
@@ -19,9 +21,10 @@ static char *reg[16][4] = {
   { "r15b", "r15w", "r15d", "r15" },
 };
 
-// rdi, rsi, rdx, rcx, r8, r9
-// currently initializer with enum constant is not supported.
-static RegCode arg_reg[6] = { 7, 6, 2, 1, 8, 9 };
+// DI, SI, DX, CX, R8, R9
+static RegCode arg_regs[ARG_REGS] = {
+  7, 6, 2, 1, 8, 9
+};
 
 static int label_no;
 
@@ -328,8 +331,8 @@ static void gen_call(Expr *expr) {
   }
 
   int args_size = 0;
-  if (expr->args->length > 6) {
-    args_size = (expr->args->length - 6) * 8;
+  if (expr->args->length > ARG_REGS) {
+    args_size = (expr->args->length - ARG_REGS) * 8;
     if (args_size % 16 > 0) {
       args_size += 16 - args_size % 16;
     }
@@ -341,12 +344,12 @@ static void gen_call(Expr *expr) {
 
   for (int i = 0; i < expr->args->length; i++) {
     Expr *arg = expr->args->buffer[i];
-    if (i < 6) {
-      if (arg->reg != arg_reg[i]) {
-        printf("  movq %%%s, %%%s\n", reg[arg->reg][3], reg[arg_reg[i]][3]);
+    if (i < ARG_REGS) {
+      if (arg->reg != arg_regs[i]) {
+        printf("  movq %%%s, %%%s\n", reg[arg->reg][3], reg[arg_regs[i]][3]);
       }
     } else {
-      printf("  movq %%%s, %d(%%rsp)\n", reg[arg->reg][3], (i - 6) * 8);
+      printf("  movq %%%s, %d(%%rsp)\n", reg[arg->reg][3], (i - ARG_REGS) * 8);
     }
   }
 
@@ -1274,12 +1277,12 @@ static void gen_func(Func *func) {
     stack_size += 16 - (stack_params_offset + stack_size) % 16;
   }
 
-  if (type->params->length <= 6) {
+  if (type->params->length <= ARG_REGS) {
     gp_offset = type->params->length * 8;
     overflow_arg_area = stack_params_offset;
   } else {
     gp_offset = 48;
-    overflow_arg_area = stack_params_offset + (type->params->length - 6) * 8;
+    overflow_arg_area = stack_params_offset + (type->params->length - ARG_REGS) * 8;
   }
 
   // assign labels
@@ -1340,18 +1343,18 @@ static void gen_func(Func *func) {
   // store params on the registers
   for (int i = 0; i < type->params->length; i++) {
     Symbol *param = type->params->buffer[i];
-    if (i < 6) {
-      gen_store_by_offset(arg_reg[i], -param->offset, param->type);
+    if (i < ARG_REGS) {
+      gen_store_by_offset(arg_regs[i], -param->offset, param->type);
     } else {
-      printf("  movq %d(%%rbp), %%rax\n", stack_params_offset + (i - 6) * 8);
+      printf("  movq %d(%%rbp), %%rax\n", stack_params_offset + (i - ARG_REGS) * 8);
       gen_store_by_offset(REG_AX, -param->offset, param->type);
     }
   }
 
   // store params when the function takes variable length arguments
   if (type->ellipsis) {
-    for (int i = type->params->length; i < 6; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_reg[i]][REG_QUAD], -176 + i * 8);
+    for (int i = type->params->length; i < ARG_REGS; i++) {
+      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_regs[i]][REG_QUAD], -176 + i * 8);
     }
   }
 
