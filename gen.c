@@ -1319,7 +1319,9 @@ static void gen_func(Func *func) {
   }
   printf("  pushq %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
-  printf("  subq $%d, %%rsp\n", stack_size);
+  if (stack_size > 0) {
+    printf("  subq $%d, %%rsp\n", stack_size);
+  }
 
   // The current stack state is as follows:
   //
