@@ -1,11 +1,11 @@
 #include "cc.h"
 
-#define BYTE(expr) (reg[(expr)->reg][REG_BYTE])
-#define WORD(expr) (reg[(expr)->reg][REG_WORD])
-#define LONG(expr) (reg[(expr)->reg][REG_LONG])
-#define QUAD(expr) (reg[(expr)->reg][REG_QUAD])
+#define BYTE(expr) (regs[(expr)->reg][REG_BYTE])
+#define WORD(expr) (regs[(expr)->reg][REG_WORD])
+#define LONG(expr) (regs[(expr)->reg][REG_LONG])
+#define QUAD(expr) (regs[(expr)->reg][REG_QUAD])
 
-static char *reg[16][4] = {
+static char *regs[16][4] = {
   { "al", "ax", "eax", "rax" },
   { "cl", "cx", "ecx", "rcx" },
   { "dl", "dx", "edx", "rdx" },
@@ -148,23 +148,23 @@ static void gen_store_by_offset(RegCode value, int offset, Type *type) {
     case TY_BOOL:
     case TY_CHAR:
     case TY_UCHAR: {
-      printf("  movb %%%s, %d(%%rbp)\n", reg[value][REG_BYTE], offset);
+      printf("  movb %%%s, %d(%%rbp)\n", regs[value][REG_BYTE], offset);
       break;
     }
     case TY_SHORT:
     case TY_USHORT: {
-      printf("  movw %%%s, %d(%%rbp)\n", reg[value][REG_WORD], offset);
+      printf("  movw %%%s, %d(%%rbp)\n", regs[value][REG_WORD], offset);
       break;
     }
     case TY_INT:
     case TY_UINT: {
-      printf("  movl %%%s, %d(%%rbp)\n", reg[value][REG_LONG], offset);
+      printf("  movl %%%s, %d(%%rbp)\n", regs[value][REG_LONG], offset);
       break;
     }
     case TY_LONG:
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  movq %%%s, %d(%%rbp)\n", reg[value][REG_QUAD], offset);
+      printf("  movq %%%s, %d(%%rbp)\n", regs[value][REG_QUAD], offset);
       break;
     }
     default: assert(false);
@@ -356,7 +356,7 @@ static void gen_call(Expr *expr) {
     Expr *arg = expr->args->buffer[i];
     if (i < ARG_REGS) {
       if (arg->reg != arg_regs[i]) {
-        printf("  movq %%%s, %%%s\n", QUAD(arg), reg[arg_regs[i]][REG_QUAD]);
+        printf("  movq %%%s, %%%s\n", QUAD(arg), regs[arg_regs[i]][REG_QUAD]);
       }
     } else {
       printf("  movq %%%s, %d(%%rsp)\n", QUAD(arg), (i - ARG_REGS) * 8);
@@ -966,8 +966,6 @@ static void gen_comma(Expr *expr) {
 }
 
 static void gen_expr(Expr *expr) {
-  /* fprintf(stderr, "%d: %s\n", expr->nd_type, reg[expr->reg][1]); */
-
   switch (expr->nd_type) {
     case ND_VA_START: gen_va_start(expr); break;
     case ND_VA_ARG: gen_va_arg(expr); break;
@@ -1364,7 +1362,7 @@ static void gen_func(Func *func) {
   // store params when the function takes variable length arguments
   if (type->ellipsis) {
     for (int i = type->params->length; i < ARG_REGS; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", reg[arg_regs[i]][REG_QUAD], -176 + i * 8);
+      printf("  movq %%%s, %d(%%rbp)\n", regs[arg_regs[i]][REG_QUAD], -176 + i * 8);
     }
   }
 
