@@ -340,43 +340,50 @@ static void gen_call(Expr *expr) {
   //   --- <= %rsp (16-byte aligned)
   // [lower address]
 
-  // evaluate arguments
+  // calculate stack size for args
+  int stack_size = 0;
+  int stack_padding = 0;
+  if (expr->args->length > ARG_REGS) {
+    stack_size = (expr->args->length - ARG_REGS) * 8;
+    if (stack_size % 16 > 0) {
+      stack_padding = 16 - stack_size % 16;
+      stack_size += stack_padding;
+    }
+  }
+
+  // evaluate args
   for (int i = 0; i < expr->args->length; i++) {
     Expr *arg = expr->args->buffer[i];
     gen_expr(arg);
   }
 
-  int args_size = 0;
-  if (expr->args->length > ARG_REGS) {
-    args_size = (expr->args->length - ARG_REGS) * 8;
-    if (args_size % 16 > 0) {
-      args_size += 16 - args_size % 16;
-    }
+  // store args
+  if (stack_padding > 0) {
+    printf("  subq $%d, %%rsp\n", stack_padding);
   }
-
-  if (args_size > 0) {
-    printf("  subq $%d, %%rsp\n", args_size);
-  }
-
-  for (int i = 0; i < expr->args->length; i++) {
+  for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
     if (i < ARG_REGS) {
       if (arg->reg != arg_regs[i]) {
         printf("  movq %%%s, %%%s\n", QUAD(arg), regs[arg_regs[i]][REG_QUAD]);
       }
     } else {
-      printf("  movq %%%s, %d(%%rsp)\n", QUAD(arg), (i - ARG_REGS) * 8);
+      printf("  pushq %%%s\n", QUAD(arg));
     }
   }
 
-  if (!expr->expr->symbol || expr->expr->symbol->type->ellipsis) {
+  // if the callee function takes variable length arguments,
+  // store the number of floating point args to AL
+  if (expr->expr->symbol->type->ellipsis) {
     printf("  movb $0, %%al\n");
   }
 
+  // execute 'call' instruction
   printf("  call %s\n", expr->expr->identifier);
 
-  if (args_size > 0) {
-    printf("  addq $%d, %%rsp\n", args_size);
+  // remove args on the stack
+  if (stack_size > 0) {
+    printf("  addq $%d, %%rsp\n", stack_size);
   }
 
   if (expr->reg != REG_AX) {
