@@ -394,12 +394,8 @@ struct func {
 
   int label_return; // label
 
-  // which callee-saved registers are used
-  bool bx_used;
-  bool r12_used;
-  bool r13_used;
-  bool r14_used;
-  bool r15_used;
+  // which registers are used
+  bool used[16];
 
   Token *token;
 };

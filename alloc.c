@@ -19,7 +19,7 @@ static RegCode arg_regs[ARG_REGS] = {
   7, 6, 2, 1, 8, 9
 };
 
-static bool func_used[REGS];
+static bool *func_used;
 
 // utilities
 
@@ -340,17 +340,9 @@ static void alloc_stmt(Stmt *stmt) {
 // allocatino of external declaration
 
 static void alloc_func(Func *func) {
-  for (int i = 0; i < REGS; i++) {
-    func_used[i] = false;
-  }
+  func_used = func->used;
 
   alloc_stmt(func->body);
-
-  func->bx_used = func_used[REG_BX];
-  func->r12_used = func_used[REG_R12];
-  func->r13_used = func_used[REG_R13];
-  func->r14_used = func_used[REG_R14];
-  func->r15_used = func_used[REG_R15];
 }
 
 static void alloc_trans_unit(TransUnit *trans_unit) {

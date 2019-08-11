@@ -24,7 +24,13 @@ static char *regs[16][4] = {
   { "r15b", "r15w", "r15d", "r15" },
 };
 
+#define CALLEE_SAVED_REGS 5
 #define ARG_REGS 6
+
+// BX, R12, R13, R14, R15,
+static RegCode callee_saved_regs[CALLEE_SAVED_REGS] = {
+  3, 12, 13, 14, 15
+};
 
 // DI, SI, DX, CX, R8, R9
 static RegCode arg_regs[ARG_REGS] = {
@@ -1264,20 +1270,10 @@ static void gen_func(Func *func) {
 
   // calculate stack frame size
   int stack_params_offset = 16;
-  if (func->r15_used) {
-    stack_params_offset += 8;
-  }
-  if (func->r14_used) {
-    stack_params_offset += 8;
-  }
-  if (func->r13_used) {
-    stack_params_offset += 8;
-  }
-  if (func->r12_used) {
-    stack_params_offset += 8;
-  }
-  if (func->bx_used) {
-    stack_params_offset += 8;
+  for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
+    if (func->used[callee_saved_regs[i]]) {
+      stack_params_offset += 8;
+    }
   }
 
   int stack_size = func->stack_size;
@@ -1308,20 +1304,11 @@ static void gen_func(Func *func) {
   printf("%s:\n", symbol->identifier);
 
   // function prologue
-  if (func->r15_used) {
-    printf("  pushq %%r15\n");
-  }
-  if (func->r14_used) {
-    printf("  pushq %%r14\n");
-  }
-  if (func->r13_used) {
-    printf("  pushq %%r13\n");
-  }
-  if (func->r12_used) {
-    printf("  pushq %%r12\n");
-  }
-  if (func->bx_used) {
-    printf("  pushq %%rbx\n");
+  for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
+    RegCode reg = callee_saved_regs[i];
+    if (func->used[reg]) {
+      printf("  pushq %%%s\n", regs[reg][REG_QUAD]);
+    }
   }
   printf("  pushq %%rbp\n");
   printf("  movq %%rsp, %%rbp\n");
@@ -1372,20 +1359,11 @@ static void gen_func(Func *func) {
   // function epilogue
   GEN_LABEL(func->label_return);
   printf("  leave\n");
-  if (func->bx_used) {
-    printf("  popq %%rbx\n");
-  }
-  if (func->r12_used) {
-    printf("  popq %%r12\n");
-  }
-  if (func->r13_used) {
-    printf("  popq %%r13\n");
-  }
-  if (func->r14_used) {
-    printf("  popq %%r14\n");
-  }
-  if (func->r15_used) {
-    printf("  popq %%r15\n");
+  for (int i = CALLEE_SAVED_REGS - 1; i >= 0; i--) {
+    RegCode reg = callee_saved_regs[i];
+    if (func->used[reg]) {
+      printf("  popq %%%s\n", regs[reg][REG_QUAD]);
+    }
   }
   printf("  ret\n");
 }
