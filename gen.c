@@ -37,8 +37,10 @@ static RegCode arg_regs[ARG_REGS] = {
   7, 6, 2, 1, 8, 9
 };
 
+// label number is shared globally in the translate unit
 static int label_no;
 
+// for va_list
 static int gp_offset;
 static int overflow_arg_area;
 
