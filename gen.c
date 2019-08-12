@@ -45,9 +45,7 @@ static int label_no;
 static int gp_offset;
 static int overflow_arg_area;
 
-// generation of expression
-
-static void gen_expr(Expr *expr);
+// utilities
 
 #define GEN_LABEL(label) \
   do { \
@@ -58,6 +56,40 @@ static void gen_expr(Expr *expr);
   do { \
     printf("  %s .L%d\n", inst, label); \
   } while (0)
+
+static void move_reg(Type *type, RegCode from, RegCode to) {
+  if (from == to) return;
+
+  switch (type->ty_type) {
+    case TY_BOOL:
+    case TY_CHAR:
+    case TY_UCHAR: {
+      printf("  movb %%%s, %%%s\n", byte_regs[from], byte_regs[to]);
+      break;
+    }
+    case TY_SHORT:
+    case TY_USHORT: {
+      printf("  movw %%%s, %%%s\n", word_regs[from], word_regs[to]);
+      break;
+    }
+    case TY_INT:
+    case TY_UINT: {
+      printf("  movl %%%s, %%%s\n", long_regs[from], long_regs[to]);
+      break;
+    }
+    case TY_LONG:
+    case TY_ULONG:
+    case TY_POINTER: {
+      printf("  movq %%%s, %%%s\n", quad_regs[from], quad_regs[to]);
+      break;
+    }
+    default: assert(false);
+  }
+}
+
+// generation of expression
+
+static void gen_expr(Expr *expr);
 
 static void gen_lvalue(Expr *expr) {
   switch (expr->nd_type) {
@@ -367,9 +399,7 @@ static void gen_call(Expr *expr) {
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
     if (i < ARG_REGS) {
-      if (arg->reg != arg_regs[i]) {
-        printf("  movq %%%s, %%%s\n", QUAD(arg), quad_regs[arg_regs[i]]);
-      }
+      move_reg(arg->type, arg->reg, arg_regs[i]);
     } else {
       printf("  pushq %%%s\n", QUAD(arg));
     }
@@ -389,9 +419,8 @@ static void gen_call(Expr *expr) {
     printf("  addq $%d, %%rsp\n", stack_size);
   }
 
-  if (expr->reg != REG_AX) {
-    printf("  movq %%rax, %%%s\n", QUAD(expr));
-  }
+  // move the return value to the allocated register
+  move_reg(expr->type, REG_AX, expr->reg);
 }
 
 static void gen_dot(Expr *expr) {
@@ -510,9 +539,7 @@ static void gen_mul(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->lhs->reg != REG_AX) {
-    printf("  movq %%%s, %%rax\n", QUAD(expr->lhs));
-  }
+  move_reg(expr->type, expr->lhs->reg, REG_AX);
 
   switch (expr->type->ty_type) {
     case TY_INT: {
@@ -534,18 +561,14 @@ static void gen_mul(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->reg != REG_AX) {
-    printf("  movq %%rax, %%%s\n", QUAD(expr));
-  }
+  move_reg(expr->type, REG_AX, expr->reg);
 }
 
 static void gen_div(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->lhs->reg != REG_AX) {
-    printf("  movq %%%s, %%rax\n", QUAD(expr->lhs));
-  }
+  move_reg(expr->type, expr->lhs->reg, REG_AX);
 
   switch (expr->type->ty_type) {
     case TY_INT: {
@@ -577,18 +600,14 @@ static void gen_div(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->reg != REG_AX) {
-    printf("  movq %%rax, %%%s\n", QUAD(expr));
-  }
+  move_reg(expr->type, REG_AX, expr->reg);
 }
 
 static void gen_mod(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->lhs->reg != REG_AX) {
-    printf("  movq %%%s, %%rax\n", QUAD(expr->lhs));
-  }
+  move_reg(expr->type, expr->lhs->reg, REG_AX);
 
   switch (expr->type->ty_type) {
     case TY_INT: {
@@ -620,9 +639,7 @@ static void gen_mod(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->reg != REG_DX) {
-    printf("  movq %%rdx, %%%s\n", QUAD(expr));
-  }
+  move_reg(expr->type, REG_DX, expr->reg);
 }
 
 static void gen_add(Expr *expr) {
@@ -643,9 +660,7 @@ static void gen_add(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_sub(Expr *expr) {
@@ -666,18 +681,14 @@ static void gen_sub(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_lshift(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->rhs->reg != REG_CX) {
-    printf("movq %%%s, %%rcx\n", QUAD(expr->rhs));
-  }
+  move_reg(expr->type, expr->rhs->reg, REG_CX);
 
   switch (expr->type->ty_type) {
     case TY_INT:
@@ -693,18 +704,14 @@ static void gen_lshift(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->lhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->lhs->reg, expr->reg);
 }
 
 static void gen_rshift(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->rhs->reg != REG_CX) {
-    printf("movq %%%s, %%rcx\n", QUAD(expr->rhs));
-  }
+  move_reg(expr->type, expr->rhs->reg, REG_CX);
 
   switch (expr->type->ty_type) {
     case TY_INT:
@@ -720,9 +727,7 @@ static void gen_rshift(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->lhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->lhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->lhs->reg, expr->reg);
 }
 
 static void gen_lt(Expr *expr) {
@@ -849,9 +854,7 @@ static void gen_and(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_xor(Expr *expr) {
@@ -872,9 +875,7 @@ static void gen_xor(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_or(Expr *expr) {
@@ -895,9 +896,7 @@ static void gen_or(Expr *expr) {
     default: assert(false);
   }
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_land(Expr *expr) {
@@ -967,18 +966,14 @@ static void gen_assign(Expr *expr) {
 
   gen_store(expr->lhs, expr->rhs);
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_comma(Expr *expr) {
   gen_expr(expr->lhs);
   gen_expr(expr->rhs);
 
-  if (expr->rhs->reg != expr->reg) {
-    printf("  movq %%%s, %%%s\n", QUAD(expr->rhs), QUAD(expr));
-  }
+  move_reg(expr->type, expr->rhs->reg, expr->reg);
 }
 
 static void gen_expr(Expr *expr) {
