@@ -1,17 +1,18 @@
 #include "cc.h"
 
+#define AVAILABLE_REGS 14
 #define CALLER_SAVED_REGS 9
 #define CALLEE_SAVED_REGS 5
 #define ARG_REGS 6
 
+// AX, CX, DX, SI, DI, R8, R9, R10, R11, BX, R12, R13, R14, R15
+static RegCode available_regs[AVAILABLE_REGS] = {
+  0, 1, 2, 6, 7, 8, 9, 10, 11, 3, 12, 13, 14, 15
+};
+
 // AX, CX, DX, SI, DI, R8, R9, R10, R11
 static RegCode caller_saved_regs[CALLER_SAVED_REGS] = {
   0, 1, 2, 6, 7, 8, 9, 10, 11
-};
-
-// BX, R12, R13, R14, R15,
-static RegCode callee_saved_regs[CALLEE_SAVED_REGS] = {
-  3, 12, 13, 14, 15
 };
 
 // DI, SI, DX, CX, R8, R9
@@ -24,18 +25,8 @@ static bool *func_used;
 // utilities
 
 static RegCode choose(bool *used) {
-  // check caller-saved registers
-  for (int i = 0; i < CALLER_SAVED_REGS; i++) {
-    RegCode reg = caller_saved_regs[i];
-    if (!used[reg]) {
-      func_used[reg] = true;
-      return reg;
-    }
-  }
-
-  // check callee-saved registers
-  for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
-    RegCode reg = callee_saved_regs[i];
+  for (int i = 0; i < AVAILABLE_REGS; i++) {
+    RegCode reg = available_regs[i];
     if (!used[reg]) {
       func_used[reg] = true;
       return reg;
@@ -45,7 +36,7 @@ static RegCode choose(bool *used) {
   assert(false && "failed to allocate register.");
 }
 
-static RegCode arg_choose(bool *used, int index, int length) {
+static RegCode choose_arg(bool *used, int index, int length) {
   if (index < 6 && !used[index]) {
     return arg_regs[index];
   }
@@ -53,15 +44,25 @@ static RegCode arg_choose(bool *used, int index, int length) {
   // if the register is already used in the subtree,
   // allocate another register except DI, SI, DX, CX, R8, R9.
 
-  bool used_or_arg[REGS];
-  for (int i = 0; i < REGS; i++) {
-    used_or_arg[i] = used[i];
-  }
-  for (int i = 0; i < length && i < ARG_REGS; i++) {
-    used_or_arg[arg_regs[i]] = true;
+  for (int i = 0; i < AVAILABLE_REGS; i++) {
+    RegCode reg = available_regs[i];
+
+    bool skip = false;
+    for (int j = 0; j < ARG_REGS; j++) {
+      if (reg == arg_regs[j]) {
+        skip = true;
+        break;
+      }
+    }
+    if (skip) continue;
+
+    if (!used[reg]) {
+      func_used[reg] = true;
+      return reg;
+    }
   }
 
-  return choose(used_or_arg);
+  assert(false && "failed to allocate register.");
 }
 
 static void merge(Expr *parent, Expr *child) {
@@ -98,7 +99,7 @@ static void alloc_primary(Expr *expr, RegCode reg) {
 static void alloc_call(Expr *expr, RegCode reg) {
   for (int i = expr->args->length - 1; i >= 0; i--) {
     Expr *arg = expr->args->buffer[i];
-    alloc_expr(arg, arg_choose(expr->used, i, expr->args->length));
+    alloc_expr(arg, choose_arg(expr->used, i, expr->args->length));
     merge(expr, arg);
   }
 
