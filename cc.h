@@ -220,14 +220,6 @@ typedef enum node_type {
   ND_FUNC,
 } NodeType;
 
-// RegSize
-typedef enum {
-  REG_BYTE,
-  REG_WORD,
-  REG_LONG,
-  REG_QUAD,
-} RegSize;
-
 // RegCode
 #define REGS 16
 typedef enum {

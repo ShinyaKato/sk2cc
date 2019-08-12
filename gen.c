@@ -1,27 +1,28 @@
 #include "cc.h"
 
-#define BYTE(expr) (regs[(expr)->reg][REG_BYTE])
-#define WORD(expr) (regs[(expr)->reg][REG_WORD])
-#define LONG(expr) (regs[(expr)->reg][REG_LONG])
-#define QUAD(expr) (regs[(expr)->reg][REG_QUAD])
+#define BYTE(expr) (byte_regs[(expr)->reg])
+#define WORD(expr) (word_regs[(expr)->reg])
+#define LONG(expr) (long_regs[(expr)->reg])
+#define QUAD(expr) (quad_regs[(expr)->reg])
 
-static char *regs[16][4] = {
-  { "al", "ax", "eax", "rax" },
-  { "cl", "cx", "ecx", "rcx" },
-  { "dl", "dx", "edx", "rdx" },
-  { "bl", "bx", "ebx", "rbx" },
-  { "spl", "sp", "esp", "rsp" },
-  { "bpl", "bp", "ebp", "rbp" },
-  { "sil", "si", "esi", "rsi" },
-  { "dil", "di", "edi", "rdi" },
-  { "r8b", "r8w", "r8d", "r8" },
-  { "r9b", "r9w", "r9d", "r9" },
-  { "r10b", "r10w", "r10d", "r10" },
-  { "r11b", "r11w", "r11d", "r11" },
-  { "r12b", "r12w", "r12d", "r12" },
-  { "r13b", "r13w", "r13d", "r13" },
-  { "r14b", "r14w", "r14d", "r14" },
-  { "r15b", "r15w", "r15d", "r15" },
+static char *byte_regs[REGS] = {
+  "al", "cl", "dl", "bl", "spl", "bpl", "sil", "dil",
+  "r8b", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b",
+};
+
+static char *word_regs[REGS] = {
+  "ax", "cx", "dx", "bx", "sp", "bp", "si", "di",
+  "r8w", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w",
+};
+
+static char *long_regs[REGS] = {
+  "eax", "ecx", "edx", "ebx", "esp", "ebp", "esi", "edi",
+  "r8d", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d",
+};
+
+static char *quad_regs[REGS] = {
+  "rax", "rcx", "rdx", "rbx", "rsp", "rbp", "rsi", "rdi",
+  "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
 };
 
 #define CALLEE_SAVED_REGS 5
@@ -156,23 +157,23 @@ static void gen_store_by_offset(RegCode value, int offset, Type *type) {
     case TY_BOOL:
     case TY_CHAR:
     case TY_UCHAR: {
-      printf("  movb %%%s, %d(%%rbp)\n", regs[value][REG_BYTE], offset);
+      printf("  movb %%%s, %d(%%rbp)\n", byte_regs[value], offset);
       break;
     }
     case TY_SHORT:
     case TY_USHORT: {
-      printf("  movw %%%s, %d(%%rbp)\n", regs[value][REG_WORD], offset);
+      printf("  movw %%%s, %d(%%rbp)\n", word_regs[value], offset);
       break;
     }
     case TY_INT:
     case TY_UINT: {
-      printf("  movl %%%s, %d(%%rbp)\n", regs[value][REG_LONG], offset);
+      printf("  movl %%%s, %d(%%rbp)\n", long_regs[value], offset);
       break;
     }
     case TY_LONG:
     case TY_ULONG:
     case TY_POINTER: {
-      printf("  movq %%%s, %d(%%rbp)\n", regs[value][REG_QUAD], offset);
+      printf("  movq %%%s, %d(%%rbp)\n", quad_regs[value], offset);
       break;
     }
     default: assert(false);
@@ -367,7 +368,7 @@ static void gen_call(Expr *expr) {
     Expr *arg = expr->args->buffer[i];
     if (i < ARG_REGS) {
       if (arg->reg != arg_regs[i]) {
-        printf("  movq %%%s, %%%s\n", QUAD(arg), regs[arg_regs[i]][REG_QUAD]);
+        printf("  movq %%%s, %%%s\n", QUAD(arg), quad_regs[arg_regs[i]]);
       }
     } else {
       printf("  pushq %%%s\n", QUAD(arg));
@@ -1316,7 +1317,7 @@ static void gen_func(Func *func) {
   for (int i = 0; i < CALLEE_SAVED_REGS; i++) {
     RegCode reg = callee_saved_regs[i];
     if (func->used[reg]) {
-      printf("  pushq %%%s\n", regs[reg][REG_QUAD]);
+      printf("  pushq %%%s\n", quad_regs[reg]);
     }
   }
   printf("  pushq %%rbp\n");
@@ -1360,7 +1361,7 @@ static void gen_func(Func *func) {
   // store params when the function takes variable length arguments
   if (type->ellipsis) {
     for (int i = type->params->length; i < ARG_REGS; i++) {
-      printf("  movq %%%s, %d(%%rbp)\n", regs[arg_regs[i]][REG_QUAD], -176 + i * 8);
+      printf("  movq %%%s, %d(%%rbp)\n", quad_regs[arg_regs[i]], -176 + i * 8);
     }
   }
 
@@ -1373,7 +1374,7 @@ static void gen_func(Func *func) {
   for (int i = CALLEE_SAVED_REGS - 1; i >= 0; i--) {
     RegCode reg = callee_saved_regs[i];
     if (func->used[reg]) {
-      printf("  popq %%%s\n", regs[reg][REG_QUAD]);
+      printf("  popq %%%s\n", quad_regs[reg]);
     }
   }
   printf("  ret\n");
