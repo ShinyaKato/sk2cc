@@ -188,6 +188,8 @@ static void alloc_comma(Expr *expr, RegCode reg) {
 }
 
 static void alloc_expr(Expr *expr, RegCode reg) {
+  expr->reg = reg;
+
   switch (expr->nd_type) {
     case ND_VA_START:   alloc_va_start(expr, reg); break;
     case ND_VA_ARG:     alloc_va_arg(expr, reg); break;
@@ -225,7 +227,6 @@ static void alloc_expr(Expr *expr, RegCode reg) {
     default:            assert(false); // unreachable
   }
 
-  expr->reg = reg;
   expr->used[reg] = true;
 }
 
@@ -254,87 +255,135 @@ static void alloc_decl(Decl *decl) {
 
 // allocation of statement
 
+static void alloc_stmt(Stmt *stmt);
+
+static void alloc_label(Stmt *stmt) {
+  alloc_stmt(stmt->label_stmt);
+}
+
+static void alloc_case(Stmt *stmt) {
+  alloc_stmt(stmt->case_stmt);
+}
+
+static void alloc_default(Stmt *stmt) {
+  alloc_stmt(stmt->default_stmt);
+}
+
+static void alloc_comp_stmt(Stmt *stmt) {
+  for (int i = 0; i < stmt->block_items->length; i++) {
+    Node *item = stmt->block_items->buffer[i];
+
+    if (item->nd_type == ND_DECL) {
+      alloc_decl((Decl *) item);
+    } else {
+      alloc_stmt((Stmt *) item);
+    }
+  }
+}
+
+static void alloc_expr_stmt(Stmt *stmt) {
+  if (stmt->expr) {
+    alloc_expr(stmt->expr, REG_AX);
+  }
+}
+
+static void alloc_if(Stmt *stmt) {
+  alloc_expr(stmt->if_cond, REG_AX);
+
+  alloc_stmt(stmt->then_body);
+
+  if (stmt->else_body) {
+    alloc_stmt(stmt->else_body);
+  }
+}
+
+static void alloc_switch(Stmt *stmt) {
+  alloc_expr(stmt->switch_cond, REG_AX);
+
+  alloc_stmt(stmt->switch_body);
+}
+
+static void alloc_while(Stmt *stmt) {
+  alloc_expr(stmt->while_cond, REG_AX);
+
+  alloc_stmt(stmt->while_body);
+}
+
+static void alloc_do(Stmt *stmt) {
+  alloc_expr(stmt->do_cond, REG_AX);
+
+  alloc_stmt(stmt->do_body);
+}
+
+static void alloc_for(Stmt *stmt) {
+  if (stmt->for_init) {
+    if (stmt->for_init->nd_type == ND_DECL) {
+      alloc_decl((Decl *) stmt->for_init);
+    } else {
+      alloc_expr((Expr *) stmt->for_init, REG_AX);
+    }
+  }
+
+  if (stmt->for_cond) {
+    alloc_expr(stmt->for_cond, REG_AX);
+  }
+
+  if (stmt->for_after) {
+    alloc_expr(stmt->for_after, REG_AX);
+  }
+
+  alloc_stmt(stmt->for_body);
+}
+
+static void alloc_return(Stmt *stmt) {
+  if (stmt->ret_expr) {
+    alloc_expr(stmt->ret_expr, REG_AX);
+  }
+}
+
 static void alloc_stmt(Stmt *stmt) {
   switch (stmt->nd_type) {
-    case ND_LABEL: {
-      alloc_stmt(stmt->label_stmt);
+    case ND_LABEL:
+      alloc_label(stmt);
       break;
-    }
-    case ND_CASE: {
-      alloc_stmt(stmt->case_stmt);
+    case ND_CASE:
+      alloc_case(stmt);
       break;
-    }
-    case ND_DEFAULT: {
-      alloc_stmt(stmt->default_stmt);
+    case ND_DEFAULT:
+      alloc_default(stmt);
       break;
-    }
-    case ND_COMP: {
-      for (int i = 0; i < stmt->block_items->length; i++) {
-        Node *item = stmt->block_items->buffer[i];
-        if (item->nd_type == ND_DECL) {
-          alloc_decl((Decl *) item);
-        } else {
-          alloc_stmt((Stmt *) item);
-        }
-      }
+    case ND_COMP:
+      alloc_comp_stmt(stmt);
       break;
-    }
-    case ND_EXPR: {
-      if (stmt->expr) {
-        alloc_expr(stmt->expr, REG_AX);
-      }
+    case ND_EXPR:
+      alloc_expr_stmt(stmt);
       break;
-    }
-    case ND_IF: {
-      alloc_expr(stmt->if_cond, REG_AX);
-      alloc_stmt(stmt->then_body);
-      if (stmt->else_body) {
-        alloc_stmt(stmt->else_body);
-      }
+    case ND_IF:
+      alloc_if(stmt);
       break;
-    }
-    case ND_SWITCH: {
-      alloc_expr(stmt->switch_cond, REG_AX);
-      alloc_stmt(stmt->switch_body);
+    case ND_SWITCH:
+      alloc_switch(stmt);
       break;
-    }
-    case ND_WHILE: {
-      alloc_expr(stmt->while_cond, REG_AX);
-      alloc_stmt(stmt->while_body);
+    case ND_WHILE:
+      alloc_while(stmt);
       break;
-    }
-    case ND_DO: {
-      alloc_expr(stmt->do_cond, REG_AX);
-      alloc_stmt(stmt->do_body);
+    case ND_DO:
+      alloc_do(stmt);
       break;
-    }
-    case ND_FOR: {
-      if (stmt->for_init) {
-        if (stmt->for_init->nd_type == ND_DECL) {
-          alloc_decl((Decl *) stmt->for_init);
-        } else {
-          alloc_expr((Expr *) stmt->for_init, REG_AX);
-        }
-      }
-      if (stmt->for_cond) {
-        alloc_expr(stmt->for_cond, REG_AX);
-      }
-      if (stmt->for_after) {
-        alloc_expr(stmt->for_after, REG_AX);
-      }
-      alloc_stmt(stmt->for_body);
+    case ND_FOR:
+      alloc_for(stmt);
       break;
-    }
-    case ND_GOTO: break;
-    case ND_CONTINUE: break;
-    case ND_BREAK: break;
-    case ND_RETURN: {
-      if (stmt->ret_expr) {
-        alloc_expr(stmt->ret_expr, REG_AX);
-      }
+    case ND_GOTO:
       break;
-    }
-    default: assert(false); // unreachable
+    case ND_CONTINUE:
+      break;
+    case ND_BREAK:
+      break;
+    case ND_RETURN:
+      alloc_return(stmt);
+      break;
+    default:
+      assert(false); // unreachable
   }
 }
 
